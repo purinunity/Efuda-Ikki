@@ -4,14 +4,14 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // ゲームの状態を表す列挙型
+// （RoundReady→RoundStart→TurnStart→Turn→TurnStart→Turn→TurnStart→Turn→TurnStart→Turn→ShowDown→Result）
 public enum GameStateType
 {
-    None,
-    WaitingForPlayers,
-    DealingCards,
-    PlayerTurn,
-    Showdown,
-    GameOver
+    RoundReady,
+    RoundStart,
+    TurnStart,
+    ShowDown,
+    Result
 }
 
 // ゲーム全体の状態を管理するクラス
@@ -43,7 +43,7 @@ public class GameState
     // コンストラクタ
     public GameState()
     {
-        CurrentState = GameStateType.None;
+        CurrentState = GameStateType.RoundReady;
     }
 
     // 現在のプレイヤー状態を取得

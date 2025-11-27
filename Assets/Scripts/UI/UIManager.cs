@@ -13,6 +13,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] public CardArea trash; // 捨て札表示エリア
     [SerializeField] public Cards allCards; // 全カード管理
     [SerializeField] private GameManager gameManager; // ゲーム管理
+    [SerializeField] private TextPanel textPanel; // テキスト表示パネル
     private GameState gameState; // ゲーム状態
 
     // 初期化処理

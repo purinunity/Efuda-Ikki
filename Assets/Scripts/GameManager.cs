@@ -51,7 +51,6 @@ public class GameManager : MonoBehaviour
             card.IsSelected = false; // 全カードの選択を解除
             gameState.deckCards.Add(card); // 全カードをデッキに追加
         }
-        yield return StartCoroutine(UIUpdate(5f)); // UI更新(デッキ配布)
         gameState.ShuffleDeck(); // デッキをシャッフル
         yield return StartCoroutine(UIUpdate(3f)); // UI更新(デッキ配布)
 
@@ -62,7 +61,7 @@ public class GameManager : MonoBehaviour
             {
                 gameState.AddCardToPlayerHand((i + gameState.CurrentParentIndex) % playerCount, gameState.DrawCardFromDeck()); // プレイヤーにカードを配る
             }
-            yield return StartCoroutine(UIUpdate(5f)); // UI更新(手札配布)
+            yield return StartCoroutine(UIUpdate(3f)); // UI更新(手札配布)
         }
 
         // 共通カードを追加
@@ -95,13 +94,14 @@ public class GameManager : MonoBehaviour
         {
             for (int j = 0; j < playerCount; j++)
             {
-                Controller controller = controllers[gameState.CurrentPlayerIndex];
+                Controller controller = controllers[gameState.CurrentPlayerIndex]; // 現在のプレイヤーのコントローラーを取得
                 bool waiting = true;
                 ControllerResponse response = null;
                 yield return StartCoroutine(controller.Act(gameState, r => { response = r; waiting = false; }));
                 while (waiting) yield return null;
                 foreach (var card in response.cardsTrash)
                 {
+                    card.IsFaceUp = true; // 捨てるカードを表向きに設定
                     gameState.AddCardToTrash(card);
                     gameState.RemoveCardFromPlayerHand(gameState.CurrentPlayerIndex, card);
                     var drawCard = gameState.DrawCardFromDeck();
