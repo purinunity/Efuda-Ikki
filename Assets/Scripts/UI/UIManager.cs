@@ -12,35 +12,39 @@ public class UIManager : MonoBehaviour
     [SerializeField] public CardArea player2; // プレイヤー2の手札表示エリア
     [SerializeField] public CardArea trash; // 捨て札表示エリア
     [SerializeField] public Cards allCards; // 全カード管理
-    [SerializeField] private GameManager gameManager; // ゲーム管理
+    // [SerializeField] private GameManager gameManager; // ゲーム管理
     [SerializeField] private TextPanel textPanel; // テキスト表示パネル
     private GameState gameState; // ゲーム状態
+
+    public bool UIUpdateInProgress { get; private set; } = false;
+
 
     // 初期化処理
     private void Awake()
     {
-        if (gameManager != null)
-        {
-            gameState = gameManager.gameState;
-            if (gameState != null)
-            {
-                gameState.OnStateChanged += HandleGameStateChanged; // 状態変更時のUI更新
-            }
-        }
+        // if (gameManager != null)
+        // {
+            // gameState = gameManager.gameState;
+            // if (gameState != null)
+            // {
+            //     gameState.OnStateChanged += HandleGameStateChanged; // 状態変更時のUI更新
+            // }
+        // }
     }
 
     // 終了時のイベント解除
     private void OnDestroy()
     {
-        if (gameState != null)
-        {
-            gameState.OnStateChanged -= HandleGameStateChanged;
-        }
+        // if (gameState != null)
+        // {
+        //     gameState.OnStateChanged -= HandleGameStateChanged;
+        // }
     }
 
     // ゲーム状態変更時のUI更新処理
-    private void HandleGameStateChanged(GameState state, float duration)
+    public void UIUpdate(GameState state, float duration)
     {
+        UIUpdateInProgress = true;
         deck.SetCards(state.deckCards,duration); // デッキ表示
         common.SetCards(state.commonCards,duration); // 共通札表示
         trash.SetCards(state.trashCards,duration); // 捨て札表示
@@ -89,6 +93,6 @@ public class UIManager : MonoBehaviour
 
         }
         // Debug.Log("移動完了");
-        gameState.NotificationComplete = true;
+        UIUpdateInProgress = false;
     }
 }

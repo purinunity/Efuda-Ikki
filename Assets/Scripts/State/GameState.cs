@@ -18,7 +18,6 @@ public enum GameStateType
 public class GameState
 {
     public GameStateType CurrentState { get; private set; } // 現在のゲーム状態
-    public event Action<GameState,float> OnStateChanged; // 状態変更通知イベント
     public List<PlayerState> PlayerStates { get; private set; } = new List<PlayerState>(); // プレイヤー状態リスト
     public int CurrentPlayerIndex { get; private set; } = 0; // 現在のターンプレイヤー
     public int CurrentParentIndex { get; private set; } = 0; // 現在の親プレイヤー
@@ -26,8 +25,6 @@ public class GameState
     public List<Card> deckCards { get; private set; } = new List<Card>(); // デッキのカード
     public List<Card> commonCards { get; private set; } = new List<Card>(); // 共通カード
     public List<Card> trashCards { get; private set; } = new List<Card>(); // 捨て札
-
-    public bool NotificationComplete = false;
 
     public void CardReset()
     {
@@ -166,11 +163,5 @@ public class GameState
         {
             Console.WriteLine($"Card {card?.CardData.number} of {card?.CardData.suit} is already in trash or is null.");
         }
-    }
-
-    public void StateUpdateNotification(float duration = 5f)
-    {
-        NotificationComplete = false;
-        OnStateChanged?.Invoke(this,duration);
     }
 }

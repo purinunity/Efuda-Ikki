@@ -829,6 +829,7 @@ MonoBehaviour:
   maxHandTrashTurn: 2
   playerController: {fileID: 265672679}
   cpuController: {fileID: 88197846}
+  uiManager: {fileID: 1971361448}
 --- !u!4 &479954183
 Transform:
   m_ObjectHideFlags: 0
@@ -1801,7 +1802,7 @@ MonoBehaviour:
   player2: {fileID: 622159671}
   trash: {fileID: 1621764167}
   allCards: {fileID: 1249089563}
-  gameManager: {fileID: 479954182}
+  textPanel: {fileID: 0}
 --- !u!4 &1971361449
 Transform:
   m_ObjectHideFlags: 0

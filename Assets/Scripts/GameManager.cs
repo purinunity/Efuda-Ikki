@@ -1,5 +1,6 @@
 // ゲーム全体の管理を行うクラス
 // ゲームの初期化、進行、プレイヤー・CPUの制御を担当
+using System.Collections;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -15,6 +16,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private int maxHandTrashTurn = 2;
     [SerializeField] private PlayerController playerController;
     [SerializeField] private CPUController cpuController;
+    [SerializeField] private UIManager uiManager;
     private Controller[] controllers;
     private bool Initialized = false;
 
@@ -52,7 +54,7 @@ public class GameManager : MonoBehaviour
             gameState.deckCards.Add(card); // 全カードをデッキに追加
         }
         gameState.ShuffleDeck(); // デッキをシャッフル
-        yield return StartCoroutine(UIUpdate(3f)); // UI更新(デッキ配布)
+        yield return UIUpdateWithWaiting(3f); // UI更新(デッキ配布)
 
         // 各プレイヤーの手札を初期化(親から順に配る)
         for (int i = 0; i < playerCount; i++)
@@ -61,7 +63,7 @@ public class GameManager : MonoBehaviour
             {
                 gameState.AddCardToPlayerHand((i + gameState.CurrentParentIndex) % playerCount, gameState.DrawCardFromDeck()); // プレイヤーにカードを配る
             }
-            yield return StartCoroutine(UIUpdate(3f)); // UI更新(手札配布)
+            yield return UIUpdateWithWaiting(3f); // UI更新(手札配布)
         }
 
         // 共通カードを追加
@@ -69,7 +71,7 @@ public class GameManager : MonoBehaviour
         {
             gameState.AddCardToCommon(gameState.DrawCardFromDeck()); // 共通カードを追加
         }
-        yield return StartCoroutine(UIUpdate(2f)); // UI更新(共通札配布)
+        yield return UIUpdateWithWaiting(3f); // UI更新(共通札配布)
 
         foreach (var playerHand in gameState.PlayerStates[0].HandCards)
         {
@@ -81,7 +83,7 @@ public class GameManager : MonoBehaviour
             card.IsFaceUp = true; // 共通札を表向きに設定
         }
 
-        yield return StartCoroutine(UIUpdate(3f)); // UI更新(手札と共通札表向き)
+        yield return UIUpdateWithWaiting(3f); // UI更新(手札と共通札表向き)
 
         Initialized = true;
         Debug.Log("ゲーム初期化完了");
@@ -108,7 +110,7 @@ public class GameManager : MonoBehaviour
                     if (gameState.CurrentPlayerIndex == 0) drawCard.IsFaceUp = true; // プレイヤーの引くカードは表向きに設定
                     gameState.AddCardToPlayerHand(gameState.CurrentPlayerIndex, drawCard);
                 }
-                yield return StartCoroutine(UIUpdate(3f));// UI更新(手札交換)
+                yield return UIUpdateWithWaiting(3f);// UI更新(手札交換)
                 // 次の手番へ
                 gameState.NextTurn();
             }
@@ -134,11 +136,10 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    System.Collections.IEnumerator UIUpdate(float duration = 5f)
+    IEnumerator UIUpdateWithWaiting(float duration = 5f)
     {
-        gameState.StateUpdateNotification(duration);
-        yield return null; // 1フレーム待機
-        while (gameState.NotificationComplete == false)
+        uiManager.UIUpdate(gameState,duration);
+        while (uiManager.UIUpdateInProgress)
         {
             // Debug.Log("UI更新待機中...");
             yield return null; // 状態更新完了まで待機
