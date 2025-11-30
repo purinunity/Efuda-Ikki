@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -13,8 +14,10 @@ public class UIManager : MonoBehaviour
     [SerializeField] public CardArea trash; // 捨て札表示エリア
     [SerializeField] public Cards allCards; // 全カード管理
     // [SerializeField] private GameManager gameManager; // ゲーム管理
-    [SerializeField] private TextPanel textPanel; // テキスト表示パネル
-    private GameState gameState; // ゲーム状態
+    [SerializeField] private TextMeshProUGUI r; // テキスト表示パネル
+    [SerializeField] private TextMeshProUGUI H; // テキスト表示パネル
+    [SerializeField] private TextMeshProUGUI L1; // テキスト表示パネル
+    [SerializeField] private TextMeshProUGUI L2; // テキスト表示パネル
 
     public bool UIUpdateInProgress { get; private set; } = false;
 
@@ -22,29 +25,22 @@ public class UIManager : MonoBehaviour
     // 初期化処理
     private void Awake()
     {
-        // if (gameManager != null)
-        // {
-            // gameState = gameManager.gameState;
-            // if (gameState != null)
-            // {
-            //     gameState.OnStateChanged += HandleGameStateChanged; // 状態変更時のUI更新
-            // }
-        // }
     }
 
     // 終了時のイベント解除
     private void OnDestroy()
     {
-        // if (gameState != null)
-        // {
-        //     gameState.OnStateChanged -= HandleGameStateChanged;
-        // }
     }
 
     // ゲーム状態変更時のUI更新処理
     public void UIUpdate(GameState state, float duration)
-    {
+    {   
         UIUpdateInProgress = true;
+        r.text = state.RoundNumber.ToString();
+        L1.text = state.PlayerStates[0].LifePoints.ToString();
+        L2.text = state.PlayerStates[1].LifePoints.ToString();
+        var now = HandEvaluator.EvaluateHand(state.PlayerStates[0].HandCards, state.commonCards);
+        H.text = now.Name;
         deck.SetCards(state.deckCards,duration); // デッキ表示
         common.SetCards(state.commonCards,duration); // 共通札表示
         trash.SetCards(state.trashCards,duration); // 捨て札表示
@@ -92,7 +88,6 @@ public class UIManager : MonoBehaviour
             yield return null;
 
         }
-        // Debug.Log("移動完了");
         UIUpdateInProgress = false;
     }
 }

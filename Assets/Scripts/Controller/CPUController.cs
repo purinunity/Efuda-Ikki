@@ -15,45 +15,140 @@ public class CPUController : Controller
         List<Card> playerHand = playerState.HandCards; // 手札
         List<Card> commonCards = gameState.commonCards; // 共通札
 
-        var handInfo = HandEvaluator.EvaluateHandRank(playerHand, commonCards); // 役判定
+        var handInfo = HandEvaluator.EvaluateHand(playerHand, commonCards); // 役判定
 
-        List<Card> trash = new List<Card>(); // 捨てるカードリスト
+        List<Card> trash = new List<Card>(); // 捨てるカードリスト// 手札と共通札を結合
+        List<Card> allCards = playerHand.Concat(commonCards).ToList();
 
         // 役ごとに捨てるカードを決定
-        switch (handInfo.Rank)
+        switch (handInfo.Name)
         {
-            case HandEvaluator.HandRank.RoyalFlush:
-            case HandEvaluator.HandRank.StraightFlush:
-            case HandEvaluator.HandRank.Flush:
-                // フラッシュ系の役の場合、手札からその役を構成するスートのカード以外を捨てる
-                var allCards = playerHand.Concat(commonCards).ToList();
-                var flushSuits = allCards.GroupBy(c => c.CardData.suit).Where(g => g.Count() >= 5).Select(g => g.Key).ToList();
-                if (flushSuits.Any())
+            case "不見":
+                // 不見の場合、全てのカードを捨てる
+                trash.AddRange(playerHand);
+                break;
+            case "一双":
+                // 一双の場合、ペアでないカードを全て捨てる
+                var pairNumber = allCards.GroupBy(c => c.CardData.number)
+                                    .Where(g => g.Count() >= 2)
+                                    .Select(g => g.Key)
+                                    .FirstOrDefault();
+                foreach (var card in playerHand)
                 {
-                    var flushSuit = flushSuits.FirstOrDefault();
-                    trash = playerHand.Where(c => c.CardData.suit != flushSuit).ToList();
+                    if (card.CardData.number != pairNumber)
+                    {
+                        trash.Add(card);
+                    }
                 }
                 break;
-
-            case HandEvaluator.HandRank.FourOfAKind:
-            case HandEvaluator.HandRank.FullHouse:
-            case HandEvaluator.HandRank.Straight:
-            case HandEvaluator.HandRank.ThreeOfAKind:
-            case HandEvaluator.HandRank.TwoPair:
-            case HandEvaluator.HandRank.OnePair:
-                // 役を構成するカード以外を捨てる
-                var numbersToKeep = handInfo.RankCards.ToList();
-                trash = playerHand.Where(c => !numbersToKeep.Contains((int)c.CardData.number)).ToList();
+            case "二双":
+                // 二双の場合、ペアでないカードを全て捨てる
+                var pairNumbers = allCards.GroupBy(c => c.CardData.number)
+                                    .Where(g => g.Count() >= 2)
+                                    .Select(g => g.Key)
+                                    .ToList();
+                foreach (var card in playerHand)
+                {
+                    if (!pairNumbers.Contains(card.CardData.number))
+                    {
+                        trash.Add(card);
+                    }
+                }
                 break;
-
-            case HandEvaluator.HandRank.HighCard:
+            case "三珠":
+                // 三珠の場合、トリプルでないカードを捨てる
+                var tripleNumber = allCards.GroupBy(c => c.CardData.number)
+                                    .Where(g => g.Count() >= 3)
+                                    .Select(g => g.Key)
+                                    .FirstOrDefault();
+                foreach (var card in playerHand)
+                {
+                    if (card.CardData.number != tripleNumber)
+                    {
+                        trash.Add(card);
+                    }
+                }
+                break;
+            case "四珠":
+                // 四珠の場合、トリプルでないカードを捨てる
+                var quadNumber = allCards.GroupBy(c => c.CardData.number)
+                                    .Where(g => g.Count() >= 4)
+                                    .Select(g => g.Key)
+                                    .FirstOrDefault();
+                foreach (var card in playerHand)
+                {
+                    if (card.CardData.number != quadNumber)
+                    {
+                        trash.Add(card);
+                    }
+                }
+                break;
+            case "天守":
+                // 天守の場合、１０以下のカードを捨てる 
+                foreach (var card in playerHand)
+                {
+                    if ((int)card.CardData.number <= 10)
+                    {
+                        trash.Add(card);
+                    }
+                }
+                break;
+            case "筋":
+                // 筋の場合、連続する5枚を除くすべてのカードを捨てる
+                var sortedNumbers = allCards.Select(c => (int)c.CardData.number).Distinct().OrderBy(n => n).ToList();
+                List<int> bestSequence = new List<int>();
+                for (int i = 0; i < sortedNumbers.Count; i++)
+                {
+                    List<int> currentSequence = new List<int> { sortedNumbers[i] };
+                    for (int j = i + 1; j < sortedNumbers.Count; j++)
+                    {
+                        if (sortedNumbers[j] == currentSequence.Last() + 1)
+                        {
+                            currentSequence.Add(sortedNumbers[j]);
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                    if (currentSequence.Count > bestSequence.Count)
+                    {
+                        bestSequence = currentSequence;
+                    }
+                }
+                foreach (var card in playerHand)
+                {
+                    if (!bestSequence.Contains((int)card.CardData.number))
+                    {
+                        trash.Add(card);
+                    }
+                }
+                break;
+            case "光":
+                // 光の場合、スートが少数派であるカードを全て捨てる
+                var suitCounts = allCards.GroupBy(c => c.CardData.suit)
+                                    .ToDictionary(g => g.Key, g => g.Count());
+                var minoritySuit = suitCounts.OrderBy(kv => kv.Value).First().Key;
+                foreach (var card in playerHand)
+                {
+                    if (card.CardData.suit == minoritySuit)
+                    {
+                        trash.Add(card);
+                    }
+                }
+                break;
+            case "七筋":
+                // 七筋の場合、捨てるカードはなし
+                break;
+            case "七光":
+                // 七光の場合、捨てるカードはなし
+                break;
+            case "天守閣":
+                // 天守閣の場合、捨てるカードはなし
+                break;
             default:
-                // 役がなければ最もランクの低いカードを捨てる
-                var lowCard = playerHand.OrderBy(c => (int)c.CardData.number).FirstOrDefault();
-                if (lowCard != null)
-                {
-                    trash.Add(lowCard);
-                }
+                // 役がなければ全てのカードを捨てる
+                trash.AddRange(playerHand);
                 break;
         }
 

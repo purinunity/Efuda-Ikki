@@ -20,7 +20,7 @@ public class Card : MonoBehaviour // カードの表示・状態管理
     public bool IsSelected = false; // 選択状態フラグ
 
     public Vector2 TargetPosition { get; set; } //位置を保存するプロパティ
-    private Vector2 LastPosition { get; set; } //最後に移動した位置を保存するプロパティ
+    private Vector2 LastWorldPosition { get; set; } //最後に移動した位置を保存するプロパティ
 
     // 初期化処理（Image, RectTransform取得）
     public void Initialize()
@@ -103,10 +103,11 @@ public class Card : MonoBehaviour // カードの表示・状態管理
     private IEnumerator MoveAndTurnToPosition( float moveDuration)
     {
         // Debug.Log($"Moving card {CardData.number} of {CardData.suit} to {TargetPosition}, FaceUp: {IsFaceUp}, Selected: {IsSelected}");
-        if (IsFaceUp != LastFaceUp && (TargetPosition != LastPosition || IsSelected != LastSelected))
+        var WorldPosition = this.transform.parent != null ? (Vector2)this.transform.parent.TransformPoint(TargetPosition) : TargetPosition;
+        if (IsFaceUp != LastFaceUp && (WorldPosition != LastWorldPosition || IsSelected != LastSelected))
         {
             LastFaceUp = IsFaceUp;
-            LastPosition = TargetPosition;
+            LastWorldPosition = WorldPosition;
             LastSelected = IsSelected;
             // Moveカードを動かす処理
             yield return MoveToPosition(cardRect, moveDuration / 2);
@@ -125,9 +126,9 @@ public class Card : MonoBehaviour // カードの表示・状態管理
             // Turnカードを裏表替える処理
             yield return TurnToPosition(cardRect, moveDuration);
         }
-        else if (TargetPosition != LastPosition)
+        else if (WorldPosition != LastWorldPosition)
         {
-            LastPosition = TargetPosition;
+            LastWorldPosition = WorldPosition;
             // Moveカードを動かす処理
             yield return MoveToPosition(cardRect, moveDuration);
         }

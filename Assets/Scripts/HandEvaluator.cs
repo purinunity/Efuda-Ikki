@@ -8,16 +8,17 @@ public static class HandEvaluator
     // ポーカーの役を表す列挙型
     public enum HandRank
     {
-        HighCard = 1,
-        OnePair = 2,
-        TwoPair = 3,
-        ThreeOfAKind = 4,
-        Straight = 5,
-        Flush = 6,
-        FullHouse = 7,
-        FourOfAKind = 8,
-        StraightFlush = 9,
-        RoyalFlush = 10
+        Miezu = 0,
+        Isso = 5,
+        Niso = 10,
+        Sanju = 20,
+        Yonju = 40,
+        Tenshu = 40,
+        Suzi = 50,
+        Hikari = 50,
+        Nanasuzi = 80,
+        Nanahikari = 80,
+        Tenshukaku = 100
     }
 
     // 役判定結果を格納するクラス
@@ -25,216 +26,173 @@ public static class HandEvaluator
     {
         public HandRank Rank { get; private set; }
         public string Name { get; private set; }
-        public List<int> RankCards { get; private set; }
 
-        public HandInfo(HandRank rank, string name, List<int> rankCards)
+        public HandInfo(HandRank rank, string name)
         {
             Rank = rank;
             Name = name;
-            RankCards = rankCards;
         }
     }
 
     // 手札と共通札から役を判定するメソッド
-    public static HandInfo EvaluateHandRank(List<Card> playerHand, List<Card> commonCards)
+    public static HandInfo EvaluateHand(List<Card> playerHand, List<Card> commonCards)
     {
-    // 手札と共通札を結合
-    List<Card> allCards = playerHand.Concat(commonCards).ToList();
 
-        // カードが無い場合はハイカード扱い
-        if (allCards == null || allCards.Count == 0)
+
+        // 手札と共通札を結合
+        List<Card> allCards = playerHand.Concat(commonCards).ToList();
+
+        // 数字・スートごとの枚数を集計
+        var numberCounts = allCards.GroupBy(c => c.CardData.number)
+                    .ToDictionary(g => (int)g.Key, g => g.Count());
+
+        var suitCounts = allCards.GroupBy(c => c.CardData.suit)
+                    .ToDictionary(g => g.Key, g => g.Count());
+
+        var suitGroups = allCards.GroupBy(c => c.CardData.suit)
+                    .ToDictionary(g => g.Key, g => g.Select(card => card.CardData.number).ToList());
+        string rankName = "不見";
+        HandRank rank = HandRank.Miezu;
+        // 一双判定
+        foreach (var count in numberCounts.Values)
         {
-            return new HandInfo(HandRank.HighCard, "No Cards", new List<int>());
-        }
-
-    // 数字・スートごとの枚数を集計
-    var numberCounts = allCards.GroupBy(c => c.CardData.number)
-                   .ToDictionary(g => (int)g.Key, g => g.Count());
-
-    var suitCounts = allCards.GroupBy(c => c.CardData.suit)
-                 .ToDictionary(g => g.Key, g => g.Count());
-
-    var numbers = allCards.Select(c => (int)c.CardData.number).OrderByDescending(n => n).ToList();
-
-    // 各役の判定（ストレートフラッシュ→フォーカード→フルハウス...の順）
-    var straightFlushInfo = GetStraightFlushInfo(allCards);
-    if (straightFlushInfo != null) return straightFlushInfo;
-
-    var fourKindInfo = GetFourOfAKindInfo(numberCounts);
-    if (fourKindInfo != null) return fourKindInfo;
-
-    var fullHouseInfo = GetFullHouseInfo(numberCounts);
-    if (fullHouseInfo != null) return fullHouseInfo;
-
-        var flushInfo = GetFlushInfo(suitCounts, numbers);
-        if (flushInfo != null) return flushInfo;
-
-        var straightInfo = GetStraightInfo(numbers);
-        if (straightInfo != null) return straightInfo;
-
-        var threeKindInfo = GetThreeOfAKindInfo(numberCounts);
-        if (threeKindInfo != null) return threeKindInfo;
-
-        var twoPairInfo = GetTwoPairInfo(numberCounts);
-        if (twoPairInfo != null) return twoPairInfo;
-
-        var onePairInfo = GetOnePairInfo(numberCounts);
-        if (onePairInfo != null) return onePairInfo;
-
-        return new HandInfo(HandRank.HighCard, "High Card", numbers);
-    }
-
-    // 以下に欠けていたヘルパーメソッドを追加します
-    private static HandInfo GetStraightFlushInfo(List<Card> cards)
-    {
-        var flushSuits = cards.GroupBy(c => c.CardData.suit).Where(g => g.Count() >= 5).Select(g => g.Key).ToList();
-        if (!flushSuits.Any()) return null;
-
-        foreach (var suit in flushSuits)
-        {
-            var flushCards = cards.Where(c => c.CardData.suit == suit).OrderByDescending(c => c.CardData.number).ToList();
-            if (flushCards.Count < 5) continue;
-
-            var straightNumbers = GetStraightNumbers(flushCards.Select(c => (int)c.CardData.number).ToList());
-            if (straightNumbers != null)
+            if (count >= 2)
             {
-                if (straightNumbers.SequenceEqual(new List<int> { 14, 13, 12, 11, 10 }))
-                {
-                    return new HandInfo(HandRank.RoyalFlush, "Royal Flush", straightNumbers);
-                }
-                return new HandInfo(HandRank.StraightFlush, "Straight Flush", straightNumbers);
+                rankName = "一双";
+                rank = HandRank.Isso;
+                break;
             }
         }
-        return null;
-    }
-
-    private static HandInfo GetFourOfAKindInfo(Dictionary<int, int> numberCounts)
-    {
-        var fourKind = numberCounts.FirstOrDefault(p => p.Value == 4);
-        if (fourKind.Value == 4)
+        // 二双判定
+        if (numberCounts.Values.Count(c => c >= 2) >= 2)
         {
-            var kicker = numberCounts.Keys.Where(n => n != fourKind.Key).OrderByDescending(n => n).ToList();
-            var rankCards = new List<int> { fourKind.Key };
-            rankCards.AddRange(kicker);
-            return new HandInfo(HandRank.FourOfAKind, "Four of a Kind", rankCards);
+            rankName = "二双";
+            rank = HandRank.Niso;
         }
-        return null;
-    }
-
-    private static HandInfo GetFullHouseInfo(Dictionary<int, int> numberCounts)
-    {
-        var threeKind = numberCounts.FirstOrDefault(p => p.Value == 3);
-        if (threeKind.Value == 3)
+        // 三珠判定
+        foreach (var count in numberCounts.Values)
         {
-            var pair = numberCounts.FirstOrDefault(p => p.Value == 2);
-            if (pair.Value == 2)
+            if (count >= 3)
             {
-                return new HandInfo(HandRank.FullHouse, "Full House", new List<int> { threeKind.Key, pair.Key });
+                rankName = "三珠";
+                rank = HandRank.Sanju;
+                break;
             }
         }
-        return null;
-    }
-
-    private static HandInfo GetFlushInfo(Dictionary<Suit, int> suitCounts, List<int> numbers)
-    {
-        var flushSuit = suitCounts.FirstOrDefault(p => p.Value >= 5);
-        if (flushSuit.Value >= 5)
+        // 四珠判定
+        foreach (var count in numberCounts.Values)
         {
-            return new HandInfo(HandRank.Flush, "Flush", numbers.Take(5).ToList());
-        }
-        return null;
-    }
-
-    private static HandInfo GetStraightInfo(List<int> numbers)
-    {
-        var straightNumbers = GetStraightNumbers(numbers);
-        if (straightNumbers != null)
-        {
-            return new HandInfo(HandRank.Straight, "Straight", straightNumbers);
-        }
-        return null;
-    }
-
-    private static HandInfo GetThreeOfAKindInfo(Dictionary<int, int> numberCounts)
-    {
-        var threeKind = numberCounts.FirstOrDefault(p => p.Value == 3);
-        if (threeKind.Value == 3)
-        {
-            var kicker = numberCounts.Keys.Where(n => n != threeKind.Key).OrderByDescending(n => n).ToList();
-            var rankCards = new List<int> { threeKind.Key };
-            rankCards.AddRange(kicker);
-            return new HandInfo(HandRank.ThreeOfAKind, "Three of a Kind", rankCards);
-        }
-        return null;
-    }
-
-    private static HandInfo GetTwoPairInfo(Dictionary<int, int> numberCounts)
-    {
-        var pairs = numberCounts.Where(p => p.Value == 2).Select(p => p.Key).OrderByDescending(k => k).ToList();
-        if (pairs.Count >= 2)
-        {
-            var kicker = numberCounts.Keys.Where(n => !pairs.Contains(n)).OrderByDescending(n => n).ToList();
-            var rankCards = pairs.Take(2).ToList();
-            rankCards.AddRange(kicker);
-            return new HandInfo(HandRank.TwoPair, "Two Pair", rankCards);
-        }
-        return null;
-    }
-
-    private static HandInfo GetOnePairInfo(Dictionary<int, int> numberCounts)
-    {
-        var pair = numberCounts.FirstOrDefault(p => p.Value == 2);
-        if (pair.Value == 2)
-        {
-            var kicker = numberCounts.Keys.Where(n => n != pair.Key).OrderByDescending(n => n).ToList();
-            var rankCards = new List<int> { pair.Key };
-            rankCards.AddRange(kicker);
-            return new HandInfo(HandRank.OnePair, "One Pair", rankCards);
-        }
-        return null;
-    }
-
-    private static List<int> GetStraightNumbers(List<int> numbers)
-    {
-        var uniqueNumbers = numbers.Distinct().OrderBy(n => n).ToList();
-        if (uniqueNumbers.Count < 5) return null;
-
-        for (int i = 0; i <= uniqueNumbers.Count - 5; i++)
-        {
-            if (uniqueNumbers[i + 4] - uniqueNumbers[i] == 4)
+            if (count >= 4)
             {
-                return uniqueNumbers.Skip(i).Take(5).OrderByDescending(n => n).ToList();
+                rankName = "四珠";
+                rank = HandRank.Yonju;
+                break;
+            }
+        }
+        // 天守判定
+        if (suitGroups.Values.Any(numbers =>
+            numbers.Contains(Number.Jack) &&
+            numbers.Contains(Number.Queen) &&
+            numbers.Contains(Number.King)))
+        {
+            rankName = "天守";
+            rank = HandRank.Tenshu;
+        }
+        // 筋判定
+        int suziCount = 0;
+        List<Number> nums = new List<Number> {
+            Number.One, Number.Two, Number.Three,
+            Number.Four, Number.Five, Number.Six,
+            Number.Seven, Number.Eight, Number.Nine,
+            Number.Ten, Number.Jack, Number.Queen,
+            Number.King, Number.One };// Ace can be high or low
+        foreach (var num in nums)
+        {
+            if (numberCounts.ContainsKey((int)num))
+            {
+                suziCount++;
+            }
+            else
+            {
+                suziCount = 0;
+            }
+            if (suziCount >= 5)
+            {
+                rankName = "筋";
+                rank = HandRank.Suzi;
+                break;
+            }
+        }
+        // 光判定
+        if (suitCounts.Values.Any(number => number >= 5))
+        {
+            rankName = "光";
+            rank = HandRank.Hikari;
+        }
+        // 七筋判定
+        suziCount = 0;
+        foreach (var num in nums)
+        {
+            if (numberCounts.ContainsKey((int)num))
+            {
+                suziCount++;
+            }
+            else
+            {
+                suziCount = 0;
+            }
+            if (suziCount >= 7)
+            {
+                rankName = "七筋";
+                rank = HandRank.Nanasuzi;
+                break;
+            }
+        }
+        // 七光判定
+        if (suitCounts.Values.Any(number => number >= 7))
+        {
+            rankName = "七光";
+            rank = HandRank.Nanahikari;
+        }
+        // 天守閣判定
+        if (suitGroups.Values.Count(numbers =>
+            numbers.Contains(Number.Jack) &&
+            numbers.Contains(Number.Queen) &&
+            numbers.Contains(Number.King)) >= 2)
+        {
+            rankName = "天守閣";
+            rank = HandRank.Tenshukaku;
+        }
+        return new HandInfo(rank, rankName);
+    }
+    
+    public static int DetermineWinner(List<HandInfo> handInfos)
+    {
+        List<int> winners = new List<int>();
+        HandRank highestRank = HandRank.Miezu;
+
+        for (int i = 0; i < handInfos.Count; i++)
+        {
+            if (handInfos[i].Rank > highestRank)
+            {
+                highestRank = handInfos[i].Rank;
+                winners = new List<int> { i };
+            }
+            else if (handInfos[i].Rank == highestRank)
+            {
+                winners.Add(i);
             }
         }
 
-        // A-2-3-4-5 のストレート (Aを1として扱う)
-        if (uniqueNumbers.Contains(14) && uniqueNumbers.Contains(2) && uniqueNumbers.Contains(3) && uniqueNumbers.Contains(4) && uniqueNumbers.Contains(5))
+        if (winners.Count > 1)
         {
-            return new List<int> { 5, 4, 3, 2, 1 };
+            return -1; // 引き分け
+        }
+        if (winners.Count == 0)
+        {
+            return -1; // 引き分け
         }
 
-        return null;
-    }
-
-    public static int CompareHands(HandInfo hand1, HandInfo hand2)
-    {
-        if (hand1 == null && hand2 == null) return 0;
-        if (hand1 == null) return -1;
-        if (hand2 == null) return 1;
-
-        if (hand1.Rank > hand2.Rank) return 1;
-        if (hand1.Rank < hand2.Rank) return -1;
-
-        if (hand1.RankCards == null && hand2.RankCards == null) return 0;
-        if (hand1.RankCards == null) return -1;
-        if (hand2.RankCards == null) return 1;
-
-        for (int i = 0; i < Mathf.Min(hand1.RankCards.Count, hand2.RankCards.Count); i++)
-        {
-            if (hand1.RankCards[i] > hand2.RankCards[i]) return 1;
-            if (hand1.RankCards[i] < hand2.RankCards[i]) return -1;
-        }
-
-        return 0;
+        return winners[0]; // 勝者のインデックスを返す
     }
 }

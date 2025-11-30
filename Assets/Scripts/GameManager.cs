@@ -29,7 +29,7 @@ public class GameManager : MonoBehaviour
     }
 
     // ゲーム進行のメインコルーチン
-    System.Collections.IEnumerator GameFlow()
+    IEnumerator GameFlow()
     {
         while (true)
         {
@@ -39,12 +39,13 @@ public class GameManager : MonoBehaviour
             Debug.Log("ゲーム進行開始");
             Debug.Log($"ラウンド {gameState.RoundNumber} 開始");
             yield return StartCoroutine(Round()); // 1ラウンド進行
+            yield return StartCoroutine(ShowDown()); // ショーダウン進行
             gameState.NextRound(); // 次のラウンドへ
         }
     }
 
     // ゲームの初期化処理
-    System.Collections.IEnumerator InitializeGame()
+    IEnumerator InitializeGame()
     {
         gameState.CardReset(); // ゲーム状態リセット
         foreach (var card in allCards.cardList)
@@ -89,8 +90,8 @@ public class GameManager : MonoBehaviour
         Debug.Log("ゲーム初期化完了");
         yield break;
     }
-    
-    System.Collections.IEnumerator Round()
+
+    IEnumerator Round()
     {
         for (int i = 0; i < maxHandTrashTurn; i++)
         {
@@ -104,8 +105,8 @@ public class GameManager : MonoBehaviour
                 foreach (var card in response.cardsTrash)
                 {
                     card.IsFaceUp = true; // 捨てるカードを表向きに設定
-                    gameState.AddCardToTrash(card);
                     gameState.RemoveCardFromPlayerHand(gameState.CurrentPlayerIndex, card);
+                    gameState.AddCardToTrash(card);
                     var drawCard = gameState.DrawCardFromDeck();
                     if (gameState.CurrentPlayerIndex == 0) drawCard.IsFaceUp = true; // プレイヤーの引くカードは表向きに設定
                     gameState.AddCardToPlayerHand(gameState.CurrentPlayerIndex, drawCard);
@@ -115,25 +116,49 @@ public class GameManager : MonoBehaviour
                 gameState.NextTurn();
             }
         }
-
-        // スコア判定
-        List<(int playerIndex, HandInfo handInfo)> playerScores = new List<(int, HandInfo)>();
-        int originalIndex = gameState.CurrentPlayerIndex;
+    }
+    
+    IEnumerator ShowDown()
+    {
+        Debug.Log("ショーダウン開始");
+        // 全プレイヤーの手札を表向きに設定
         for (int i = 0; i < playerCount; i++)
         {
-            PlayerState playerState = gameState.PlayerStates[i];
-            var handInfo = EvaluateHandRank(playerState.HandCards, gameState.commonCards);
-            playerScores.Add((i, handInfo));
-
+            foreach (var card in gameState.PlayerStates[i].HandCards)
+            {
+                card.IsFaceUp = true;
+            }
         }
-        // スコアの高い順にソート
-        playerScores.Sort((a, b) => CompareHands(b.handInfo, a.handInfo));
-
-        // デバッグ表示例
-        foreach (var entry in playerScores)
+        yield return UIUpdateWithWaiting(5f); // UI更新(ショーダウン)
+        // 手札評価
+        List<HandInfo> results = new List<HandInfo>();
+        for (int i = 0; i < playerCount; i++)
         {
-            Debug.Log($"Player {entry.playerIndex}: {entry.handInfo.Name} (Rank {entry.handInfo.Rank})");
+            var result = HandEvaluator.EvaluateHand(gameState.PlayerStates[i].HandCards, gameState.commonCards);
+            results.Add(result);
+            Debug.Log($"Player {i} の手札: {result.Name}");
         }
+
+        int winner = HandEvaluator.DetermineWinner(results);
+
+        if (winner == -1)
+        {
+            Debug.Log("引き分けです！");
+            yield break;
+        }
+
+        Debug.Log($"勝者は Player {winner} です！");
+        for (int i = 0; i < playerCount; i++)
+        {
+            if (i != winner)
+            {
+                gameState.PlayerStates[i].decreaseLifePoints((int)results[winner].Rank);
+            }
+            Debug.Log($"Player {i} の残りライフポイント: {gameState.PlayerStates[i].LifePoints}");
+        }
+        Debug.Log("ライフポイント更新完了");
+        
+        yield break;
     }
 
     IEnumerator UIUpdateWithWaiting(float duration = 5f)
