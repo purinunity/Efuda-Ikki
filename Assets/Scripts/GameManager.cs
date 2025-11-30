@@ -1,0 +1,175 @@
+// ゲーム全体の管理を行うクラス
+// ゲームの初期化、進行、プレイヤー・CPUの制御を担当
+using System.Collections;
+using System.Collections.Generic;
+using UnityEditor;
+using UnityEngine;
+using static HandEvaluator;
+
+public class GameManager : MonoBehaviour
+{
+    public GameState gameState = new GameState();
+    [SerializeField] private Cards allCards; // 全カード管理
+    [SerializeField] private int playerCount = 2;
+    [SerializeField] private int commonCount = 2;
+    [SerializeField] private int playerHandCount = 5;
+    [SerializeField] private int maxHandTrashTurn = 2;
+    [SerializeField] private PlayerController playerController;
+    [SerializeField] private CPUController cpuController;
+    [SerializeField] private UIManager uiManager;
+    private Controller[] controllers;
+    private bool Initialized = false;
+
+    // ゲーム開始時に呼ばれる
+    void Start()
+    {
+        gameState.InitializePlayerStates(playerCount); // プレイヤー状態リスト初期化
+        controllers = new Controller[] { playerController, cpuController }; // コントローラー配列初期化
+        StartCoroutine(GameFlow()); // ゲーム進行コルーチン開始
+    }
+
+    // ゲーム進行のメインコルーチン
+    IEnumerator GameFlow()
+    {
+        while (true)
+        {
+            Initialized = false;
+            StartCoroutine(InitializeGame()); // ゲームの初期化
+            yield return new WaitUntil(() => Initialized); // ゲーム初期化完了まで待機
+            Debug.Log("ゲーム進行開始");
+            Debug.Log($"ラウンド {gameState.RoundNumber} 開始");
+            yield return StartCoroutine(Round()); // 1ラウンド進行
+            yield return StartCoroutine(ShowDown()); // ショーダウン進行
+            gameState.NextRound(); // 次のラウンドへ
+        }
+    }
+
+    // ゲームの初期化処理
+    IEnumerator InitializeGame()
+    {
+        gameState.CardReset(); // ゲーム状態リセット
+        foreach (var card in allCards.cardList)
+        {
+            card.IsFaceUp = false; // 全カードを裏向きに設定
+            card.IsSelected = false; // 全カードの選択を解除
+            gameState.deckCards.Add(card); // 全カードをデッキに追加
+        }
+        gameState.ShuffleDeck(); // デッキをシャッフル
+        yield return UIUpdateWithWaiting(3f); // UI更新(デッキ配布)
+
+        // 各プレイヤーの手札を初期化(親から順に配る)
+        for (int i = 0; i < playerCount; i++)
+        {
+            for (int j = 0; j < playerHandCount; j++)
+            {
+                gameState.AddCardToPlayerHand((i + gameState.CurrentParentIndex) % playerCount, gameState.DrawCardFromDeck()); // プレイヤーにカードを配る
+            }
+            yield return UIUpdateWithWaiting(3f); // UI更新(手札配布)
+        }
+
+        // 共通カードを追加
+        for (int j = 0; j < commonCount; j++)
+        {
+            gameState.AddCardToCommon(gameState.DrawCardFromDeck()); // 共通カードを追加
+        }
+        yield return UIUpdateWithWaiting(3f); // UI更新(共通札配布)
+
+        foreach (var playerHand in gameState.PlayerStates[0].HandCards)
+        {
+            playerHand.IsFaceUp = true; // プレイヤーの手札を表向きに設定
+        }
+
+        foreach (var card in gameState.commonCards)
+        {
+            card.IsFaceUp = true; // 共通札を表向きに設定
+        }
+
+        yield return UIUpdateWithWaiting(3f); // UI更新(手札と共通札表向き)
+
+        Initialized = true;
+        Debug.Log("ゲーム初期化完了");
+        yield break;
+    }
+
+    IEnumerator Round()
+    {
+        for (int i = 0; i < maxHandTrashTurn; i++)
+        {
+            for (int j = 0; j < playerCount; j++)
+            {
+                Controller controller = controllers[gameState.CurrentPlayerIndex]; // 現在のプレイヤーのコントローラーを取得
+                bool waiting = true;
+                ControllerResponse response = null;
+                yield return StartCoroutine(controller.Act(gameState, r => { response = r; waiting = false; }));
+                while (waiting) yield return null;
+                foreach (var card in response.cardsTrash)
+                {
+                    card.IsFaceUp = true; // 捨てるカードを表向きに設定
+                    gameState.RemoveCardFromPlayerHand(gameState.CurrentPlayerIndex, card);
+                    gameState.AddCardToTrash(card);
+                    var drawCard = gameState.DrawCardFromDeck();
+                    if (gameState.CurrentPlayerIndex == 0) drawCard.IsFaceUp = true; // プレイヤーの引くカードは表向きに設定
+                    gameState.AddCardToPlayerHand(gameState.CurrentPlayerIndex, drawCard);
+                }
+                yield return UIUpdateWithWaiting(3f);// UI更新(手札交換)
+                // 次の手番へ
+                gameState.NextTurn();
+            }
+        }
+    }
+    
+    IEnumerator ShowDown()
+    {
+        Debug.Log("ショーダウン開始");
+        // 全プレイヤーの手札を表向きに設定
+        for (int i = 0; i < playerCount; i++)
+        {
+            foreach (var card in gameState.PlayerStates[i].HandCards)
+            {
+                card.IsFaceUp = true;
+            }
+        }
+        yield return UIUpdateWithWaiting(5f); // UI更新(ショーダウン)
+        // 手札評価
+        List<HandInfo> results = new List<HandInfo>();
+        for (int i = 0; i < playerCount; i++)
+        {
+            var result = HandEvaluator.EvaluateHand(gameState.PlayerStates[i].HandCards, gameState.commonCards);
+            results.Add(result);
+            Debug.Log($"Player {i} の手札: {result.Name}");
+        }
+
+        int winner = HandEvaluator.DetermineWinner(results);
+
+        if (winner == -1)
+        {
+            Debug.Log("引き分けです！");
+            yield break;
+        }
+
+        Debug.Log($"勝者は Player {winner} です！");
+        for (int i = 0; i < playerCount; i++)
+        {
+            if (i != winner)
+            {
+                gameState.PlayerStates[i].decreaseLifePoints((int)results[winner].Rank);
+            }
+            Debug.Log($"Player {i} の残りライフポイント: {gameState.PlayerStates[i].LifePoints}");
+        }
+        Debug.Log("ライフポイント更新完了");
+        
+        yield break;
+    }
+
+    IEnumerator UIUpdateWithWaiting(float duration = 5f)
+    {
+        uiManager.UIUpdate(gameState,duration);
+        while (uiManager.UIUpdateInProgress)
+        {
+            // Debug.Log("UI更新待機中...");
+            yield return null; // 状態更新完了まで待機
+        }
+        Debug.Log("UI更新完了");
+        yield break;
+    }
+}
