@@ -29,7 +29,7 @@ RectTransform:
   m_GameObject: {fileID: 6147642839866378973}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.1, y: 0.1, z: 0.1}
+  m_LocalScale: {x: 0.25, y: 0.25, z: 0.25}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
@@ -51,7 +51,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 70558b6d1aa642a46b24f33ebda40dfc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  MoveComplete: 1
+  IsFaceUp: 0
+  IsSelectable: 0
   IsSelected: 0
 --- !u!222 &8672067130272921856
 CanvasRenderer:
