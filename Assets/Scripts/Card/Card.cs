@@ -203,13 +203,13 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         {
             cardImage.sprite = CardData.Image;
             cardImage.SetNativeSize();
-            rectTransform.localScale = new Vector3(0.1f, 0.1f, 0.1f); // サイズを元に戻す
+            rectTransform.localScale = new Vector3(0.25f, 0.25f, 0.25f); // サイズを元に戻す　☆修正by降幡
         }
         else
         {
             cardImage.sprite = CardData.BackImage;
             cardImage.SetNativeSize();
-            rectTransform.localScale = new Vector3(0.1f, 0.1f, 0.1f); // サイズを元に戻す
+            rectTransform.localScale = new Vector3(0.25f, 0.25f, 0.25f); // サイズを元に戻す　☆修正by降幡
         }
         float targetWidth = rectTransform.sizeDelta.x;
         float targetHeight = rectTransform.sizeDelta.y;
