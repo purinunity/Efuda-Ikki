@@ -37,8 +37,8 @@ public class UIManager : MonoBehaviour
     {   
         UIUpdateInProgress = true;
         r.text = state.RoundNumber.ToString();
-        L1.text = state.PlayerStates[0].LifePoints.ToString();
-        L2.text = state.PlayerStates[1].LifePoints.ToString();
+        L1.text = "体力 " + state.PlayerStates[0].LifePoints.ToString(); //☆修正by降幡
+        L2.text = "体力 " + state.PlayerStates[1].LifePoints.ToString(); //☆修正by降幡
         var now = HandEvaluator.EvaluateHand(state.PlayerStates[0].HandCards, state.commonCards);
         H.text = now.Name;
         deck.SetCards(state.deckCards,duration); // デッキ表示
