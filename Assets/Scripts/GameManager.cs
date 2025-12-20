@@ -104,14 +104,19 @@ public class GameManager : MonoBehaviour
                 while (waiting) yield return null;
                 foreach (var card in response.cardsTrash)
                 {
+                    Debug.Log($"Player {gameState.CurrentPlayerIndex} がカードを捨てました: {card.CardData.name}");
                     card.IsFaceUp = true; // 捨てるカードを表向きに設定
                     gameState.RemoveCardFromPlayerHand(gameState.CurrentPlayerIndex, card);
                     gameState.AddCardToTrash(card);
+                }
+                yield return UIUpdateWithWaiting(3f);// UI更新(手札交換-捨てる)
+                foreach (var card in response.cardsTrash)
+                {
                     var drawCard = gameState.DrawCardFromDeck();
                     if (gameState.CurrentPlayerIndex == 0) drawCard.IsFaceUp = true; // プレイヤーの引くカードは表向きに設定
                     gameState.AddCardToPlayerHand(gameState.CurrentPlayerIndex, drawCard);
                 }
-                yield return UIUpdateWithWaiting(3f);// UI更新(手札交換)
+                yield return UIUpdateWithWaiting(3f);// UI更新(手札交換-加える)
                 // 次の手番へ
                 gameState.NextTurn();
             }

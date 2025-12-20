@@ -21,9 +21,16 @@ public class Card : MonoBehaviour // カードの表示・状態管理
 
     public Vector2 TargetPosition { get; set; } //位置を保存するプロパティ
     private Vector2 LastWorldPosition { get; set; } //最後に移動した位置を保存するプロパティ
+    private float selectedYOffset = 20f; // 選択時のYオフセット
+
+    public float SelectedYOffset
+    {
+        get => selectedYOffset;
+        set => selectedYOffset = value;
+    }
 
     // 初期化処理（Image, RectTransform取得）
-    public void Initialize()
+    public void Initialize(float selectedYOffset = 20f)
     {
         if (cardImage == null)
         {
@@ -33,6 +40,7 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         {
             cardRect = GetComponent<RectTransform>();
         }
+        this.selectedYOffset = selectedYOffset;
         // Buttonコンポーネント取得とクリックイベント登録
         Button button = GetComponent<Button>();
         if (button != null)
@@ -139,16 +147,6 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         MoveComplete = true;
     }
 
-    // public void MoveCard(Vector2 targetPosition, float moveDuration = 0.5f)
-    // {
-    //     if (targetPosition == null)
-    //     {
-    //         Debug.LogError("Target position is null!");
-    //         return;
-    //     }
-    //     StartCoroutine(MoveToPosition(cardRect, targetPosition, moveDuration));
-    // }
-
     private IEnumerator MoveToPosition(RectTransform rectTransform, float moveDuration)
     {
         Vector2 startPos = rectTransform.anchoredPosition;
@@ -160,7 +158,7 @@ public class Card : MonoBehaviour // カードの表示・状態管理
             float t = Mathf.Clamp01(elapsed / moveDuration);
             if (IsSelected)
             {
-                rectTransform.anchoredPosition = Vector2.Lerp(startPos, new Vector2(TargetPosition.x, TargetPosition.y + 20), EaseOutCubic(t));
+                rectTransform.anchoredPosition = Vector2.Lerp(startPos, new Vector2(TargetPosition.x, TargetPosition.y + selectedYOffset), EaseOutCubic(t));
             }
             else
             {
@@ -172,7 +170,7 @@ public class Card : MonoBehaviour // カードの表示・状態管理
 
         if (IsSelected)
         {
-            rectTransform.anchoredPosition = new Vector2(TargetPosition.x, TargetPosition.y + 20);
+            rectTransform.anchoredPosition = new Vector2(TargetPosition.x, TargetPosition.y + selectedYOffset);
         }
         else
         {
@@ -203,13 +201,13 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         {
             cardImage.sprite = CardData.Image;
             cardImage.SetNativeSize();
-            rectTransform.localScale = new Vector3(0.1f, 0.1f, 0.1f); // サイズを元に戻す
+            rectTransform.localScale = new Vector3(0.25f, 0.25f, 0.25f); // サイズを元に戻す　☆修正by降幡
         }
         else
         {
             cardImage.sprite = CardData.BackImage;
             cardImage.SetNativeSize();
-            rectTransform.localScale = new Vector3(0.1f, 0.1f, 0.1f); // サイズを元に戻す
+            rectTransform.localScale = new Vector3(0.25f, 0.25f, 0.25f); // サイズを元に戻す　☆修正by降幡
         }
         float targetWidth = rectTransform.sizeDelta.x;
         float targetHeight = rectTransform.sizeDelta.y;

@@ -15,7 +15,16 @@ public class CPUController : Controller
         List<Card> playerHand = playerState.HandCards; // 手札
         List<Card> commonCards = gameState.commonCards; // 共通札
 
+        foreach (var card in playerHand)
+        {
+            card.IsFaceUp = true; // 役判定のためCPUの手札を表向きに設定
+        }
         var handInfo = HandEvaluator.EvaluateHand(playerHand, commonCards); // 役判定
+        Debug.Log($"CPUの役判定結果: {handInfo.Name} (ランク: {handInfo.Rank}, ポイント: {(int)handInfo.Rank})");
+        foreach (var card in playerHand)
+        {
+            card.IsFaceUp = false; // CPUの手札を裏向きに戻す
+        }
 
         List<Card> trash = new List<Card>(); // 捨てるカードリスト// 手札と共通札を結合
         List<Card> allCards = playerHand.Concat(commonCards).ToList();
