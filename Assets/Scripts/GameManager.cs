@@ -19,10 +19,12 @@ public class GameManager : MonoBehaviour
     [SerializeField] private UIManager uiManager;
     private Controller[] controllers;
     private bool Initialized = false;
+    private bool gameOver = false; // ゲーム終了フラグ
 
     // ゲーム開始時に呼ばれる
     void Start()
     {
+        gameOver = false;
         gameState.InitializePlayerStates(playerCount); // プレイヤー状態リスト初期化
         controllers = new Controller[] { playerController, cpuController }; // コントローラー配列初期化
         StartCoroutine(GameFlow()); // ゲーム進行コルーチン開始
@@ -31,7 +33,7 @@ public class GameManager : MonoBehaviour
     // ゲーム進行のメインコルーチン
     IEnumerator GameFlow()
     {
-        while (true)
+        while (!gameOver)
         {
             Initialized = false;
             StartCoroutine(InitializeGame()); // ゲームの初期化
@@ -40,6 +42,7 @@ public class GameManager : MonoBehaviour
             Debug.Log($"ラウンド {gameState.RoundNumber} 開始");
             yield return StartCoroutine(Round()); // 1ラウンド進行
             yield return StartCoroutine(ShowDown()); // ショーダウン進行
+            if (gameOver) break; // 終了フラグが立ったらループを抜ける
             gameState.NextRound(); // 次のラウンドへ
         }
     }
@@ -97,6 +100,7 @@ public class GameManager : MonoBehaviour
         {
             for (int j = 0; j < playerCount; j++)
             {
+                if (gameOver) yield break; // ゲーム終了時は早期終了
                 Controller controller = controllers[gameState.CurrentPlayerIndex]; // 現在のプレイヤーのコントローラーを取得
                 bool waiting = true;
                 ControllerResponse response = null;
@@ -119,6 +123,7 @@ public class GameManager : MonoBehaviour
                 yield return UIUpdateWithWaiting(3f);// UI更新(手札交換-加える)
                 // 次の手番へ
                 gameState.NextTurn();
+                if (gameOver) yield break;
             }
         }
     }
@@ -153,6 +158,7 @@ public class GameManager : MonoBehaviour
         }
 
         Debug.Log($"勝者は Player {winner} です！");
+
         for (int i = 0; i < playerCount; i++)
         {
             if (i != winner)
@@ -162,7 +168,54 @@ public class GameManager : MonoBehaviour
             Debug.Log($"Player {i} の残りライフポイント: {gameState.PlayerStates[i].LifePoints}");
         }
         Debug.Log("ライフポイント更新完了");
+        // どちらかの体力が0以下になっていればゲーム終了処理へ
+        if (CheckGameOver())
+        {
+            StartCoroutine(HandleGameEnd());
+            yield break;
+        }
         
+        yield break;
+    }
+
+    // 体力0判定
+    private bool CheckGameOver()
+    {
+        for (int i = 0; i < playerCount; i++)
+        {
+            if (gameState.PlayerStates[i].LifePoints <= 0) return true;
+        }
+        return false;
+    }
+    // ゲーム終了時の処理
+    IEnumerator HandleGameEnd()
+    {
+        gameOver = true;
+        // 勝者判定（体力が残っているプレイヤーを勝者とする）
+        int winnerIndex = -1;
+        for (int i = 0; i < playerCount; i++)
+        {
+            if (gameState.PlayerStates[i].LifePoints > 0)
+            {
+                winnerIndex = i;
+                break;
+            }
+        }
+        if (winnerIndex == -1)
+        {
+            Debug.Log("両者の体力が0になりました。引き分けでゲーム終了します。");
+        }
+        else
+        {
+            Debug.Log($"ゲーム終了！ 勝者は Player {winnerIndex} です！");
+        }
+        // UI更新を待つ（必要ならUIManagerで表示を行う）
+        yield return UIUpdateWithWaiting(5f);
+
+        // エディタの場合は再生停止
+        #if UNITY_EDITOR
+        EditorApplication.isPlaying = false;
+        #endif
         yield break;
     }
 

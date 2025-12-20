@@ -498,6 +498,10 @@ PrefabInstance:
       propertyPath: cardPrefab
       value: 
       objectReference: {fileID: 7203121379370450298, guid: 54329b15563792e40a3a8bc60ff6b025, type: 3}
+    - target: {fileID: 3374753599866302165, guid: 37e754d6ba8817a4ca2febaaa1ffd5c1, type: 3}
+      propertyPath: selectedYOffset
+      value: 20
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
