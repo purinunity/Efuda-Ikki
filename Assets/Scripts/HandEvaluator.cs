@@ -37,7 +37,21 @@ public static class HandEvaluator
     // 手札と共通札から役を判定するメソッド
     public static HandInfo EvaluateHand(List<Card> playerHand, List<Card> commonCards)
     {
+        // 手札が5枚でない場合は役表示を行わない（空文字を返す）
+        if (playerHand == null || playerHand.Count != 5)
+        {
+            return new HandInfo(HandRank.Miezu, "");
+        }
 
+        // 表向きになっていないカードが含まれている場合は判定不能とする（空文字を返す）
+        if (playerHand.Any(card => !card.IsFaceUp))
+        {
+            return new HandInfo(HandRank.Miezu, "");
+        }
+        if (commonCards != null && commonCards.Any(card => !card.IsFaceUp))
+        {
+            return new HandInfo(HandRank.Miezu, "");
+        }
 
         // 手札と共通札を結合
         List<Card> allCards = playerHand.Concat(commonCards).ToList();

@@ -10,13 +10,17 @@ public class Cards : MonoBehaviour
     public CardsData CardsData; // 全カードデータ
     [SerializeField] private Card cardPrefab; // カードのプレハブ
 
+    [SerializeField]
+    [Tooltip("選択時のYオフセット")]
+    private float selectedYOffset = 20f; // 選択時のYオフセット
+
     // カードリストの初期化処理
     public void Initialize()
     {
         foreach (var card in cardList)
         {
             card.gameObject.transform.SetParent(this.transform); // Set parent to this Cards object
-            card.Initialize(); // Assuming Card has an Initialize method
+            card.Initialize(selectedYOffset); // Assuming Card has an Initialize method
         }
         // Initialize the card list or any other setup if needed
         Debug.Log("Cards initialized.");

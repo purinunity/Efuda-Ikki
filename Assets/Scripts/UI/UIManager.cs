@@ -15,7 +15,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] public Cards allCards; // 全カード管理
     // [SerializeField] private GameManager gameManager; // ゲーム管理
     [SerializeField] private TextMeshProUGUI r; // テキスト表示パネル
-    [SerializeField] private TextMeshProUGUI H; // テキスト表示パネル
+    [SerializeField] private PlayerRole H; // テキスト表示パネル
     [SerializeField] private TextMeshProUGUI L1; // テキスト表示パネル
     [SerializeField] private TextMeshProUGUI L2; // テキスト表示パネル
 
@@ -36,21 +36,23 @@ public class UIManager : MonoBehaviour
     public void UIUpdate(GameState state, float duration)
     {   
         UIUpdateInProgress = true;
-        r.text = state.RoundNumber.ToString();
+        r.text = state.RoundNumber.ToString();//Round数
         L1.text = state.PlayerStates[0].LifePoints.ToString(); //☆修正by降幡
         L2.text = state.PlayerStates[1].LifePoints.ToString(); //☆修正by降幡
         var now = HandEvaluator.EvaluateHand(state.PlayerStates[0].HandCards, state.commonCards);
-        H.text = now.Name;
+        // 役の表示をルーレット演出付きで更新
+        H.SetRole(now.Name, duration);
+
         deck.SetCards(state.deckCards,duration); // デッキ表示
         common.SetCards(state.commonCards,duration); // 共通札表示
         trash.SetCards(state.trashCards,duration); // 捨て札表示
         foreach (var playerState in state.PlayerStates)
         {
-            if (playerState.PlayerId == 0)
+            if (playerState.PlayerId == 0 && playerState.HandCards.Count == 5)
             {
                 player1.SetCards(playerState.HandCards,duration); // プレイヤー1手札表示
             }
-            else if (playerState.PlayerId == 1)
+            else if (playerState.PlayerId == 1 && playerState.HandCards.Count == 5)
             {
                 player2.SetCards(playerState.HandCards,duration); // プレイヤー2手札表示
             }
@@ -81,6 +83,8 @@ public class UIManager : MonoBehaviour
                     break;
                 }
             }
+            // プレイヤー役のルーレット演出が終わっているかも確認
+            if (H != null && H.IsAnimating) allComplete = false;
             if (allComplete)
             {
                 break;

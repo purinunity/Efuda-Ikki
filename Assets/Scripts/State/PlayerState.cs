@@ -22,11 +22,43 @@ public class PlayerState
         if (card != null && !HandCards.Contains(card))
         {
             HandCards.Add(card);
+            // 追加後に手札をソート（花鳥風月の順、同じスートは数字の小さい順）
+            SortHand();
             Console.WriteLine($"Card {card.CardData.number} of {card.CardData.suit} added to player {PlayerId}'s hand.");
         }
         else
         {
             Console.WriteLine($"Card {card?.CardData.number} of {card?.CardData.suit} is already in player {PlayerId}'s hand or is null.");
+        }
+    }
+
+    // 手札を花鳥風月の順にソート、同じスートなら数字の小さい順
+    private void SortHand()
+    {
+        HandCards.Sort((a, b) =>
+        {
+            if (a == null || a.CardData == null) return -1;
+            if (b == null || b.CardData == null) return 1;
+
+            int suitA = SuitOrder(a.CardData.suit);
+            int suitB = SuitOrder(b.CardData.suit);
+            if (suitA != suitB) return suitA.CompareTo(suitB);
+
+            int numA = (int)a.CardData.number;
+            int numB = (int)b.CardData.number;
+            return numA.CompareTo(numB);
+        });
+    }
+
+    private int SuitOrder(Suit suit)
+    {
+        switch (suit)
+        {
+            case Suit.Flowers: return 0; // 花
+            case Suit.Birds: return 1;   // 鳥
+            case Suit.Wind: return 2;    // 風
+            case Suit.Moon: return 3;    // 月
+            default: return 4; // Joker等は最後に
         }
     }
 
