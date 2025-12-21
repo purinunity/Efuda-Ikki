@@ -15,7 +15,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] public Cards allCards; // 全カード管理
     // [SerializeField] private GameManager gameManager; // ゲーム管理
     [SerializeField] private TextMeshProUGUI r; // テキスト表示パネル
-    [SerializeField] private PlayerRole H; // テキスト表示パネル
+    [SerializeField] private PlayerRole H; // テキスト表示パネル 
     [SerializeField] private TextMeshProUGUI L1; // テキスト表示パネル
     [SerializeField] private TextMeshProUGUI L2; // テキスト表示パネル
 
