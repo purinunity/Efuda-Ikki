@@ -21,6 +21,8 @@ public class GameManager : MonoBehaviour
     private bool Initialized = false;
     private bool gameOver = false; // ゲーム終了フラグ
 
+    [SerializeField] public int remainingNumber; //プレイヤーの残り交換回数 ☆修正by降幡
+
     // ゲーム開始時に呼ばれる
     void Start()
     {
@@ -50,6 +52,8 @@ public class GameManager : MonoBehaviour
     // ゲームの初期化処理
     IEnumerator InitializeGame()
     {
+        remainingNumber = 2; //修正by降幡
+
         gameState.CardReset(); // ゲーム状態リセット
         foreach (var card in allCards.cardList)
         {
@@ -114,6 +118,9 @@ public class GameManager : MonoBehaviour
                     gameState.AddCardToTrash(card);
                 }
                 yield return UIUpdateWithWaiting(3f);// UI更新(手札交換-捨てる)
+
+                remainingNumber -= 1; //修正by降幡
+
                 foreach (var card in response.cardsTrash)
                 {
                     var drawCard = gameState.DrawCardFromDeck();
