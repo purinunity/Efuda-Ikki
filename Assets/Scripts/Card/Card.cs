@@ -108,6 +108,96 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         yield return StartCoroutine(MoveAndTurnToPosition(moveDuration));
     }
 
+    // --- Speed-based APIs ---
+    /// <summary>
+    /// Move and/or turn the card using speeds (units per second) instead of durations.
+    /// moveSpeed: movement speed in anchored units per second.
+    /// turnSpeed: width change speed in rect units per second.
+    /// If a speed is <= 0, the method falls back to duration-based default behavior.
+    /// </summary>
+    public void MoveAndTurnCardBySpeed(float moveSpeed = 100f, float turnSpeed = 100f)
+    {
+        MoveComplete = false;
+        StartCoroutine(MoveAndTurnToPositionBySpeed(moveSpeed, turnSpeed));
+    }
+
+    public void WaitAndMoveBySpeed(float waittime, float moveSpeed = 100f, float turnSpeed = 100f)
+    {
+        MoveComplete = false;
+        StartCoroutine(WaitAndMoveToPositionBySpeed(waittime, moveSpeed, turnSpeed));
+    }
+
+    private IEnumerator WaitAndMoveToPositionBySpeed(float waittime, float moveSpeed, float turnSpeed = 100f)
+    {
+        yield return new WaitForSeconds(waittime);
+        yield return StartCoroutine(MoveAndTurnToPositionBySpeed(moveSpeed, turnSpeed));
+    }
+
+    private IEnumerator MoveAndTurnToPositionBySpeed(float moveSpeed, float turnSpeed)
+    {
+        var WorldPosition = this.transform.parent != null ? (Vector2)this.transform.parent.TransformPoint(TargetPosition) : TargetPosition;
+        if (IsFaceUp != LastFaceUp && (WorldPosition != LastWorldPosition || IsSelected != LastSelected))
+        {
+            LastFaceUp = IsFaceUp;
+            LastWorldPosition = WorldPosition;
+            LastSelected = IsSelected;
+            // Moveカードを動かす処理（速度指定）
+            yield return MoveToPositionBySpeed(cardRect, moveSpeed);
+            // Turnカードを裏表替える処理（速度指定）
+            yield return TurnToPositionBySpeed(cardRect, turnSpeed);
+        }
+        else if (IsSelected != LastSelected)
+        {
+            LastSelected = IsSelected;
+            // Moveカードを動かす処理（速度指定）
+            yield return MoveToPositionBySpeed(cardRect, moveSpeed);
+        }
+        else if (IsFaceUp != LastFaceUp)
+        {
+            LastFaceUp = IsFaceUp;
+            // Turnカードを裏表替える処理（速度指定）
+            yield return TurnToPositionBySpeed(cardRect, turnSpeed);
+        }
+        else if (WorldPosition != LastWorldPosition)
+        {
+            LastWorldPosition = WorldPosition;
+            // Moveカードを動かす処理（速度指定）
+            yield return MoveToPositionBySpeed(cardRect, moveSpeed);
+        }
+        else
+        {
+            yield return new WaitForSeconds(0f);
+        }
+        MoveComplete = true;
+    }
+
+    private IEnumerator MoveToPositionBySpeed(RectTransform rectTransform, float moveSpeed)
+    {
+        Vector2 startPos = rectTransform.anchoredPosition;
+        Vector2 finalTarget = IsSelected ? new Vector2(TargetPosition.x, TargetPosition.y + selectedYOffset) : TargetPosition;
+        float distance = Vector2.Distance(startPos, finalTarget);
+        // If moveSpeed <= 0, fall back to 1 second duration to preserve original behaviour
+        float moveDuration = (moveSpeed > 0f && distance > 0f) ? distance / moveSpeed : 1f;
+        yield return StartCoroutine(MoveToPosition(rectTransform, moveDuration));
+    }
+
+    private IEnumerator TurnToPositionBySpeed(RectTransform rectTransform, float turnSpeed)
+    {
+        if (turnSpeed > 0f)
+        {
+            float originalWidth = rectTransform.sizeDelta.x;
+            // Time to shrink (or expand) is width / speed, so total turn is twice that
+            float halfDuration = originalWidth / turnSpeed;
+            float turnDuration = halfDuration * 2f;
+            yield return StartCoroutine(TurnToPosition(rectTransform, turnDuration));
+        }
+        else
+        {
+            // fall back to default 1s duration
+            yield return StartCoroutine(TurnToPosition(rectTransform, 1f));
+        }
+    }
+
     private IEnumerator MoveAndTurnToPosition( float moveDuration)
     {
         // Debug.Log($"Moving card {CardData.number} of {CardData.suit} to {TargetPosition}, FaceUp: {IsFaceUp}, Selected: {IsSelected}");

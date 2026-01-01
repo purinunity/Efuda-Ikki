@@ -25,15 +25,36 @@ public class GameState
     public List<Card> deckCards { get; private set; } = new List<Card>(); // デッキのカード
     public List<Card> commonCards { get; private set; } = new List<Card>(); // 共通カード
     public List<Card> trashCards { get; private set; } = new List<Card>(); // 捨て札
+    public int maxHandTrashTurn { get; private set; } = 2; // 手札交換の最大ターン数
+    public int maxHandTrashCount { get; private set; } = 2; // 手札交換の最大枚数
+    public int playerCount { get; private set; } = 2; // プレイヤー数
+    public int commonCount { get; private set; } = 2; // 共通カード数
+    public int playerHandCount { get; private set; } = 5; // プレイヤーの手札枚数
 
     public void CardReset()
     {
-        deckCards.Clear();
+        foreach (var card in commonCards)
+        {
+            AddCardToDeck(card);
+        }
         commonCards.Clear();
+        foreach (var card in trashCards)
+        {
+            AddCardToDeck(card);
+        }
         trashCards.Clear();
         foreach (var playerState in PlayerStates)
         {
+            foreach (var card in playerState.HandCards)
+            {
+                AddCardToDeck(card);
+            }
             playerState.HandCards.Clear();
+        }
+        foreach (var card in deckCards)
+        {
+            card.IsFaceUp = false; // 全カードを裏向きに設定
+            card.IsSelected = false; // 全カードの選択を解除
         }
     }
 
@@ -60,10 +81,14 @@ public class GameState
         RoundNumber++;
         CurrentParentIndex = (CurrentParentIndex + 1) % PlayerStates.Count;
         CurrentPlayerIndex = CurrentParentIndex; // 親プレイヤーからスタート
+        foreach (var playerState in PlayerStates)
+        {
+            playerState.ResetHandTrashTurnsUsed();
+        }
     }
 
     // プレイヤー状態リストの初期化
-    public void InitializePlayerStates(int playerCount)
+    public void InitializePlayerStates()
     {
         PlayerStates.Clear();
         for (int i = 0; i < playerCount; i++)
@@ -73,16 +98,12 @@ public class GameState
     }
 
     // 共通カードに追加
-    public void AddCardToCommon(Card card)
+    public void AddCardToCommon()
     {
-        if (card != null && !commonCards.Contains(card))
+        for (int i = 0; i < commonCount; i++)
         {
-            commonCards.Add(card);
-            Console.WriteLine($"Card {card.CardData.number} of {card.CardData.suit} added to common cards.");
-        }
-        else
-        {
-            Console.WriteLine($"Card {card?.CardData.number} of {card?.CardData.suit} is already in common cards or is null.");
+            if (commonCards.Count >= commonCount) break;
+            commonCards.Add(DrawCardFromDeck());
         }
     }
 
@@ -93,18 +114,23 @@ public class GameState
             deckCards.Add(card);
             Console.WriteLine($"Card {card.CardData.number} of {card.CardData.suit} added to deck.");
         }
-        else
-        {
-            Console.WriteLine($"Card {card?.CardData.number} of {card?.CardData.suit} is already in deck or is null.");
-        }
     }
 
     public void ChangeState(GameStateType newState)
     {
         CurrentState = newState;
     }
+    public void AddCardToPlayerHand()
+    {
+        for (int i = 0; i < playerHandCount; i++)
+        {
+            if (PlayerStates[CurrentPlayerIndex].HandCards.Count >= playerHandCount) break;
+            Card drawCard = DrawCardFromDeck();
+            PlayerStates[CurrentPlayerIndex].AddCardToHand(drawCard);
+        }
+    }
 
-    public void AddCardToPlayerHand(int playerId, Card card)
+    public void OpenPlayerHands(int playerId)
     {
         if (playerId < 0 || playerId >= PlayerStates.Count)
         {
@@ -112,7 +138,28 @@ public class GameState
             return;
         }
 
-        PlayerStates[playerId].AddCardToHand(card);
+        foreach (var card in PlayerStates[playerId].HandCards)
+        {
+            card.IsFaceUp = true; // 指定プレイヤーの手札を表向きに設定
+        }
+    }
+
+    public void OpenCommonCards()
+    {
+        foreach (var card in commonCards)
+        {
+            card.IsFaceUp = true; // 共通札を表向きに設定
+        }
+    }
+    public void TrashCards(List<Card> cards)
+    {
+        foreach (var card in cards)
+        {
+            card.IsFaceUp = true; // 捨てるカードを表向きに設定
+            PlayerStates[CurrentPlayerIndex].RemoveCardFromHand(card);
+            AddCardToTrash(card);
+        }
+        PlayerStates[CurrentPlayerIndex].IncrementHandTrashTurnsUsed();
     }
 
     public void RemoveCardFromPlayerHand(int playerId, Card card)
