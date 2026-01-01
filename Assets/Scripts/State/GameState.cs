@@ -31,6 +31,8 @@ public class GameState
     public int commonCount { get; private set; } = 2; // 共通カード数
     public int playerHandCount { get; private set; } = 5; // プレイヤーの手札枚数
 
+    // デッキ・共通札・捨て札を統合してカードの状態をリセットする。
+    // 各カードはデッキへ戻し、表裏や選択状態を初期化する。
     public void CardReset()
     {
         foreach (var card in commonCards)
@@ -76,6 +78,7 @@ public class GameState
         CurrentPlayerIndex = (CurrentPlayerIndex + 1) % PlayerStates.Count;
     }
 
+    // ラウンド終了処理：ラウンド番号と親プレイヤーを進め、手札交換の使用回数をリセットする。
     public void NextRound()
     {
         RoundNumber++;
@@ -107,6 +110,7 @@ public class GameState
         }
     }
 
+    // カードをデッキに追加する（重複チェックあり）
     public void AddCardToDeck(Card card)
     {
         if (card != null && !deckCards.Contains(card))
@@ -116,10 +120,12 @@ public class GameState
         }
     }
 
+    // ゲーム状態を変更するヘルパー
     public void ChangeState(GameStateType newState)
     {
         CurrentState = newState;
     }
+    // 現在のプレイヤーに手札を補充する（playerHandCount になるまでデッキから引く）
     public void AddCardToPlayerHand()
     {
         for (int i = 0; i < playerHandCount; i++)
@@ -151,6 +157,8 @@ public class GameState
             card.IsFaceUp = true; // 共通札を表向きに設定
         }
     }
+    // 現在のプレイヤーが捨てるカードを処理する。
+    // 手札から削除して捨て札リストへ追加し、手札交換ターンの使用回数をインクリメントする。
     public void TrashCards(List<Card> cards)
     {
         foreach (var card in cards)
@@ -162,6 +170,7 @@ public class GameState
         PlayerStates[CurrentPlayerIndex].IncrementHandTrashTurnsUsed();
     }
 
+    // 指定したプレイヤーの手札からカードを削除する（IDチェックを行う）
     public void RemoveCardFromPlayerHand(int playerId, Card card)
     {
         if (playerId < 0 || playerId >= PlayerStates.Count)
@@ -173,6 +182,7 @@ public class GameState
         PlayerStates[playerId].RemoveCardFromHand(card);
     }
 
+    // デッキをランダムにシャッフルする（Fisher–Yates 風）
     public void ShuffleDeck()
     {
         for (int i = 0; i < deckCards.Count; i++)
@@ -184,6 +194,7 @@ public class GameState
         }
     }
 
+    // デッキの先頭カードを引いて返す。デッキが空の場合は null を返す。
     public Card DrawCardFromDeck()
     {
         if (deckCards.Count > 0)
@@ -195,10 +206,11 @@ public class GameState
         else
         {
             Console.WriteLine("No cards left to draw.");
-            return null; // or throw an exception if preferred
+            return null; // 例外を投げる実装に変更してもよい
         }
     }
 
+    // 捨て札リストにカードを追加する（重複を避ける）
     public void AddCardToTrash(Card card)
     {
         if (card != null && !trashCards.Contains(card))

@@ -108,12 +108,12 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         yield return StartCoroutine(MoveAndTurnToPosition(moveDuration));
     }
 
-    // --- Speed-based APIs ---
+    // --- 速度指定版 API ---
     /// <summary>
-    /// Move and/or turn the card using speeds (units per second) instead of durations.
-    /// moveSpeed: movement speed in anchored units per second.
-    /// turnSpeed: width change speed in rect units per second.
-    /// If a speed is <= 0, the method falls back to duration-based default behavior.
+    /// カードを「速度（単位: 単位/秒）」で移動・回転させるメソッド群（時間指定ではなく速度指定）
+    /// moveSpeed: 移動速度（アンカー位置の単位/秒）
+    /// turnSpeed: 回転(幅変化)の速度（Rect 単位/秒）
+    /// どちらかの速度が <= 0 の場合は、従来の時間指定ベースの動作（デフォルトの所要時間）にフォールバックします。
     /// </summary>
     public void MoveAndTurnCardBySpeed(float moveSpeed = 100f, float turnSpeed = 100f)
     {
@@ -176,7 +176,7 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         Vector2 startPos = rectTransform.anchoredPosition;
         Vector2 finalTarget = IsSelected ? new Vector2(TargetPosition.x, TargetPosition.y + selectedYOffset) : TargetPosition;
         float distance = Vector2.Distance(startPos, finalTarget);
-        // If moveSpeed <= 0, fall back to 1 second duration to preserve original behaviour
+        // moveSpeed <= 0 の場合は挙動を変えず 1 秒のデフォルト時間にフォールバックする
         float moveDuration = (moveSpeed > 0f && distance > 0f) ? distance / moveSpeed : 1f;
         yield return StartCoroutine(MoveToPosition(rectTransform, moveDuration));
     }
@@ -186,21 +186,21 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         if (turnSpeed > 0f)
         {
             float originalWidth = rectTransform.sizeDelta.x;
-            // Time to shrink (or expand) is width / speed, so total turn is twice that
+            // 幅を縮める（または戻す）時間は width / speed で計算されるため、合計の回転時間はその 2 倍とする
             float halfDuration = originalWidth / turnSpeed;
             float turnDuration = halfDuration * 2f;
             yield return StartCoroutine(TurnToPosition(rectTransform, turnDuration));
         }
         else
         {
-            // fall back to default 1s duration
+            // フォールバックとしてデフォルトで 1 秒の回転時間を使用する
             yield return StartCoroutine(TurnToPosition(rectTransform, 1f));
         }
     }
 
     private IEnumerator MoveAndTurnToPosition( float moveDuration)
     {
-        // Debug.Log($"Moving card {CardData.number} of {CardData.suit} to {TargetPosition}, FaceUp: {IsFaceUp}, Selected: {IsSelected}");
+        // カード移動のデバッグ用ログ（必要なら有効化）
         var WorldPosition = this.transform.parent != null ? (Vector2)this.transform.parent.TransformPoint(TargetPosition) : TargetPosition;
         if (IsFaceUp != LastFaceUp && (WorldPosition != LastWorldPosition || IsSelected != LastSelected))
         {

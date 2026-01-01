@@ -75,6 +75,7 @@ public class GameManager : MonoBehaviour
         yield break;
     }
 
+    // ラウンド処理：各プレイヤーが手札交換を行うターンを処理します（maxHandTrashTurn 回分）
     IEnumerator Round()
     {
         for (int i = 0; i < gameState.maxHandTrashTurn; i++)
@@ -103,6 +104,7 @@ public class GameManager : MonoBehaviour
         }
     }
     
+    // ショーダウン処理：全プレイヤーの手札を表にして役判定→勝者決定→ライフ減算を行う
     IEnumerator ShowDown()
     {
         Debug.Log("ショーダウン開始");
@@ -191,6 +193,7 @@ public class GameManager : MonoBehaviour
         yield break;
     }
 
+    // UIManager を呼び出してUI更新を行い、更新完了するまで待機するヘルパー
     IEnumerator UIUpdateWithWaiting(float duration = 5f)
     {
         uiManager.UIUpdate(gameState,duration);

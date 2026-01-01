@@ -18,6 +18,7 @@ public class PlayerRole : MonoBehaviour
         "不見", "一双", "二双", "三珠", "四珠", "天守", "筋", "光", "七筋", "七光", "天守閣"
     };
 
+    // 初期化処理：必要なコンポーネント参照を取得する
     private void Awake()
     {
         if (roleText == null)
@@ -66,6 +67,7 @@ public class PlayerRole : MonoBehaviour
         rouletteCoroutine = StartCoroutine(RoleRoulette(name, duration));
     }
 
+    // ルーレット演出が実行中であれば停止させ、状態をクリアする
     private void StopRouletteIfRunning()
     {
         if (rouletteCoroutine != null)
@@ -75,6 +77,7 @@ public class PlayerRole : MonoBehaviour
         }
     }
 
+    // ルーレット演出コルーチン：候補を順に（ランダムに）表示し、指定時間の経過後に最終的な役を表示する
     private IEnumerator RoleRoulette(string finalRole, float duration)
     {
         float elapsed = 0f;
@@ -97,6 +100,7 @@ public class PlayerRole : MonoBehaviour
         rouletteCoroutine = null;
     }
 
+    // オブジェクト破棄時の後処理：演出が残っていれば停止する
     private void OnDestroy()
     {
         StopRouletteIfRunning();

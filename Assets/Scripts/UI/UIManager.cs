@@ -25,12 +25,12 @@ public class UIManager : MonoBehaviour
     public bool UIUpdateInProgress { get; private set; } = false;
 
 
-    // 初期化処理
+    // 初期化処理：必要ならコンポーネント参照や初期UI状態の設定を行う（現在は特に処理なし）
     private void Awake()
     {
     }
 
-    // 終了時のイベント解除
+    // 破棄時の後処理：イベント解除やコルーチン停止等があればここで行う（現在は特に処理なし）
     private void OnDestroy()
     {
     }
@@ -39,7 +39,7 @@ public class UIManager : MonoBehaviour
     public void UIUpdate(GameState state, float duration)
     {   
         UIUpdateInProgress = true;
-        r.text = state.RoundNumber.ToString();//Round数
+        r.text = state.RoundNumber.ToString(); // ラウンド数
         L1.text = state.PlayerStates[0].LifePoints.ToString(); //☆修正by降幡
         L2.text = state.PlayerStates[1].LifePoints.ToString(); //☆修正by降幡
         var now = HandEvaluator.EvaluateHand(state.PlayerStates[0].HandCards, state.commonCards);

@@ -371,7 +371,7 @@ public class CardArea : MonoBehaviour
     {
         if (cardsInArea.Count > 0)
         {
-            // int randomIndex = Random.Range(0, cardsInArea.Count);
+            // int randomIndex = Random.Range(0, cardsInArea.Count); // ランダムに引く場合の例（現在は先頭を使用）
             Card drawnCard = cardsInArea[0];
             cardsInArea.RemoveAt(0);
             Debug.Log($"Drawn Card: {drawnCard.GetCardNumber()} of {drawnCard.GetCardSuit()}");
@@ -380,10 +380,11 @@ public class CardArea : MonoBehaviour
         else
         {
             Debug.Log("No cards left to draw.");
-            return null; // or throw an exception if preferred
+            return null; // 例外を投げる実装に変更してもよい
         }
     }
 
+    // 指定したカードをこのエリアから取り除いて返す。カードが null か存在しない場合は null を返す。
     public Card DrawCard(Card card)
     {
         if (card == null)
@@ -400,9 +401,10 @@ public class CardArea : MonoBehaviour
         }
 
         Debug.Log("Card not found in the list.");
-        return null; // or throw an exception if preferred
+        return null; // 例外を投げる実装に変更してもよい
     }
     
+    // このエリアで選択中のカードを取得し、取得後に選択フラグをリセットする
     public List<Card> GetSelectedCardData()
     {
         List<Card> selectedCards = new List<Card>();

@@ -19,10 +19,10 @@ public class Cards : MonoBehaviour
     {
         foreach (var card in cardList)
         {
-            card.gameObject.transform.SetParent(this.transform); // Set parent to this Cards object
-            card.Initialize(selectedYOffset); // Assuming Card has an Initialize method
+            card.gameObject.transform.SetParent(this.transform); // 親をこの Cards オブジェクトに設定
+            card.Initialize(selectedYOffset); // Card に Initialize メソッドが存在する前提で呼び出す
         }
-        // Initialize the card list or any other setup if needed
+        // 必要ならカードリストの初期化や他のセットアップをここで行う
         Debug.Log("Cards initialized.");
     }
 
