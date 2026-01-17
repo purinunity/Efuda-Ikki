@@ -306,8 +306,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 15b838ca1373b4546891b14e92afa505, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gameManager: {fileID: 479954182}
-  playerCount: {fileID: 51730696}
 --- !u!114 &51730696
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1258,14 +1256,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   allCards: {fileID: 1249089563}
-  playerCount: 2
-  commonCount: 2
-  playerHandCount: 5
-  maxHandTrashTurn: 2
   playerController: {fileID: 265672679}
   cpuController: {fileID: 88197846}
   uiManager: {fileID: 1971361448}
-  remainingNumber: 2
 --- !u!4 &479954183
 Transform:
   m_ObjectHideFlags: 0
@@ -3120,6 +3113,9 @@ MonoBehaviour:
   H: {fileID: 1620588004}
   L1: {fileID: 1709988254}
   L2: {fileID: 131281106}
+  playerRemainTrashCount: {fileID: 51730695}
+  cardMoveSpeed: 800
+  cardTurnSpeed: 720
 --- !u!4 &1971361449
 Transform:
   m_ObjectHideFlags: 0
