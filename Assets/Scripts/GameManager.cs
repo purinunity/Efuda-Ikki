@@ -10,10 +10,6 @@ public class GameManager : MonoBehaviour
 {
     public GameState gameState = new GameState();
     [SerializeField] private Cards allCards; // 全カード管理
-    [SerializeField] private int playerCount = 2;
-    [SerializeField] private int commonCount = 2;
-    [SerializeField] private int playerHandCount = 5;
-    [SerializeField] private int maxHandTrashTurn = 2;
     [SerializeField] private PlayerController playerController;
     [SerializeField] private CPUController cpuController;
     [SerializeField] private UIManager uiManager;
@@ -25,7 +21,7 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         gameOver = false;
-        gameState.InitializePlayerStates(playerCount); // プレイヤー状態リスト初期化
+        gameState.InitializePlayerStates(); // プレイヤー状態リスト初期化
         controllers = new Controller[] { playerController, cpuController }; // コントローラー配列初期化
         StartCoroutine(GameFlow()); // ゲーム進行コルーチン開始
     }
@@ -50,43 +46,28 @@ public class GameManager : MonoBehaviour
     // ゲームの初期化処理
     IEnumerator InitializeGame()
     {
-        gameState.CardReset(); // ゲーム状態リセット
         foreach (var card in allCards.cardList)
         {
-            card.IsFaceUp = false; // 全カードを裏向きに設定
-            card.IsSelected = false; // 全カードの選択を解除
-            gameState.deckCards.Add(card); // 全カードをデッキに追加
+            gameState.AddCardToDeck(card); // 全カードをデッキに追加
         }
+        gameState.CardReset(); // カード状態リセット
         gameState.ShuffleDeck(); // デッキをシャッフル
         yield return UIUpdateWithWaiting(3f); // UI更新(デッキ配布)
 
         // 各プレイヤーの手札を初期化(親から順に配る)
-        for (int i = 0; i < playerCount; i++)
+        for (int i = 0; i < gameState.playerCount; i++)
         {
-            for (int j = 0; j < playerHandCount; j++)
-            {
-                gameState.AddCardToPlayerHand((i + gameState.CurrentParentIndex) % playerCount, gameState.DrawCardFromDeck()); // プレイヤーにカードを配る
-            }
+            gameState.AddCardToPlayerHand();
             yield return UIUpdateWithWaiting(3f); // UI更新(手札配布)
+            gameState.NextTurn(); // 次の手番へ
         }
 
         // 共通カードを追加
-        for (int j = 0; j < commonCount; j++)
-        {
-            gameState.AddCardToCommon(gameState.DrawCardFromDeck()); // 共通カードを追加
-        }
+        gameState.AddCardToCommon();
         yield return UIUpdateWithWaiting(3f); // UI更新(共通札配布)
 
-        foreach (var playerHand in gameState.PlayerStates[0].HandCards)
-        {
-            playerHand.IsFaceUp = true; // プレイヤーの手札を表向きに設定
-        }
-
-        foreach (var card in gameState.commonCards)
-        {
-            card.IsFaceUp = true; // 共通札を表向きに設定
-        }
-
+        gameState.OpenPlayerHands(0); // プレイヤーの手札を表向きに設定
+        gameState.OpenCommonCards(); // 共通札を表向きに設定
         yield return UIUpdateWithWaiting(3f); // UI更新(手札と共通札表向き)
 
         Initialized = true;
@@ -94,11 +75,12 @@ public class GameManager : MonoBehaviour
         yield break;
     }
 
+    // ラウンド処理：各プレイヤーが手札交換を行うターンを処理します（maxHandTrashTurn 回分）
     IEnumerator Round()
     {
-        for (int i = 0; i < maxHandTrashTurn; i++)
+        for (int i = 0; i < gameState.maxHandTrashTurn; i++)
         {
-            for (int j = 0; j < playerCount; j++)
+            for (int j = 0; j < gameState.playerCount; j++)
             {
                 if (gameOver) yield break; // ゲーム終了時は早期終了
                 Controller controller = controllers[gameState.CurrentPlayerIndex]; // 現在のプレイヤーのコントローラーを取得
@@ -106,19 +88,13 @@ public class GameManager : MonoBehaviour
                 ControllerResponse response = null;
                 yield return StartCoroutine(controller.Act(gameState, r => { response = r; waiting = false; }));
                 while (waiting) yield return null;
-                foreach (var card in response.cardsTrash)
-                {
-                    Debug.Log($"Player {gameState.CurrentPlayerIndex} がカードを捨てました: {card.CardData.name}");
-                    card.IsFaceUp = true; // 捨てるカードを表向きに設定
-                    gameState.RemoveCardFromPlayerHand(gameState.CurrentPlayerIndex, card);
-                    gameState.AddCardToTrash(card);
-                }
+                gameState.TrashCards(response.cardsTrash);
                 yield return UIUpdateWithWaiting(3f);// UI更新(手札交換-捨てる)
-                foreach (var card in response.cardsTrash)
+                
+                gameState.AddCardToPlayerHand(); // 捨てた分のカードを補充
+                if (gameState.CurrentPlayerIndex == 0)
                 {
-                    var drawCard = gameState.DrawCardFromDeck();
-                    if (gameState.CurrentPlayerIndex == 0) drawCard.IsFaceUp = true; // プレイヤーの引くカードは表向きに設定
-                    gameState.AddCardToPlayerHand(gameState.CurrentPlayerIndex, drawCard);
+                    gameState.OpenPlayerHands(0); // プレイヤーの手札を表向きに設定
                 }
                 yield return UIUpdateWithWaiting(3f);// UI更新(手札交換-加える)
                 // 次の手番へ
@@ -128,21 +104,19 @@ public class GameManager : MonoBehaviour
         }
     }
     
+    // ショーダウン処理：全プレイヤーの手札を表にして役判定→勝者決定→ライフ減算を行う
     IEnumerator ShowDown()
     {
         Debug.Log("ショーダウン開始");
         // 全プレイヤーの手札を表向きに設定
-        for (int i = 0; i < playerCount; i++)
+        for (int i = 0; i < gameState.playerCount; i++)
         {
-            foreach (var card in gameState.PlayerStates[i].HandCards)
-            {
-                card.IsFaceUp = true;
-            }
+            gameState.OpenPlayerHands(i);
         }
         yield return UIUpdateWithWaiting(5f); // UI更新(ショーダウン)
         // 手札評価
         List<HandInfo> results = new List<HandInfo>();
-        for (int i = 0; i < playerCount; i++)
+        for (int i = 0; i < gameState.playerCount; i++)
         {
             var result = HandEvaluator.EvaluateHand(gameState.PlayerStates[i].HandCards, gameState.commonCards);
             results.Add(result);
@@ -159,7 +133,7 @@ public class GameManager : MonoBehaviour
 
         Debug.Log($"勝者は Player {winner} です！");
 
-        for (int i = 0; i < playerCount; i++)
+        for (int i = 0; i < gameState.playerCount; i++)
         {
             if (i != winner)
             {
@@ -181,7 +155,7 @@ public class GameManager : MonoBehaviour
     // 体力0判定
     private bool CheckGameOver()
     {
-        for (int i = 0; i < playerCount; i++)
+        for (int i = 0; i < gameState.playerCount; i++)
         {
             if (gameState.PlayerStates[i].LifePoints <= 0) return true;
         }
@@ -193,7 +167,7 @@ public class GameManager : MonoBehaviour
         gameOver = true;
         // 勝者判定（体力が残っているプレイヤーを勝者とする）
         int winnerIndex = -1;
-        for (int i = 0; i < playerCount; i++)
+        for (int i = 0; i < gameState.playerCount; i++)
         {
             if (gameState.PlayerStates[i].LifePoints > 0)
             {
@@ -219,6 +193,7 @@ public class GameManager : MonoBehaviour
         yield break;
     }
 
+    // UIManager を呼び出してUI更新を行い、更新完了するまで待機するヘルパー
     IEnumerator UIUpdateWithWaiting(float duration = 5f)
     {
         uiManager.UIUpdate(gameState,duration);

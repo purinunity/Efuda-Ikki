@@ -53,6 +53,20 @@ public class CardArea : MonoBehaviour
         CardsPositionUpdate(totalDuration);
     }
 
+    // 複数のカードをセット
+    public void SetCardsBySpeed(List<Card> cards, float moveSpeed, float turnSpeed )
+    {
+        cardsInArea.Clear();
+        foreach (var card in cards)
+        {
+            if (card != null && !cardsInArea.Contains(card))
+            {
+                cardsInArea.Add(card);
+            }
+        }
+        CardsPositionUpdateBySpeed(moveSpeed, turnSpeed);
+    }
+
     // カードの位置を更新（横並び・縦並び対応）
     private void CardsPositionUpdate(float totalDuration = 1.0f)
     {
@@ -161,11 +175,124 @@ public class CardArea : MonoBehaviour
             card.TargetPosition = Vector2.zero;
             if (card.MoveComplete)
             {
-                card.WaitAndMove(0f, totalDuration);
+                card.WaitAndMove(totalDuration / visibleCount * idx, totalDuration / visibleCount);
             }
         }
         return;
+    }
+
+    // カードの位置を更新（横並び・縦並び対応）
+    private void CardsPositionUpdateBySpeed(float moveSpeed,float turnSpeed)
+    {
+        if (areaRect == null || cardsInArea == null || cardsInArea.Count == 0)
+        {
+            return; // レイアウトするものがないか、areaRect が割り当てられていません
         }
+        // レイアウトモード判定:
+        // - isVertical && isHorizontal => 斜め
+        // - isVertical && !isHorizontal => 縦
+        // - !isVertical && isHorizontal => 横
+        // - !isVertical && !isHorizontal => 全て重ねる
+        bool both = isVertical && isHorizontal;
+        bool onlyHorizontal = isHorizontal && !isVertical;
+        bool onlyVertical = isVertical && !isHorizontal;
+
+        // 準備: 共通のカード配列とサイズ配列を作る
+        List<Card> validCards = new List<Card>();
+        List<float> widths = new List<float>();
+        List<float> heights = new List<float>();
+        float areaWidth = areaRect.rect.width;
+        float areaHeight = areaRect.rect.height;
+        float totalCardsWidth = 0f;
+        float totalCardsHeight = 0f;
+
+        foreach (var c in cardsInArea)
+        {
+            if (c == null) continue;
+            validCards.Add(c);
+            RectTransform r = c.GetCardRect();
+            float w = (r != null && r.rect.width > 0f) ? r.rect.width * r.localScale.x : 100f; // デフォルト幅
+            float h = (r != null && r.rect.height > 0f) ? r.rect.height * r.localScale.y : 150f; // デフォルト高さ
+            widths.Add(w);
+            heights.Add(h);
+            totalCardsWidth += w;
+            totalCardsHeight += h;
+        }
+
+        int visibleCount = validCards.Count;
+        if (visibleCount == 0) return;
+
+        // ヘルパーで各軸の中心座標を計算
+        List<float> centersX = ComputeCenters(areaWidth, widths);
+        List<float> centersY = ComputeCenters(areaHeight, heights, vertical:true);
+
+        if (both)
+        {
+            // 斜め配置: XとYの中心配列を組み合わせる（インデックス一致で配置）
+            for (int idx = 0; idx < visibleCount; idx++)
+            {
+                var card = validCards[idx];
+                float centerX = centersX.Count > idx ? centersX[idx] : 0f;
+                float centerY = centersY.Count > idx ? centersY[idx] : 0f;
+                card.gameObject.transform.SetParent(areaRect);
+                card.gameObject.transform.SetAsLastSibling();
+                card.TargetPosition = new Vector2(centerX, centerY);
+                if (card.MoveComplete)
+                {
+                    card.WaitAndMoveBySpeed(0, moveSpeed, turnSpeed);
+                }
+            }
+            return;
+        }
+        if (onlyHorizontal)
+        {
+            // 横配置: centersX を使用し Y=0
+            for (int idx = 0; idx < visibleCount; idx++)
+            {
+                var card = validCards[idx];
+                float centerX = centersX.Count > idx ? centersX[idx] : 0f;
+                card.gameObject.transform.SetParent(areaRect);
+                card.gameObject.transform.SetAsLastSibling();
+                card.TargetPosition = new Vector2(centerX, 0f);
+                if (card.MoveComplete)
+                {
+                    card.WaitAndMoveBySpeed(0, moveSpeed, turnSpeed);
+                }
+            }
+            return;
+        }
+        if (onlyVertical)
+        {
+            // 縦配置: centersY を使用、X=0
+            for (int idx = 0; idx < visibleCount; idx++)
+            {
+                var card = validCards[idx];
+                float centerY = centersY.Count > idx ? centersY[idx] : 0f;
+                card.gameObject.transform.SetParent(areaRect);
+                card.gameObject.transform.SetAsLastSibling();
+                card.TargetPosition = new Vector2(0f, centerY);
+                if (card.MoveComplete)
+                {
+                    card.WaitAndMoveBySpeed(0, moveSpeed, turnSpeed);
+                }
+                return;
+            }
+        }
+
+        // 両方無効: 全て重ねて表示（中央）
+        for (int idx = 0; idx < visibleCount; idx++)
+        {
+            var card = validCards[idx];
+            card.gameObject.transform.SetParent(areaRect);
+            card.gameObject.transform.SetAsLastSibling();
+            card.TargetPosition = Vector2.zero;
+            if (card.MoveComplete)
+            {
+                    card.WaitAndMoveBySpeed(0, moveSpeed, turnSpeed);
+            }
+        }
+        return;
+    }
 
     // 幅 or 高さと各カードサイズから、対応する中心座標リストを返す
     // vertical==true の場合、Y軸（上が正）の中心配列を返す
@@ -244,7 +371,7 @@ public class CardArea : MonoBehaviour
     {
         if (cardsInArea.Count > 0)
         {
-            // int randomIndex = Random.Range(0, cardsInArea.Count);
+            // int randomIndex = Random.Range(0, cardsInArea.Count); // ランダムに引く場合の例（現在は先頭を使用）
             Card drawnCard = cardsInArea[0];
             cardsInArea.RemoveAt(0);
             Debug.Log($"Drawn Card: {drawnCard.GetCardNumber()} of {drawnCard.GetCardSuit()}");
@@ -253,10 +380,11 @@ public class CardArea : MonoBehaviour
         else
         {
             Debug.Log("No cards left to draw.");
-            return null; // or throw an exception if preferred
+            return null; // 例外を投げる実装に変更してもよい
         }
     }
 
+    // 指定したカードをこのエリアから取り除いて返す。カードが null か存在しない場合は null を返す。
     public Card DrawCard(Card card)
     {
         if (card == null)
@@ -273,9 +401,10 @@ public class CardArea : MonoBehaviour
         }
 
         Debug.Log("Card not found in the list.");
-        return null; // or throw an exception if preferred
+        return null; // 例外を投げる実装に変更してもよい
     }
     
+    // このエリアで選択中のカードを取得し、取得後に選択フラグをリセットする
     public List<Card> GetSelectedCardData()
     {
         List<Card> selectedCards = new List<Card>();

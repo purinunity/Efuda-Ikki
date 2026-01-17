@@ -119,7 +119,7 @@ public static class HandEvaluator
             Number.Four, Number.Five, Number.Six,
             Number.Seven, Number.Eight, Number.Nine,
             Number.Ten, Number.Jack, Number.Queen,
-            Number.King, Number.One };// Ace can be high or low
+            Number.King, Number.One }; // エースは高値または低値として扱う
         foreach (var num in nums)
         {
             if (numberCounts.ContainsKey((int)num))

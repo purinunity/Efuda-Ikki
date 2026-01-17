@@ -25,15 +25,38 @@ public class GameState
     public List<Card> deckCards { get; private set; } = new List<Card>(); // デッキのカード
     public List<Card> commonCards { get; private set; } = new List<Card>(); // 共通カード
     public List<Card> trashCards { get; private set; } = new List<Card>(); // 捨て札
+    public int maxHandTrashTurn { get; private set; } = 2; // 手札交換の最大ターン数
+    public int maxHandTrashCount { get; private set; } = 2; // 手札交換の最大枚数
+    public int playerCount { get; private set; } = 2; // プレイヤー数
+    public int commonCount { get; private set; } = 2; // 共通カード数
+    public int playerHandCount { get; private set; } = 5; // プレイヤーの手札枚数
 
+    // デッキ・共通札・捨て札を統合してカードの状態をリセットする。
+    // 各カードはデッキへ戻し、表裏や選択状態を初期化する。
     public void CardReset()
     {
-        deckCards.Clear();
+        foreach (var card in commonCards)
+        {
+            AddCardToDeck(card);
+        }
         commonCards.Clear();
+        foreach (var card in trashCards)
+        {
+            AddCardToDeck(card);
+        }
         trashCards.Clear();
         foreach (var playerState in PlayerStates)
         {
+            foreach (var card in playerState.HandCards)
+            {
+                AddCardToDeck(card);
+            }
             playerState.HandCards.Clear();
+        }
+        foreach (var card in deckCards)
+        {
+            card.IsFaceUp = false; // 全カードを裏向きに設定
+            card.IsSelected = false; // 全カードの選択を解除
         }
     }
 
@@ -55,15 +78,20 @@ public class GameState
         CurrentPlayerIndex = (CurrentPlayerIndex + 1) % PlayerStates.Count;
     }
 
+    // ラウンド終了処理：ラウンド番号と親プレイヤーを進め、手札交換の使用回数をリセットする。
     public void NextRound()
     {
         RoundNumber++;
         CurrentParentIndex = (CurrentParentIndex + 1) % PlayerStates.Count;
         CurrentPlayerIndex = CurrentParentIndex; // 親プレイヤーからスタート
+        foreach (var playerState in PlayerStates)
+        {
+            playerState.ResetHandTrashTurnsUsed();
+        }
     }
 
     // プレイヤー状態リストの初期化
-    public void InitializePlayerStates(int playerCount)
+    public void InitializePlayerStates()
     {
         PlayerStates.Clear();
         for (int i = 0; i < playerCount; i++)
@@ -73,19 +101,16 @@ public class GameState
     }
 
     // 共通カードに追加
-    public void AddCardToCommon(Card card)
+    public void AddCardToCommon()
     {
-        if (card != null && !commonCards.Contains(card))
+        for (int i = 0; i < commonCount; i++)
         {
-            commonCards.Add(card);
-            Console.WriteLine($"Card {card.CardData.number} of {card.CardData.suit} added to common cards.");
-        }
-        else
-        {
-            Console.WriteLine($"Card {card?.CardData.number} of {card?.CardData.suit} is already in common cards or is null.");
+            if (commonCards.Count >= commonCount) break;
+            commonCards.Add(DrawCardFromDeck());
         }
     }
 
+    // カードをデッキに追加する（重複チェックあり）
     public void AddCardToDeck(Card card)
     {
         if (card != null && !deckCards.Contains(card))
@@ -93,18 +118,25 @@ public class GameState
             deckCards.Add(card);
             Console.WriteLine($"Card {card.CardData.number} of {card.CardData.suit} added to deck.");
         }
-        else
-        {
-            Console.WriteLine($"Card {card?.CardData.number} of {card?.CardData.suit} is already in deck or is null.");
-        }
     }
 
+    // ゲーム状態を変更するヘルパー
     public void ChangeState(GameStateType newState)
     {
         CurrentState = newState;
     }
+    // 現在のプレイヤーに手札を補充する（playerHandCount になるまでデッキから引く）
+    public void AddCardToPlayerHand()
+    {
+        for (int i = 0; i < playerHandCount; i++)
+        {
+            if (PlayerStates[CurrentPlayerIndex].HandCards.Count >= playerHandCount) break;
+            Card drawCard = DrawCardFromDeck();
+            PlayerStates[CurrentPlayerIndex].AddCardToHand(drawCard);
+        }
+    }
 
-    public void AddCardToPlayerHand(int playerId, Card card)
+    public void OpenPlayerHands(int playerId)
     {
         if (playerId < 0 || playerId >= PlayerStates.Count)
         {
@@ -112,9 +144,33 @@ public class GameState
             return;
         }
 
-        PlayerStates[playerId].AddCardToHand(card);
+        foreach (var card in PlayerStates[playerId].HandCards)
+        {
+            card.IsFaceUp = true; // 指定プレイヤーの手札を表向きに設定
+        }
     }
 
+    public void OpenCommonCards()
+    {
+        foreach (var card in commonCards)
+        {
+            card.IsFaceUp = true; // 共通札を表向きに設定
+        }
+    }
+    // 現在のプレイヤーが捨てるカードを処理する。
+    // 手札から削除して捨て札リストへ追加し、手札交換ターンの使用回数をインクリメントする。
+    public void TrashCards(List<Card> cards)
+    {
+        foreach (var card in cards)
+        {
+            card.IsFaceUp = true; // 捨てるカードを表向きに設定
+            PlayerStates[CurrentPlayerIndex].RemoveCardFromHand(card);
+            AddCardToTrash(card);
+        }
+        PlayerStates[CurrentPlayerIndex].IncrementHandTrashTurnsUsed();
+    }
+
+    // 指定したプレイヤーの手札からカードを削除する（IDチェックを行う）
     public void RemoveCardFromPlayerHand(int playerId, Card card)
     {
         if (playerId < 0 || playerId >= PlayerStates.Count)
@@ -126,6 +182,7 @@ public class GameState
         PlayerStates[playerId].RemoveCardFromHand(card);
     }
 
+    // デッキをランダムにシャッフルする（Fisher–Yates 風）
     public void ShuffleDeck()
     {
         for (int i = 0; i < deckCards.Count; i++)
@@ -137,6 +194,7 @@ public class GameState
         }
     }
 
+    // デッキの先頭カードを引いて返す。デッキが空の場合は null を返す。
     public Card DrawCardFromDeck()
     {
         if (deckCards.Count > 0)
@@ -148,10 +206,11 @@ public class GameState
         else
         {
             Console.WriteLine("No cards left to draw.");
-            return null; // or throw an exception if preferred
+            return null; // 例外を投げる実装に変更してもよい
         }
     }
 
+    // 捨て札リストにカードを追加する（重複を避ける）
     public void AddCardToTrash(Card card)
     {
         if (card != null && !trashCards.Contains(card))

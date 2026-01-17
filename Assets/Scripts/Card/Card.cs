@@ -108,9 +108,99 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         yield return StartCoroutine(MoveAndTurnToPosition(moveDuration));
     }
 
+    // --- 速度指定版 API ---
+    /// <summary>
+    /// カードを「速度（単位: 単位/秒）」で移動・回転させるメソッド群（時間指定ではなく速度指定）
+    /// moveSpeed: 移動速度（アンカー位置の単位/秒）
+    /// turnSpeed: 回転(幅変化)の速度（Rect 単位/秒）
+    /// どちらかの速度が <= 0 の場合は、従来の時間指定ベースの動作（デフォルトの所要時間）にフォールバックします。
+    /// </summary>
+    public void MoveAndTurnCardBySpeed(float moveSpeed = 100f, float turnSpeed = 100f)
+    {
+        MoveComplete = false;
+        StartCoroutine(MoveAndTurnToPositionBySpeed(moveSpeed, turnSpeed));
+    }
+
+    public void WaitAndMoveBySpeed(float waittime, float moveSpeed = 100f, float turnSpeed = 100f)
+    {
+        MoveComplete = false;
+        StartCoroutine(WaitAndMoveToPositionBySpeed(waittime, moveSpeed, turnSpeed));
+    }
+
+    private IEnumerator WaitAndMoveToPositionBySpeed(float waittime, float moveSpeed, float turnSpeed = 100f)
+    {
+        yield return new WaitForSeconds(waittime);
+        yield return StartCoroutine(MoveAndTurnToPositionBySpeed(moveSpeed, turnSpeed));
+    }
+
+    private IEnumerator MoveAndTurnToPositionBySpeed(float moveSpeed, float turnSpeed)
+    {
+        var WorldPosition = this.transform.parent != null ? (Vector2)this.transform.parent.TransformPoint(TargetPosition) : TargetPosition;
+        if (IsFaceUp != LastFaceUp && (WorldPosition != LastWorldPosition || IsSelected != LastSelected))
+        {
+            LastFaceUp = IsFaceUp;
+            LastWorldPosition = WorldPosition;
+            LastSelected = IsSelected;
+            // Moveカードを動かす処理（速度指定）
+            yield return MoveToPositionBySpeed(cardRect, moveSpeed);
+            // Turnカードを裏表替える処理（速度指定）
+            yield return TurnToPositionBySpeed(cardRect, turnSpeed);
+        }
+        else if (IsSelected != LastSelected)
+        {
+            LastSelected = IsSelected;
+            // Moveカードを動かす処理（速度指定）
+            yield return MoveToPositionBySpeed(cardRect, moveSpeed);
+        }
+        else if (IsFaceUp != LastFaceUp)
+        {
+            LastFaceUp = IsFaceUp;
+            // Turnカードを裏表替える処理（速度指定）
+            yield return TurnToPositionBySpeed(cardRect, turnSpeed);
+        }
+        else if (WorldPosition != LastWorldPosition)
+        {
+            LastWorldPosition = WorldPosition;
+            // Moveカードを動かす処理（速度指定）
+            yield return MoveToPositionBySpeed(cardRect, moveSpeed);
+        }
+        else
+        {
+            yield return new WaitForSeconds(0f);
+        }
+        MoveComplete = true;
+    }
+
+    private IEnumerator MoveToPositionBySpeed(RectTransform rectTransform, float moveSpeed)
+    {
+        Vector2 startPos = rectTransform.anchoredPosition;
+        Vector2 finalTarget = IsSelected ? new Vector2(TargetPosition.x, TargetPosition.y + selectedYOffset) : TargetPosition;
+        float distance = Vector2.Distance(startPos, finalTarget);
+        // moveSpeed <= 0 の場合は挙動を変えず 1 秒のデフォルト時間にフォールバックする
+        float moveDuration = (moveSpeed > 0f && distance > 0f) ? distance / moveSpeed : 1f;
+        yield return StartCoroutine(MoveToPosition(rectTransform, moveDuration));
+    }
+
+    private IEnumerator TurnToPositionBySpeed(RectTransform rectTransform, float turnSpeed)
+    {
+        if (turnSpeed > 0f)
+        {
+            float originalWidth = rectTransform.sizeDelta.x;
+            // 幅を縮める（または戻す）時間は width / speed で計算されるため、合計の回転時間はその 2 倍とする
+            float halfDuration = originalWidth / turnSpeed;
+            float turnDuration = halfDuration * 2f;
+            yield return StartCoroutine(TurnToPosition(rectTransform, turnDuration));
+        }
+        else
+        {
+            // フォールバックとしてデフォルトで 1 秒の回転時間を使用する
+            yield return StartCoroutine(TurnToPosition(rectTransform, 1f));
+        }
+    }
+
     private IEnumerator MoveAndTurnToPosition( float moveDuration)
     {
-        // Debug.Log($"Moving card {CardData.number} of {CardData.suit} to {TargetPosition}, FaceUp: {IsFaceUp}, Selected: {IsSelected}");
+        // カード移動のデバッグ用ログ（必要なら有効化）
         var WorldPosition = this.transform.parent != null ? (Vector2)this.transform.parent.TransformPoint(TargetPosition) : TargetPosition;
         if (IsFaceUp != LastFaceUp && (WorldPosition != LastWorldPosition || IsSelected != LastSelected))
         {
