@@ -3114,8 +3114,8 @@ MonoBehaviour:
   L1: {fileID: 1709988254}
   L2: {fileID: 131281106}
   playerRemainTrashCount: {fileID: 51730695}
-  cardMoveSpeed: 100
-  cardTurnSpeed: 1
+  cardMoveSpeed: 800
+  cardTurnSpeed: 720
 --- !u!4 &1971361449
 Transform:
   m_ObjectHideFlags: 0
