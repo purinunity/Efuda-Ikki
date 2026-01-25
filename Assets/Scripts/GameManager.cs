@@ -13,16 +13,32 @@ public class GameManager : MonoBehaviour
     [SerializeField] private PlayerController playerController;
     [SerializeField] private CPUController cpuController;
     [SerializeField] private UIManager uiManager;
+    [SerializeField] private TitleUIManager titleUIManager; // タイトル画面管理
     private Controller[] controllers;
     private bool Initialized = false;
     private bool gameOver = false; // ゲーム終了フラグ
+    private bool isGameRunning = false; // ゲーム実行中フラグ
 
     // ゲーム開始時に呼ばれる
     void Start()
     {
+        // ゲーム開始を待つ（タイトル画面から呼び出される）
+        isGameRunning = false;
+    }
+
+    // タイトル画面からゲームを開始するメソッド
+    public void StartGameWithMode(GameModeData modeData)
+    {
+        if (isGameRunning) return; // 既にゲーム実行中の場合はスキップ
+        
+        isGameRunning = true;
         gameOver = false;
         gameState.InitializePlayerStates(); // プレイヤー状態リスト初期化
         controllers = new Controller[] { playerController, cpuController }; // コントローラー配列初期化
+        
+        // ゲームモードデータを保存
+        GameModeManager.SetGameModeData(modeData);
+        
         StartCoroutine(GameFlow()); // ゲーム進行コルーチン開始
     }
 
@@ -186,10 +202,22 @@ public class GameManager : MonoBehaviour
         // UI更新を待つ（必要ならUIManagerで表示を行う）
         yield return UIUpdateWithWaiting(5f);
 
-        // エディタの場合は再生停止
-        #if UNITY_EDITOR
-        EditorApplication.isPlaying = false;
-        #endif
+        // ゲーム実行フラグをリセット
+        isGameRunning = false;
+        
+        // タイトル画面に戻す
+        if (titleUIManager != null)
+        {
+            titleUIManager.ShowTitleScreen();
+            GameModeManager.ResetGameModeData();
+        }
+        else
+        {
+            // titleUIManagerがない場合はエディタの場合は再生停止
+            #if UNITY_EDITOR
+            EditorApplication.isPlaying = false;
+            #endif
+        }
         yield break;
     }
 
