@@ -10,10 +10,12 @@ public class GameManager : MonoBehaviour
 {
     public GameState gameState = new GameState();
     [SerializeField] private Cards allCards; // 全カード管理
+    [SerializeField] private Cards specialCards; // 特殊札管理
     [SerializeField] private PlayerController playerController;
     [SerializeField] private CPUController cpuController;
     [SerializeField] private UIManager uiManager;
     [SerializeField] private TitleUIManager titleUIManager; // タイトル画面管理
+    [SerializeField] private CharacterManager characterManager;
     private Controller[] controllers;
     private bool Initialized = false;
     private bool gameOver = false; // ゲーム終了フラグ
@@ -36,10 +38,128 @@ public class GameManager : MonoBehaviour
         gameState.InitializePlayerStates(); // プレイヤー状態リスト初期化
         controllers = new Controller[] { playerController, cpuController }; // コントローラー配列初期化
         
-        // ゲームモードデータを保存
-        GameModeManager.SetGameModeData(modeData);
+        // メニューで選択した情報をゲーム側に適用
+        ApplyGameModeSettings(modeData);
         
         StartCoroutine(GameFlow()); // ゲーム進行コルーチン開始
+    }
+
+    // メニュー選択情報をゲーム設定に適用するメソッド
+    private void ApplyGameModeSettings(GameModeData modeData)
+    {
+        // ゲームモードに応じた難易度・ルール設定
+        if (modeData.Mode == GameModeData.GameMode.KatinukiMode)
+        {
+            // 勝ち抜きモード：選択されたステージに応じて難易度を設定
+            ApplyStageSettings(modeData.SelectedStage);
+            Debug.Log($"勝ち抜きモード - ステージ {modeData.SelectedStage + 1} 難易度を適用");
+        }
+        else if (modeData.Mode == GameModeData.GameMode.BattleGroundMode)
+        {
+            // バトルグラウンドモード：標準ルール
+            Debug.Log("バトルグラウンドモード - 標準ルール");
+        }
+        
+        // 選択された特殊札をゲーム内に適用
+        ApplySpecialCards();
+    }
+
+    // ステージに応じた難易度設定を適用するメソッド
+    private void ApplyStageSettings(int stageNumber)
+    {
+        characterManager.SetCPUImage(stageNumber); // ステージに応じたキャラクター設定
+        // ステージ（0-8）に応じた難易度設定
+        // 例：CPU の戦略強度、ハンディキャップなど
+        switch (stageNumber)
+        {
+            case 0: // ステージ1：初級
+                gameState.maxHandTrashTurn = 2;
+                gameState.maxHandTrashCount = 2;
+                Debug.Log("ステージ1 (初級): 通常ルール");
+                break;
+            case 1: // ステージ2：初級
+                gameState.maxHandTrashTurn = 2;
+                gameState.maxHandTrashCount = 2;
+                Debug.Log("ステージ2 (初級): 通常ルール");
+                break;
+            case 2: // ステージ3：中級
+                gameState.maxHandTrashTurn = 2;
+                gameState.maxHandTrashCount = 1; // 交換枚数制限
+                Debug.Log("ステージ3 (中級): 交換枚数制限");
+                break;
+            case 3: // ステージ4：中級
+                gameState.maxHandTrashTurn = 1; // 交換回数制限
+                gameState.maxHandTrashCount = 2;
+                Debug.Log("ステージ4 (中級): 交換回数制限");
+                break;
+            case 4: // ステージ5：中級
+                gameState.maxHandTrashTurn = 1;
+                gameState.maxHandTrashCount = 1;
+                Debug.Log("ステージ5 (中級): 交換回数・枚数制限");
+                break;
+            case 5: // ステージ6：上級
+                gameState.maxHandTrashTurn = 2;
+                gameState.maxHandTrashCount = 2;
+                Debug.Log("ステージ6 (上級)");
+                break;
+            case 6: // ステージ7：上級
+                gameState.maxHandTrashTurn = 1;
+                gameState.maxHandTrashCount = 2;
+                Debug.Log("ステージ7 (上級)");
+                break;
+            case 7: // ステージ8：上級
+                gameState.maxHandTrashTurn = 1;
+                gameState.maxHandTrashCount = 1;
+                Debug.Log("ステージ8 (上級)");
+                break;
+            case 8: // ステージ9：最難関
+                gameState.maxHandTrashTurn = 1;
+                gameState.maxHandTrashCount = 1;
+                Debug.Log("ステージ9 (最難関)");
+                break;
+            default:
+                Debug.LogWarning($"未知のステージ: {stageNumber}");
+                break;
+        }
+    }
+
+    // 選択された特殊札をゲーム内に適用するメソッド
+    private void ApplySpecialCards()
+    {
+        // GameModeData から CardData リストを取得
+        GameModeData modeData = GameModeManager.GetGameModeData();
+        
+        if (modeData.SelectedSpecialCardDatas == null || modeData.SelectedSpecialCardDatas.Count == 0)
+        {
+            Debug.Log("特殊札が選択されていません");
+            return;
+        }
+        
+        // CardData から specialCards のカードインスタンスを取得して PlayerState に保存
+        List<Card> selectedSpecialCards = new List<Card>();
+        
+        foreach (var cardData in modeData.SelectedSpecialCardDatas)
+        {
+            if (cardData != null)
+            {
+                Card card = specialCards.cardList.Find(c => 
+                    c.CardData.number == cardData.number && 
+                    c.CardData.suit == cardData.suit
+                );
+                
+                if (card != null)
+                {
+                    selectedSpecialCards.Add(card);
+                    Debug.Log($"特殊札追加: {cardData.number} of {cardData.suit}");
+                }
+            }
+        }
+
+        // PlayerState に特殊札を保存
+        if (gameState.PlayerStates != null && gameState.PlayerStates.Count > 0)
+        {
+            gameState.PlayerStates[0].SpecialCards = selectedSpecialCards;
+        }
     }
 
     // ゲーム進行のメインコルーチン

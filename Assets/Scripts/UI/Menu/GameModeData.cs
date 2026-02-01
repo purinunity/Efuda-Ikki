@@ -5,20 +5,22 @@ public class GameModeData
 {
     public enum GameMode
     {
-        KinouAriMode,      // 勝ち抜きモード
+        KatinukiMode,      // 勝ち抜きモード
         BattleGroundMode   // バトルグラウンドモード
     }
 
     public GameMode Mode { get; set; }
-    public int SelectedStage { get; set; } // 0-8（ステージ1-9）
-    public List<Card> SelectedSpecialCards { get; set; }
+    public int SelectedStage { get; set; } // 選択されたステージ番号
+    public List<Card> SelectedSpecialCards { get; set; } // メニュー画面用の参照（表示用）
+    public List<CardData> SelectedSpecialCardDatas { get; set; } // ゲーム側で使う CardData 情報
 
     // デフォルトコンストラクタ
     public GameModeData()
     {
-        Mode = GameMode.KinouAriMode;
+        Mode = GameMode.KatinukiMode;
         SelectedStage = 0;
         SelectedSpecialCards = new List<Card>();
+        SelectedSpecialCardDatas = new List<CardData>();
     }
 
     // ゲームモード指定コンストラクタ
@@ -27,5 +29,6 @@ public class GameModeData
         Mode = gameMode;
         SelectedStage = 0;
         SelectedSpecialCards = new List<Card>();
+        SelectedSpecialCardDatas = new List<CardData>();
     }
 }

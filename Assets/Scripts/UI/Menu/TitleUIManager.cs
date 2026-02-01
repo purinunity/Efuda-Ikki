@@ -15,7 +15,6 @@ public class TitleUIManager : MonoBehaviour
 
     // その他の参照
     [SerializeField] private GameManager gameManager;
-    [SerializeField] private Cards allCards; // すべてのカード管理
 
     private GameModeData currentGameModeData;
     private int selectedStage = -1;
@@ -92,10 +91,33 @@ public class TitleUIManager : MonoBehaviour
         ShowMainMenu();
     }
 
-    // 特殊札選択からステージ選択に戻る
+    // 特殊札選択から前の画面に戻る
     public void BackFromSpecialCardSelect()
     {
-        ShowStageSelect();
+        // 特殊札選択パネルから戻る際、選択済みの特殊札を初期化する
+        var modeData = GameModeManager.GetGameModeData();
+        if (modeData != null)
+        {
+            modeData.SelectedSpecialCards?.Clear();
+            modeData.SelectedSpecialCardDatas?.Clear();
+        }
+        if (currentGameModeData != null)
+        {
+            currentGameModeData.SelectedSpecialCards?.Clear();
+            currentGameModeData.SelectedSpecialCardDatas?.Clear();
+        }
+
+        // 現在のモードに応じて戻り先を判定
+        if (currentGameModeData != null && currentGameModeData.Mode == GameModeData.GameMode.KatinukiMode)
+        {
+            // 勝ち抜きモード：ステージ選択に戻る
+            ShowStageSelect();
+        }
+        else
+        {
+            // バトルグラウンドモード：メインメニューに戻る
+            ShowMainMenu();
+        }
     }
 
     // 特殊札を選択
@@ -131,15 +153,18 @@ public class TitleUIManager : MonoBehaviour
         // GameManagerにモード情報を渡してゲーム開始
         if (gameManager != null)
         {
+            // 最新のデータを共有してから開始
+            GameModeManager.SetGameModeData(currentGameModeData);
             gameManager.StartGameWithMode(currentGameModeData);
             HideAllPanels();
         }
     }
 
     // 勝ち抜きモードを選択
-    public void SelectKinouAriMode()
+    public void SelectKatinukiMode()
     {
-        currentGameModeData = new GameModeData(GameModeData.GameMode.KinouAriMode);
+        currentGameModeData = new GameModeData(GameModeData.GameMode.KatinukiMode);
+        GameModeManager.SetGameModeData(currentGameModeData);
         ShowStageSelect();
     }
 
@@ -147,15 +172,17 @@ public class TitleUIManager : MonoBehaviour
     public void SelectBattleGroundMode()
     {
         currentGameModeData = new GameModeData(GameModeData.GameMode.BattleGroundMode);
+        GameModeManager.SetGameModeData(currentGameModeData);
         ShowSpecialCardSelect();
     }
 
     // ステージを選択
     public void SelectStage(int stageNumber)
     {
-        if (currentGameModeData.Mode == GameModeData.GameMode.KinouAriMode)
+        if (currentGameModeData.Mode == GameModeData.GameMode.KatinukiMode)
         {
             currentGameModeData.SelectedStage = stageNumber;
+            GameModeManager.SetGameModeData(currentGameModeData);
             ShowSpecialCardSelect();
         }
     }

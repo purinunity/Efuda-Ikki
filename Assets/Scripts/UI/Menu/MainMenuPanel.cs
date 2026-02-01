@@ -12,7 +12,7 @@ public class MainMenuPanel : MonoBehaviour
     {
         if (kinouAriButton != null)
         {
-            kinouAriButton.onClick.AddListener(() => titleUIManager.SelectKinouAriMode());
+            kinouAriButton.onClick.AddListener(() => titleUIManager.SelectKatinukiMode());
         }
         if (battleGroundButton != null)
         {

@@ -11,8 +11,11 @@ public class UIManager : MonoBehaviour
     [SerializeField] public CardArea common; // 共通札表示エリア
     [SerializeField] public CardArea player1; // プレイヤー1の手札表示エリア
     [SerializeField] public CardArea player2; // プレイヤー2の手札表示エリア
+    [SerializeField] public CardArea player1Special; // プレイヤー1の手特殊札表示エリア
+    [SerializeField] public CardArea player2Special; // プレイヤー2の手特殊札表示エリア
     [SerializeField] public CardArea trash; // 捨て札表示エリア
     [SerializeField] public Cards allCards; // 全カード管理
+    [SerializeField] public Cards sps; // ゲーム管理
     // [SerializeField] private GameManager gameManager; // ゲーム管理
     [SerializeField] private TextMeshProUGUI r; // テキスト表示パネル
     [SerializeField] private PlayerRole H; // テキスト表示パネル 
@@ -46,6 +49,12 @@ public class UIManager : MonoBehaviour
         // 役の表示をルーレット演出付きで更新
         H.SetRole(now.Name, duration);
         playerRemainTrashCount.UpdateRemainTrashCount(state.maxHandTrashTurn - state.PlayerStates[0].HandTrashTurnsUsed); // 残り手札交換回数表示更新
+
+        // 特殊札をUIに表示
+        if (state.PlayerStates[0].SpecialCards != null && state.PlayerStates[0].SpecialCards.Count > 0)
+        {
+            player1Special.SetCardsBySpeed(state.PlayerStates[0].SpecialCards, cardMoveSpeed, cardTurnSpeed);
+        }
 
         // deck.SetCards(state.deckCards,duration); // デッキ表示
         // common.SetCards(state.commonCards,duration); // 共通札表示
