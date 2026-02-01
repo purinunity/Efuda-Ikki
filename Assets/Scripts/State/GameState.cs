@@ -26,7 +26,7 @@ public class GameState
     public List<Card> commonCards { get; private set; } = new List<Card>(); // 共通カード
     public List<Card> trashCards { get; private set; } = new List<Card>(); // 捨て札
     public int maxHandTrashTurn { get; set; } = 2; // 手札交換の最大ターン数（ステージで変更可能）
-    public int maxHandTrashCount { get; set; } = 2; // 手札交換の最大枚数（ステージで変更可能）
+    public int maxHandTrashCount { get; set; } = 5; // 手札交換の最大枚数（ステージで変更可能）
     public int playerCount { get; private set; } = 2; // プレイヤー数
     public int commonCount { get; private set; } = 2; // 共通カード数
     public int playerHandCount { get; private set; } = 5; // プレイヤーの手札枚数

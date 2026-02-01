@@ -40,7 +40,7 @@ public class CardArea : MonoBehaviour
     }
 
     // 複数のカードをセット
-    public void SetCards(List<Card> cards, float totalDuration = 1.0f)
+    public virtual void SetCards(List<Card> cards, float totalDuration = 1.0f)
     {
         cardsInArea.Clear();
         foreach (var card in cards)
@@ -54,7 +54,7 @@ public class CardArea : MonoBehaviour
     }
 
     // 複数のカードをセット
-    public void SetCardsBySpeed(List<Card> cards, float moveSpeed, float turnSpeed )
+    public virtual void SetCardsBySpeed(List<Card> cards, float moveSpeed, float turnSpeed )
     {
         cardsInArea.Clear();
         foreach (var card in cards)

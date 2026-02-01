@@ -99,12 +99,10 @@ public class TitleUIManager : MonoBehaviour
         if (modeData != null)
         {
             modeData.SelectedSpecialCards?.Clear();
-            modeData.SelectedSpecialCardDatas?.Clear();
         }
         if (currentGameModeData != null)
         {
             currentGameModeData.SelectedSpecialCards?.Clear();
-            currentGameModeData.SelectedSpecialCardDatas?.Clear();
         }
 
         // 現在のモードに応じて戻り先を判定

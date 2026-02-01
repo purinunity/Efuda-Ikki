@@ -12,7 +12,6 @@ public class GameModeData
     public GameMode Mode { get; set; }
     public int SelectedStage { get; set; } // 選択されたステージ番号
     public List<Card> SelectedSpecialCards { get; set; } // メニュー画面用の参照（表示用）
-    public List<CardData> SelectedSpecialCardDatas { get; set; } // ゲーム側で使う CardData 情報
 
     // デフォルトコンストラクタ
     public GameModeData()
@@ -20,7 +19,6 @@ public class GameModeData
         Mode = GameMode.KatinukiMode;
         SelectedStage = 0;
         SelectedSpecialCards = new List<Card>();
-        SelectedSpecialCardDatas = new List<CardData>();
     }
 
     // ゲームモード指定コンストラクタ
@@ -29,6 +27,5 @@ public class GameModeData
         Mode = gameMode;
         SelectedStage = 0;
         SelectedSpecialCards = new List<Card>();
-        SelectedSpecialCardDatas = new List<CardData>();
     }
 }
