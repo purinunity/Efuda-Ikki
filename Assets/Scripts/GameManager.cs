@@ -14,6 +14,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private UIManager uiManager;
     [SerializeField] private TitleUIManager titleUIManager; // タイトル画面管理
     [SerializeField] private CharacterManager characterManager;
+    [SerializeField] private Cards specialCardsDeck;
     private Controller[] controllers;
     private bool Initialized = false;
     private bool gameOver = false; // ゲーム終了フラグ
@@ -121,7 +122,7 @@ public class GameManager : MonoBehaviour
         // GameModeData から CardData リストを取得
         GameModeData modeData = GameModeManager.GetGameModeData();
         
-        if (modeData.SelectedSpecialCards == null || modeData.SelectedSpecialCards.Count == 0)
+        if (modeData.SelectedSpecialCardDatas == null || modeData.SelectedSpecialCardDatas.Count == 0)
         {
             Debug.Log("特殊札が選択されていません");
             return;
@@ -129,7 +130,12 @@ public class GameManager : MonoBehaviour
         // PlayerState に特殊札を保存
         if (gameState.PlayerStates != null && gameState.PlayerStates.Count > 0)
         {
-            gameState.PlayerStates[0].SpecialCards = modeData.SelectedSpecialCards;
+            if (specialCardsDeck == null)
+            {
+                Debug.LogWarning("specialCardsDeck is not assigned.");
+                return;
+            }
+            gameState.PlayerStates[0].SpecialCards = specialCardsDeck.GetCards(modeData.SelectedSpecialCardDatas);
         }
     }
 
