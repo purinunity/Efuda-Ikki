@@ -161,11 +161,25 @@ public class GameState
     // 手札から削除して捨て札リストへ追加し、手札交換ターンの使用回数をインクリメントする。
     public void TrashCards(List<Card> cards)
     {
+        if (cards == null)
+        {
+            PlayerStates[CurrentPlayerIndex].IncrementHandTrashTurnsUsed();
+            return;
+        }
+
+        int discardLimit = Mathf.Max(0, maxHandTrashCount);
+        int discarded = 0;
+
         foreach (var card in cards)
         {
-            card.IsFaceUp = true; // 捨てるカードを表向きに設定
+            if (discarded >= discardLimit) break;
+            if (card == null) continue;
+            if (!PlayerStates[CurrentPlayerIndex].HandCards.Contains(card)) continue;
+
+            card.IsFaceUp = true;
             PlayerStates[CurrentPlayerIndex].RemoveCardFromHand(card);
             AddCardToTrash(card);
+            discarded++;
         }
         PlayerStates[CurrentPlayerIndex].IncrementHandTrashTurnsUsed();
     }

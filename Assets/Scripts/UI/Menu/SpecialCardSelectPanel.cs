@@ -2,10 +2,12 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
+using UnityEngine.Serialization;
 
 public class SpecialCardSelectPanel : MonoBehaviour
 {
-    [SerializeField] private Cards allCards;
+    [FormerlySerializedAs("allCards")]
+    [SerializeField] private Cards specialCardsDeck;
     [SerializeField] private CardArea cardArea; // ゲーム画面と同じCardAreaを使用
     [SerializeField] private TextMeshProUGUI selectedCountText;
     [SerializeField] private Button startGameButton;
@@ -13,7 +15,6 @@ public class SpecialCardSelectPanel : MonoBehaviour
     public TitleUIManager titleUIManager;
 
     private GameModeData currentGameModeData;
-    private List<Card> specialCardInstances = new List<Card>(); // インスタンス化したカードオブジェクト
 
     private void Start()
     {
@@ -33,20 +34,21 @@ public class SpecialCardSelectPanel : MonoBehaviour
 
     private void CreateSpecialCardUI()
     {
-        if (allCards == null || cardArea == null) return;
+        if (specialCardsDeck == null || cardArea == null) return;
 
         // CardAreaに表示するカードを作成
         List<Card> cardsToDisplay = new List<Card>();
 
-        // 最初の12枚のカードをUIに表示
-        for (int i = 0; i < Mathf.Min(12, allCards.cardList.Count); i++)
+        // 特殊札用デッキのカードを UI に表示
+        for (int i = 0; i < specialCardsDeck.cardList.Count; i++)
         {
             // CardDataを使用してCardオブジェクトを作成
-            Card card = allCards.cardList[i];
+            Card card = specialCardsDeck.cardList[i];
             if (card != null)
             {
                 // 選択UIでは表向きで表示したいので先に表裏・スケールを揃える
                 card.ForceSetFaceUp(true);
+                card.IsSelected = false;
                 // カード選択時のコールバックを設定
                 SetupCardSelection(card);
                 cardsToDisplay.Add(card);

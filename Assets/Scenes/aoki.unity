@@ -9460,8 +9460,8 @@ MonoBehaviour:
   common: {fileID: 522653978}
   player1: {fileID: 360515924}
   player2: {fileID: 622159671}
-  player1Special: {fileID: 0}
-  player2Special: {fileID: 0}
+  player1Special: {fileID: 700180536}
+  player2Special: {fileID: 2075309998}
   trash: {fileID: 1621764167}
   allCards: {fileID: 1878357833}
   sps: {fileID: 0}

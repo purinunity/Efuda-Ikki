@@ -2,7 +2,6 @@
 // ゲームの初期化、進行、プレイヤー・CPUの制御を担当
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
 using static HandEvaluator;
 
@@ -307,7 +306,7 @@ public class GameManager : MonoBehaviour
         {
             // titleUIManagerがない場合はエディタの場合は再生停止
             #if UNITY_EDITOR
-            EditorApplication.isPlaying = false;
+            UnityEditor.EditorApplication.isPlaying = false;
             #endif
         }
         yield break;
