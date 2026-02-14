@@ -274,9 +274,9 @@ public class CardArea : MonoBehaviour
                 if (card.MoveComplete)
                 {
                     card.WaitAndMoveBySpeed(0, moveSpeed, turnSpeed);
-                }
-                return;
+                }   
             }
+            return;
         }
 
         // 両方無効: 全て重ねて表示（中央）
