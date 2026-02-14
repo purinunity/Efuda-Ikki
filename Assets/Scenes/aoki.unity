@@ -3072,6 +3072,7 @@ MonoBehaviour:
   areaRect: {fileID: 242815393}
   isHorizontal: 0
   isVertical: 0
+  reverseOverlapOrder: 0
   popupRoot: {fileID: 292150679}
   popupCardArea: {fileID: 1500699379}
   closeButton: {fileID: 1114892322}
@@ -3234,6 +3235,7 @@ MonoBehaviour:
   areaRect: {fileID: 700180533}
   isHorizontal: 1
   isVertical: 0
+  reverseOverlapOrder: 0
 --- !u!1 &737560831
 GameObject:
   m_ObjectHideFlags: 0
@@ -4736,6 +4738,7 @@ MonoBehaviour:
   areaRect: {fileID: 223783559}
   isHorizontal: 1
   isVertical: 0
+  reverseOverlapOrder: 0
   selectionCountText: {fileID: 1030828981}
   maxSelectableCount: 1
   selectMoveDuration: 0.3
@@ -4833,6 +4836,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8514147798807419392, guid: 6379f799ab651a542940a2415dcac5c0, type: 3}
       propertyPath: isVertical
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8514147798807419392, guid: 6379f799ab651a542940a2415dcac5c0, type: 3}
+      propertyPath: reverseOverlapOrder
       value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
@@ -8773,6 +8780,7 @@ MonoBehaviour:
   areaRect: {fileID: 1804862498}
   isHorizontal: 1
   isVertical: 0
+  reverseOverlapOrder: 0
   selectionCountText: {fileID: 485041531}
   maxSelectableCount: 1
   selectMoveDuration: 0.3
@@ -10332,6 +10340,7 @@ MonoBehaviour:
   areaRect: {fileID: 2075309995}
   isHorizontal: 1
   isVertical: 0
+  reverseOverlapOrder: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
