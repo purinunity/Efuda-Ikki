@@ -14,7 +14,8 @@ public class GameManager : MonoBehaviour
     [SerializeField] private UIManager uiManager;
     [SerializeField] private TitleUIManager titleUIManager; // タイトル画面管理
     [SerializeField] private CharacterManager characterManager;
-    [SerializeField] private Cards specialCardsDeck;
+    [SerializeField] private Cards specialCardsDeck1;
+    [SerializeField] private Cards specialCardsDeck2;
     private Controller[] controllers;
     private bool Initialized = false;
     private bool gameOver = false; // ゲーム終了フラグ
@@ -130,12 +131,12 @@ public class GameManager : MonoBehaviour
         // PlayerState に特殊札を保存
         if (gameState.PlayerStates != null && gameState.PlayerStates.Count > 0)
         {
-            if (specialCardsDeck == null)
+            if (specialCardsDeck1 == null)
             {
                 Debug.LogWarning("specialCardsDeck is not assigned.");
                 return;
             }
-            gameState.PlayerStates[0].SpecialCards = specialCardsDeck.GetCards(modeData.SelectedSpecialCardDatas);
+            gameState.PlayerStates[0].SpecialCards = specialCardsDeck1.GetCards(modeData.SelectedSpecialCardDatas);
         }
     }
 
