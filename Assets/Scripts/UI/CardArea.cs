@@ -42,29 +42,51 @@ public class CardArea : MonoBehaviour
     // 複数のカードをセット
     public virtual void SetCards(List<Card> cards, float totalDuration = 1.0f)
     {
-        cardsInArea.Clear();
-        foreach (var card in cards)
-        {
-            if (card != null && !cardsInArea.Contains(card))
-            {
-                cardsInArea.Add(card);
-            }
-        }
+        RebuildCardsInArea(cards);
         CardsPositionUpdate(totalDuration);
     }
 
     // 複数のカードをセット
     public virtual void SetCardsBySpeed(List<Card> cards, float moveSpeed, float turnSpeed )
     {
-        cardsInArea.Clear();
-        foreach (var card in cards)
+        RebuildCardsInArea(cards);
+        CardsPositionUpdateBySpeed(moveSpeed, turnSpeed);
+    }
+
+    protected void RebuildCardsInArea(List<Card> cards)
+    {
+        var previousCards = new HashSet<Card>(cardsInArea);
+        var nextCards = new List<Card>();
+
+        if (cards != null)
         {
-            if (card != null && !cardsInArea.Contains(card))
+            foreach (var card in cards)
             {
-                cardsInArea.Add(card);
+                if (card != null && !nextCards.Contains(card))
+                {
+                    nextCards.Add(card);
+                }
             }
         }
-        CardsPositionUpdateBySpeed(moveSpeed, turnSpeed);
+
+        cardsInArea.Clear();
+        cardsInArea.AddRange(nextCards);
+
+        foreach (var oldCard in previousCards)
+        {
+            if (oldCard != null && !cardsInArea.Contains(oldCard))
+            {
+                oldCard.IsSelected = false;
+            }
+        }
+
+        foreach (var newCard in cardsInArea)
+        {
+            if (newCard != null && !previousCards.Contains(newCard))
+            {
+                newCard.IsSelected = false;
+            }
+        }
     }
 
     // カードの位置を更新（横並び・縦並び対応）
@@ -316,11 +338,11 @@ public class CardArea : MonoBehaviour
         {
             // ノーマル: 余白を均等に割り当てる
             float space = (areaSize - total) / (n + 1);
-            float cursor = -areaSize / 2f + space;
+            float cursor = vertical ? areaSize / 2f - space : -areaSize / 2f + space;
             for (int i = 0; i < n; i++)
             {
                 float half = sizes[i] / 2f;
-                float center = cursor + half;
+                float center = vertical ? cursor - half : cursor + half;
                 float min = -areaSize / 2f + half;
                 float max = areaSize / 2f - half;
                 if (min > max) center = 0f;
@@ -414,7 +436,6 @@ public class CardArea : MonoBehaviour
             if (card.IsSelected)
             {
                 selectedCards.Add(card);
-                card.IsSelected = false; // 取得後に選択状態をリセット
             }
         }
         return selectedCards;

@@ -10,7 +10,7 @@ public class UIManager : MonoBehaviour
 {
     [SerializeField] public CardArea deck;
     [SerializeField] public CardArea common;
-    [SerializeField] public CardArea player1;
+    [SerializeField] public LimitedSelectableCardArea player1;
     [SerializeField] public CardArea player2;
     [SerializeField] public CardArea player1Special;
     [SerializeField] public CardArea player2Special;
@@ -82,6 +82,10 @@ public class UIManager : MonoBehaviour
         foreach (var card in player1.cardsInArea)
         {
             card.IsSelectable = true;
+        }
+        if (player1 != null)
+        {
+            player1.SetMaxSelectableCount(state.maxHandTrashCount);
         }
 
         StartCoroutine(CheckUIUpdateComplete());

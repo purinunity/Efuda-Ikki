@@ -8,8 +8,9 @@ public class SpecialCardSelectPanel : MonoBehaviour
 {
     [FormerlySerializedAs("allCards")]
     [SerializeField] private Cards specialCardsDeck;
-    [SerializeField] private CardArea cardArea;
     [SerializeField] private TextMeshProUGUI selectedCountText;
+    [SerializeField] private LimitedSelectableCardArea selectionCardArea;
+    [SerializeField] private int maxSelectableSpecialCards = 4;
     [SerializeField] private Button startGameButton;
     [SerializeField] private Button backButton;
     public TitleUIManager titleUIManager;
@@ -29,13 +30,15 @@ public class SpecialCardSelectPanel : MonoBehaviour
         }
 
         CreateSpecialCardUI();
-        UpdateSelectedCountDisplay();
+        ConfigureSelectionLimiter();
+        SyncSelectedCardsToModeData();
     }
 
     private void CreateSpecialCardUI()
     {
-        if (specialCardsDeck == null || cardArea == null) return;
+        if (specialCardsDeck == null || selectionCardArea == null) return;
 
+        currentGameModeData = GameModeManager.GetGameModeData();
         List<Card> cardsToDisplay = new List<Card>();
         for (int i = 0; i < specialCardsDeck.cardList.Count; i++)
         {
@@ -43,18 +46,20 @@ public class SpecialCardSelectPanel : MonoBehaviour
             if (card == null) continue;
 
             card.ForceSetFaceUp(true);
-            card.IsSelected = false;
+            bool isPreSelected = currentGameModeData != null &&
+                                 currentGameModeData.SelectedSpecialCardDatas != null &&
+                                 currentGameModeData.SelectedSpecialCardDatas.Contains(card.CardData);
+            card.IsSelected = isPreSelected;
             SetupCardSelection(card);
             cardsToDisplay.Add(card);
         }
 
-        cardArea.SetCards(cardsToDisplay, 0.5f);
+        selectionCardArea.SetCards(cardsToDisplay, 0.5f);
         foreach (var card in cardsToDisplay)
         {
             card.IsSelectable = true;
         }
 
-        UpdateCardSelectability();
     }
 
     private void SetupCardSelection(Card card)
@@ -62,54 +67,40 @@ public class SpecialCardSelectPanel : MonoBehaviour
         Button cardButton = card.GetComponent<Button>();
         if (cardButton == null) return;
 
-        cardButton.onClick.RemoveAllListeners();
-        cardButton.onClick.AddListener(() => OnCardSelected(card));
+        cardButton.onClick.AddListener(SyncSelectedCardsToModeData);
     }
 
-    private void OnCardSelected(Card card)
+    private void ConfigureSelectionLimiter()
     {
-        if (!card.IsSelectable) return;
+        if (selectionCardArea == null)
+        {
+            return;
+        }
+        selectionCardArea.SetSelectionCountText(selectedCountText);
+        selectionCardArea.SetMaxSelectableCount(maxSelectableSpecialCards);
+        selectionCardArea.RefreshSelectionState();
+    }
 
+    private void SyncSelectedCardsToModeData()
+    {
         currentGameModeData = GameModeManager.GetGameModeData();
-
-        if (card.IsSelected)
-        {
-            card.IsSelected = false;
-            titleUIManager.RemoveSpecialCard(card.CardData);
-        }
-        else if (currentGameModeData.SelectedSpecialCardDatas.Count < 4)
-        {
-            card.IsSelected = true;
-            titleUIManager.SetSpecialCard(card.CardData);
-        }
-        else
+        if (currentGameModeData == null)
         {
             return;
         }
 
-        card.MoveAndTurnCard(0.3f);
-        UpdateSelectedCountDisplay();
-        UpdateCardSelectability();
-    }
+        currentGameModeData.ClearSpecialCards();
 
-    private void UpdateCardSelectability()
-    {
-        currentGameModeData = GameModeManager.GetGameModeData();
-        int selectedCount = currentGameModeData.SelectedSpecialCardDatas.Count;
-
-        foreach (var card in cardArea.cardsInArea)
+        if (selectionCardArea == null || selectionCardArea.cardsInArea == null)
         {
-            if (card == null) continue;
-            card.IsSelectable = card.IsSelected || selectedCount < 4;
+            return;
         }
-    }
 
-    private void UpdateSelectedCountDisplay()
-    {
-        if (selectedCountText == null) return;
-
-        currentGameModeData = GameModeManager.GetGameModeData();
-        int count = currentGameModeData.SelectedSpecialCardDatas.Count;
-        selectedCountText.text = $"{count}/4";
+        foreach (var card in selectionCardArea.cardsInArea)
+        {
+            if (card == null || card.CardData == null) continue;
+            if (!card.IsSelected) continue;
+            currentGameModeData.AddSpecialCard(card.CardData, maxSelectableSpecialCards);
+        }
     }
 }

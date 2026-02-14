@@ -15,11 +15,10 @@ public class SpecialCardArea : CardArea
 
     public override void SetCards(List<Card> cards, float totalDuration = 1.0f)
     {
-        cardsInArea.Clear();
-        foreach (var card in cards)
+        RebuildCardsInArea(cards);
+        foreach (var card in cardsInArea)
         {
-            if (card == null || cardsInArea.Contains(card)) continue;
-            cardsInArea.Add(card);
+            if (card == null) continue;
             SetupCardClickHandler(card);
         }
         CardsStackedPositionUpdate(totalDuration);
@@ -27,11 +26,10 @@ public class SpecialCardArea : CardArea
 
     public override void SetCardsBySpeed(List<Card> cards, float moveSpeed, float turnSpeed)
     {
-        cardsInArea.Clear();
-        foreach (var card in cards)
+        RebuildCardsInArea(cards);
+        foreach (var card in cardsInArea)
         {
-            if (card == null || cardsInArea.Contains(card)) continue;
-            cardsInArea.Add(card);
+            if (card == null) continue;
             SetupCardClickHandler(card);
         }
         CardsStackedPositionUpdateBySpeed(moveSpeed, turnSpeed);

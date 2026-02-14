@@ -68,32 +68,32 @@ public class GameManager : MonoBehaviour
         {
             case 0: // ステージ1：初級
                 gameState.maxHandTrashTurn = 2;
-                gameState.maxHandTrashCount = 2;
+                gameState.maxHandTrashCount = 5;
                 Debug.Log("ステージ1 (初級): 通常ルール");
                 break;
             case 1: // ステージ2：初級
                 gameState.maxHandTrashTurn = 2;
-                gameState.maxHandTrashCount = 2;
+                gameState.maxHandTrashCount = 4;
                 Debug.Log("ステージ2 (初級): 通常ルール");
                 break;
             case 2: // ステージ3：中級
                 gameState.maxHandTrashTurn = 2;
-                gameState.maxHandTrashCount = 1; // 交換枚数制限
+                gameState.maxHandTrashCount = 3; // 交換枚数制限
                 Debug.Log("ステージ3 (中級): 交換枚数制限");
                 break;
             case 3: // ステージ4：中級
                 gameState.maxHandTrashTurn = 1; // 交換回数制限
-                gameState.maxHandTrashCount = 2;
+                gameState.maxHandTrashCount = 5;
                 Debug.Log("ステージ4 (中級): 交換回数制限");
                 break;
             case 4: // ステージ5：中級
                 gameState.maxHandTrashTurn = 1;
-                gameState.maxHandTrashCount = 1;
+                gameState.maxHandTrashCount = 4;
                 Debug.Log("ステージ5 (中級): 交換回数・枚数制限");
                 break;
             case 5: // ステージ6：上級
-                gameState.maxHandTrashTurn = 2;
-                gameState.maxHandTrashCount = 2;
+                gameState.maxHandTrashTurn = 1;
+                gameState.maxHandTrashCount = 3;
                 Debug.Log("ステージ6 (上級)");
                 break;
             case 6: // ステージ7：上級

@@ -51,7 +51,14 @@ public class Card : MonoBehaviour // カードの表示・状態管理
     // クリックイベントで選択フラグをトグル
     private void ToggleSelect()
     {
-        if (!IsSelectable) return; // 選択可能でなければ無視
+        var selectionLimiter = GetComponentInParent<LimitedSelectableCardArea>();
+        if (selectionLimiter != null)
+        {
+            selectionLimiter.TryToggleSelection(this);
+            return;
+        }
+
+        if (!IsSelectable) return;
         IsSelected = !IsSelected;
         MoveAndTurnCard(0.3f);
     }
