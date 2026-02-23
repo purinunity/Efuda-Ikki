@@ -50,3 +50,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   CardsData: {fileID: 11400000, guid: 6541becdf85d597418f6b0eee90a0abe, type: 2}
   cardPrefab: {fileID: 7203121379370450298, guid: 54329b15563792e40a3a8bc60ff6b025, type: 3}
+  selectedYOffset: 22

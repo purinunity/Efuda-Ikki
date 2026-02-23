@@ -1,311 +1,214 @@
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-// カードを配置・表示するエリアを管理するクラス
+// カードを保持し、エリア内レイアウトと選択状態を管理する基本クラス
 public class CardArea : MonoBehaviour
 {
-    public List<Card> cardsInArea = new List<Card>(); // このエリア内のカードリスト
-    public RectTransform areaRect; // カードエリアのRectTransform
+    private const float FallbackCardWidth = 100f;
+    private const float FallbackCardHeight = 150f;
+
+    public List<Card> cardsInArea = new List<Card>();
+    public RectTransform areaRect;
     public bool isHorizontal = true;
     public bool isVertical = false;
 
-    // エリアの初期化（カードリストクリア）
+    // true: 後から配置したカードを背面側にする（重なり順を反転）
+    public bool reverseOverlapOrder = false;
+
     public void Initialize()
     {
-        cardsInArea.Clear(); // このエリア内のカードリストをクリア
+        cardsInArea.Clear();
     }
-    // オブジェクト生成時の初期化
+
     public void Awake()
     {
         Initialize();
     }
 
-
-    // エリア内のカードを全てクリア
-    /// <summary>
-    /// エリア内のカードを全て破棄してリストをクリアします。
-    /// 注意: カードの GameObject を Destroy します。カードオブジェクトを残したい場合は別メソッドを追加してください。
-    /// </summary>
     public void ClearCard()
     {
         for (int i = 0; i < cardsInArea.Count; i++)
         {
-            var c = cardsInArea[i];
-            if (c != null && c.gameObject != null)
+            var card = cardsInArea[i];
+            if (card != null && card.gameObject != null)
             {
-                Destroy(c.gameObject);
+                Destroy(card.gameObject);
             }
         }
+
         cardsInArea.Clear();
     }
 
-    // 複数のカードをセット
-    public void SetCards(List<Card> cards, float totalDuration = 1.0f)
+    public virtual void SetCards(List<Card> cards, float totalDuration = 1.0f)
     {
-        cardsInArea.Clear();
-        foreach (var card in cards)
-        {
-            if (card != null && !cardsInArea.Contains(card))
-            {
-                cardsInArea.Add(card);
-            }
-        }
+        RebuildCardsInArea(cards);
         CardsPositionUpdate(totalDuration);
     }
 
-    // 複数のカードをセット
-    public void SetCardsBySpeed(List<Card> cards, float moveSpeed, float turnSpeed )
+    public virtual void SetCardsBySpeed(List<Card> cards, float moveSpeed, float turnSpeed)
     {
-        cardsInArea.Clear();
-        foreach (var card in cards)
-        {
-            if (card != null && !cardsInArea.Contains(card))
-            {
-                cardsInArea.Add(card);
-            }
-        }
+        RebuildCardsInArea(cards);
         CardsPositionUpdateBySpeed(moveSpeed, turnSpeed);
     }
 
-    // カードの位置を更新（横並び・縦並び対応）
+    protected void RebuildCardsInArea(List<Card> cards)
+    {
+        var previousCards = new HashSet<Card>(cardsInArea);
+        var nextCards = new List<Card>();
+        var addedCards = new HashSet<Card>();
+
+        if (cards != null)
+        {
+            foreach (var card in cards)
+            {
+                if (card != null && addedCards.Add(card))
+                {
+                    nextCards.Add(card);
+                }
+            }
+        }
+
+        cardsInArea.Clear();
+        cardsInArea.AddRange(nextCards);
+
+        foreach (var oldCard in previousCards)
+        {
+            if (oldCard != null && !cardsInArea.Contains(oldCard))
+            {
+                oldCard.IsSelected = false;
+            }
+        }
+
+        foreach (var newCard in cardsInArea)
+        {
+            if (newCard != null && !previousCards.Contains(newCard))
+            {
+                newCard.IsSelected = false;
+            }
+        }
+    }
+
     private void CardsPositionUpdate(float totalDuration = 1.0f)
     {
-        if (areaRect == null || cardsInArea == null || cardsInArea.Count == 0)
-        {
-            return; // レイアウトするものがないか、areaRect が割り当てられていません
-        }
-        // レイアウトモード判定:
-        // - isVertical && isHorizontal => 斜め
-        // - isVertical && !isHorizontal => 縦
-        // - !isVertical && isHorizontal => 横
-        // - !isVertical && !isHorizontal => 全て重ねる
-        bool both = isVertical && isHorizontal;
-        bool onlyHorizontal = isHorizontal && !isVertical;
-        bool onlyVertical = isVertical && !isHorizontal;
-
-        // 準備: 共通のカード配列とサイズ配列を作る
-        List<Card> validCards = new List<Card>();
-        List<float> widths = new List<float>();
-        List<float> heights = new List<float>();
-        float areaWidth = areaRect.rect.width;
-        float areaHeight = areaRect.rect.height;
-        float totalCardsWidth = 0f;
-        float totalCardsHeight = 0f;
-
-        foreach (var c in cardsInArea)
-        {
-            if (c == null) continue;
-            validCards.Add(c);
-            RectTransform r = c.GetCardRect();
-            float w = (r != null && r.rect.width > 0f) ? r.rect.width * r.localScale.x : 100f; // デフォルト幅
-            float h = (r != null && r.rect.height > 0f) ? r.rect.height * r.localScale.y : 150f; // デフォルト高さ
-            widths.Add(w);
-            heights.Add(h);
-            totalCardsWidth += w;
-            totalCardsHeight += h;
-        }
-
-        int visibleCount = validCards.Count;
-        if (visibleCount == 0) return;
-
-        // ヘルパーで各軸の中心座標を計算
-        List<float> centersX = ComputeCenters(areaWidth, widths);
-        List<float> centersY = ComputeCenters(areaHeight, heights, vertical:true);
-
-        if (both)
-        {
-            // 斜め配置: XとYの中心配列を組み合わせる（インデックス一致で配置）
-            for (int idx = 0; idx < visibleCount; idx++)
+        ApplyLayout(
+            animate: (card, idx, count) =>
             {
-                var card = validCards[idx];
-                float centerX = centersX.Count > idx ? centersX[idx] : 0f;
-                float centerY = centersY.Count > idx ? centersY[idx] : 0f;
-                card.gameObject.transform.SetParent(areaRect);
-                card.gameObject.transform.SetAsLastSibling();
-                card.TargetPosition = new Vector2(centerX, centerY);
-                if (card.MoveComplete)
+                if (!card.MoveComplete)
                 {
-                    card.WaitAndMove(totalDuration / visibleCount * idx, totalDuration / visibleCount);
+                    return;
                 }
-            }
-            return;
-        }
 
-        if (onlyHorizontal)
-        {
-            // 横配置: centersX を使用し Y=0
-            for (int idx = 0; idx < visibleCount; idx++)
-            {
-                var card = validCards[idx];
-                float centerX = centersX.Count > idx ? centersX[idx] : 0f;
-                card.gameObject.transform.SetParent(areaRect);
-                card.gameObject.transform.SetAsLastSibling();
-                card.TargetPosition = new Vector2(centerX, 0f);
-                if (card.MoveComplete)
-                {
-                    card.WaitAndMove(totalDuration / visibleCount * idx, totalDuration / visibleCount);
-                }
-            }
-            return;
-        }
-        if (onlyVertical)
-        {
-            // 縦配置: centersY を使用、X=0
-            for (int idx = 0; idx < visibleCount; idx++)
-            {
-                var card = validCards[idx];
-                float centerY = centersY.Count > idx ? centersY[idx] : 0f;
-                card.gameObject.transform.SetParent(areaRect);
-                card.gameObject.transform.SetAsLastSibling();
-                card.TargetPosition = new Vector2(0f, centerY);
-                if (card.MoveComplete)
-                {
-                    card.WaitAndMove(totalDuration / visibleCount * idx, totalDuration / visibleCount);
-                }
-            }
-            return;
-        }
-
-        // 両方無効: 全て重ねて表示（中央）
-        for (int idx = 0; idx < visibleCount; idx++)
-        {
-            var card = validCards[idx];
-            card.gameObject.transform.SetParent(areaRect);
-            card.gameObject.transform.SetAsLastSibling();
-            card.TargetPosition = Vector2.zero;
-            if (card.MoveComplete)
-            {
-                card.WaitAndMove(totalDuration / visibleCount * idx, totalDuration / visibleCount);
-            }
-        }
-        return;
+                float perCardDuration = totalDuration / count;
+                card.WaitAndMove(perCardDuration * idx, perCardDuration);
+            });
     }
 
-    // カードの位置を更新（横並び・縦並び対応）
-    private void CardsPositionUpdateBySpeed(float moveSpeed,float turnSpeed)
+    private void CardsPositionUpdateBySpeed(float moveSpeed, float turnSpeed)
+    {
+        ApplyLayout(
+            animate: (card, _, __) =>
+            {
+                if (!card.MoveComplete)
+                {
+                    return;
+                }
+
+                card.WaitAndMoveBySpeed(0f, moveSpeed, turnSpeed);
+            });
+    }
+
+    // レイアウト計算と座標反映の共通処理
+    private void ApplyLayout(Action<Card, int, int> animate)
     {
         if (areaRect == null || cardsInArea == null || cardsInArea.Count == 0)
         {
-            return; // レイアウトするものがないか、areaRect が割り当てられていません
+            return;
         }
-        // レイアウトモード判定:
-        // - isVertical && isHorizontal => 斜め
-        // - isVertical && !isHorizontal => 縦
-        // - !isVertical && isHorizontal => 横
-        // - !isVertical && !isHorizontal => 全て重ねる
+
         bool both = isVertical && isHorizontal;
         bool onlyHorizontal = isHorizontal && !isVertical;
         bool onlyVertical = isVertical && !isHorizontal;
 
-        // 準備: 共通のカード配列とサイズ配列を作る
         List<Card> validCards = new List<Card>();
         List<float> widths = new List<float>();
         List<float> heights = new List<float>();
+
         float areaWidth = areaRect.rect.width;
         float areaHeight = areaRect.rect.height;
-        float totalCardsWidth = 0f;
-        float totalCardsHeight = 0f;
 
-        foreach (var c in cardsInArea)
+        foreach (var card in cardsInArea)
         {
-            if (c == null) continue;
-            validCards.Add(c);
-            RectTransform r = c.GetCardRect();
-            float w = (r != null && r.rect.width > 0f) ? r.rect.width * r.localScale.x : 100f; // デフォルト幅
-            float h = (r != null && r.rect.height > 0f) ? r.rect.height * r.localScale.y : 150f; // デフォルト高さ
+            if (card == null)
+            {
+                continue;
+            }
+
+            validCards.Add(card);
+
+            RectTransform rect = card.GetCardRect();
+            float w = (rect != null && rect.rect.width > 0f) ? rect.rect.width * rect.localScale.x : FallbackCardWidth;
+            float h = (rect != null && rect.rect.height > 0f) ? rect.rect.height * rect.localScale.y : FallbackCardHeight;
+
             widths.Add(w);
             heights.Add(h);
-            totalCardsWidth += w;
-            totalCardsHeight += h;
         }
 
         int visibleCount = validCards.Count;
-        if (visibleCount == 0) return;
+        if (visibleCount == 0)
+        {
+            return;
+        }
 
-        // ヘルパーで各軸の中心座標を計算
         List<float> centersX = ComputeCenters(areaWidth, widths);
-        List<float> centersY = ComputeCenters(areaHeight, heights, vertical:true);
+        List<float> centersY = ComputeCenters(areaHeight, heights, vertical: true);
 
-        if (both)
-        {
-            // 斜め配置: XとYの中心配列を組み合わせる（インデックス一致で配置）
-            for (int idx = 0; idx < visibleCount; idx++)
-            {
-                var card = validCards[idx];
-                float centerX = centersX.Count > idx ? centersX[idx] : 0f;
-                float centerY = centersY.Count > idx ? centersY[idx] : 0f;
-                card.gameObject.transform.SetParent(areaRect);
-                card.gameObject.transform.SetAsLastSibling();
-                card.TargetPosition = new Vector2(centerX, centerY);
-                if (card.MoveComplete)
-                {
-                    card.WaitAndMoveBySpeed(0, moveSpeed, turnSpeed);
-                }
-            }
-            return;
-        }
-        if (onlyHorizontal)
-        {
-            // 横配置: centersX を使用し Y=0
-            for (int idx = 0; idx < visibleCount; idx++)
-            {
-                var card = validCards[idx];
-                float centerX = centersX.Count > idx ? centersX[idx] : 0f;
-                card.gameObject.transform.SetParent(areaRect);
-                card.gameObject.transform.SetAsLastSibling();
-                card.TargetPosition = new Vector2(centerX, 0f);
-                if (card.MoveComplete)
-                {
-                    card.WaitAndMoveBySpeed(0, moveSpeed, turnSpeed);
-                }
-            }
-            return;
-        }
-        if (onlyVertical)
-        {
-            // 縦配置: centersY を使用、X=0
-            for (int idx = 0; idx < visibleCount; idx++)
-            {
-                var card = validCards[idx];
-                float centerY = centersY.Count > idx ? centersY[idx] : 0f;
-                card.gameObject.transform.SetParent(areaRect);
-                card.gameObject.transform.SetAsLastSibling();
-                card.TargetPosition = new Vector2(0f, centerY);
-                if (card.MoveComplete)
-                {
-                    card.WaitAndMoveBySpeed(0, moveSpeed, turnSpeed);
-                }
-                return;
-            }
-        }
-
-        // 両方無効: 全て重ねて表示（中央）
         for (int idx = 0; idx < visibleCount; idx++)
         {
             var card = validCards[idx];
+            float centerX = centersX.Count > idx ? centersX[idx] : 0f;
+            float centerY = centersY.Count > idx ? centersY[idx] : 0f;
+
             card.gameObject.transform.SetParent(areaRect);
-            card.gameObject.transform.SetAsLastSibling();
-            card.TargetPosition = Vector2.zero;
-            if (card.MoveComplete)
+            ApplySiblingOrder(card.gameObject.transform);
+
+            if (both)
             {
-                    card.WaitAndMoveBySpeed(0, moveSpeed, turnSpeed);
+                card.TargetPosition = new Vector2(centerX, centerY);
             }
+            else if (onlyHorizontal)
+            {
+                card.TargetPosition = new Vector2(centerX, 0f);
+            }
+            else if (onlyVertical)
+            {
+                card.TargetPosition = new Vector2(0f, centerY);
+            }
+            else
+            {
+                card.TargetPosition = Vector2.zero;
+            }
+
+            animate(card, idx, visibleCount);
         }
-        return;
     }
 
-    // 幅 or 高さと各カードサイズから、対応する中心座標リストを返す
-    // vertical==true の場合、Y軸（上が正）の中心配列を返す
     private List<float> ComputeCenters(float areaSize, List<float> sizes, bool vertical = false)
     {
         List<float> centers = new List<float>();
         int n = sizes.Count;
-        if (n == 0) return centers;
+
+        if (n == 0)
+        {
+            return centers;
+        }
 
         float total = 0f;
-        for (int i = 0; i < n; i++) total += sizes[i];
+        for (int i = 0; i < n; i++)
+        {
+            total += sizes[i];
+        }
 
-        // 単一要素は中央に配置
         if (n == 1)
         {
             centers.Add(0f);
@@ -314,42 +217,53 @@ public class CardArea : MonoBehaviour
 
         if (total <= areaSize)
         {
-            // ノーマル: 余白を均等に割り当てる
+            // 収まる場合: 等間隔に配置
             float space = (areaSize - total) / (n + 1);
-            float cursor = -areaSize / 2f + space;
+            float cursor = vertical ? areaSize / 2f - space : -areaSize / 2f + space;
+
             for (int i = 0; i < n; i++)
             {
                 float half = sizes[i] / 2f;
-                float center = cursor + half;
+                float center = vertical ? cursor - half : cursor + half;
                 float min = -areaSize / 2f + half;
                 float max = areaSize / 2f - half;
-                if (min > max) center = 0f;
-                else center = Mathf.Clamp(center, min, max);
+
+                if (min > max)
+                {
+                    center = 0f;
+                }
+                else
+                {
+                    center = Mathf.Clamp(center, min, max);
+                }
+
+                centers.Add(center);
+
                 if (vertical)
                 {
-                    // Y軸は上が正、cursor は上から始める
-                    centers.Add(center);
                     cursor = center - half - space;
                 }
                 else
                 {
-                    centers.Add(center);
                     cursor = center + half + space;
                 }
             }
         }
         else
         {
-            // オーバーフロー: 隣接ペアごとに等しい重なり量を作る
+            // 収まらない場合: オーバー分を重なりとして按分
             float overlap = (total - areaSize) / (n - 1);
             float center = vertical ? areaSize / 2f - sizes[0] / 2f : -areaSize / 2f + sizes[0] / 2f;
+
             for (int i = 0; i < n; i++)
             {
                 float half = sizes[i] / 2f;
                 float min = -areaSize / 2f + half;
                 float max = areaSize / 2f - half;
                 float centerClamped = (min > max) ? 0f : Mathf.Clamp(center, min, max);
+
                 centers.Add(centerClamped);
+
                 if (i + 1 < n)
                 {
                     if (vertical)
@@ -367,24 +281,31 @@ public class CardArea : MonoBehaviour
         return centers;
     }
 
+    private void ApplySiblingOrder(Transform cardTransform)
+    {
+        if (reverseOverlapOrder)
+        {
+            cardTransform.SetAsFirstSibling();
+            return;
+        }
+
+        cardTransform.SetAsLastSibling();
+    }
+
     public Card DrawCard()
     {
         if (cardsInArea.Count > 0)
         {
-            // int randomIndex = Random.Range(0, cardsInArea.Count); // ランダムに引く場合の例（現在は先頭を使用）
             Card drawnCard = cardsInArea[0];
             cardsInArea.RemoveAt(0);
             Debug.Log($"Drawn Card: {drawnCard.GetCardNumber()} of {drawnCard.GetCardSuit()}");
             return drawnCard;
         }
-        else
-        {
-            Debug.Log("No cards left to draw.");
-            return null; // 例外を投げる実装に変更してもよい
-        }
+
+        Debug.Log("No cards left to draw.");
+        return null;
     }
 
-    // 指定したカードをこのエリアから取り除いて返す。カードが null か存在しない場合は null を返す。
     public Card DrawCard(Card card)
     {
         if (card == null)
@@ -393,30 +314,28 @@ public class CardArea : MonoBehaviour
             return null;
         }
 
-        if (cardsInArea.Contains(card))
+        if (cardsInArea.Remove(card))
         {
-            cardsInArea.Remove(card);
             Debug.Log($"Card drawn: {card.GetCardNumber()} of {card.GetCardSuit()}");
             return card;
         }
 
         Debug.Log("Card not found in the list.");
-        return null; // 例外を投げる実装に変更してもよい
+        return null;
     }
-    
-    // このエリアで選択中のカードを取得し、取得後に選択フラグをリセットする
+
     public List<Card> GetSelectedCardData()
     {
-        List<Card> selectedCards = new List<Card>();
+        List<Card> selectedCards = new List<Card>(cardsInArea.Count);
+
         foreach (var card in cardsInArea)
         {
-            if (card == null) continue;
-            if (card.IsSelected)
+            if (card != null && card.IsSelected)
             {
                 selectedCards.Add(card);
-                card.IsSelected = false; // 取得後に選択状態をリセット
             }
         }
+
         return selectedCards;
     }
 }

@@ -8,6 +8,7 @@ public class PlayerState
     public int PlayerId { get; private set; } // プレイヤーID
     public int LifePoints { get; private set; } = 100; // ライフポイント（初期値100）
     public List<Card> HandCards { get; private set; } // 手札
+    public List<Card> SpecialCards { get; set; } // 特殊札
     public int HandTrashTurnsUsed { get; private set; } = 0; // 手札交換に使用したターン数
     public void IncrementHandTrashTurnsUsed()
     {
@@ -23,6 +24,7 @@ public class PlayerState
     {
         PlayerId = playerId;
         HandCards = new List<Card>();
+        SpecialCards = new List<Card>();
     }
 
     // 手札にカードを追加

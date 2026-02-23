@@ -51,7 +51,14 @@ public class Card : MonoBehaviour // カードの表示・状態管理
     // クリックイベントで選択フラグをトグル
     private void ToggleSelect()
     {
-        if (!IsSelectable) return; // 選択可能でなければ無視
+        var selectionLimiter = GetComponentInParent<LimitedSelectableCardArea>();
+        if (selectionLimiter != null)
+        {
+            selectionLimiter.TryToggleSelection(this);
+            return;
+        }
+
+        if (!IsSelectable) return;
         IsSelected = !IsSelected;
         MoveAndTurnCard(0.3f);
     }
@@ -76,6 +83,31 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         {
             cardImage.sprite = CardData.BackImage;
         }
+    }
+
+    // 即時に表裏を設定して表示を更新する（特殊札選択などで使用）
+    public void ForceSetFaceUp(bool faceUp)
+    {
+        if (cardImage == null) cardImage = GetComponent<Image>();
+        if (cardRect == null) cardRect = GetComponent<RectTransform>();
+
+        IsFaceUp = faceUp;
+        if (CardData != null && cardImage != null)
+        {
+            cardImage.sprite = IsFaceUp ? CardData.Image : CardData.BackImage;
+            cardImage.SetNativeSize();
+        }
+
+        // 表示スケールを固定しておく（Turn時と同じ基準にする）
+        if (cardRect != null)
+        {
+            cardRect.localScale = new Vector3(0.25f, 0.25f, 0.25f);
+        }
+
+        // 内部状態を整える
+        LastFaceUp = IsFaceUp;
+        LastSelected = IsSelected;
+        MoveComplete = true;
     }
 
     // カードの数字を取得

@@ -2,7 +2,6 @@
 // ゲームの初期化、進行、プレイヤー・CPUの制御を担当
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
 using static HandEvaluator;
 
@@ -13,17 +12,132 @@ public class GameManager : MonoBehaviour
     [SerializeField] private PlayerController playerController;
     [SerializeField] private CPUController cpuController;
     [SerializeField] private UIManager uiManager;
+    [SerializeField] private TitleUIManager titleUIManager; // タイトル画面管理
+    [SerializeField] private CharacterManager characterManager;
+    [SerializeField] private Cards specialCardsDeck1;
+    [SerializeField] private Cards specialCardsDeck2;
     private Controller[] controllers;
     private bool Initialized = false;
     private bool gameOver = false; // ゲーム終了フラグ
+    private bool isGameRunning = false; // ゲーム実行中フラグ
 
     // ゲーム開始時に呼ばれる
     void Start()
     {
+        // ゲーム開始を待つ（タイトル画面から呼び出される）
+        isGameRunning = false;
+    }
+
+    // タイトル画面からゲームを開始するメソッド
+    public void StartGameWithMode(GameModeData modeData)
+    {
+        if (isGameRunning) return; // 既にゲーム実行中の場合はスキップ
+        
+        isGameRunning = true;
         gameOver = false;
         gameState.InitializePlayerStates(); // プレイヤー状態リスト初期化
         controllers = new Controller[] { playerController, cpuController }; // コントローラー配列初期化
-        StartCoroutine(GameFlow()); // ゲーム進行コルーチン開始
+        
+        // 選択された特殊札をゲーム内に適用
+        ApplySpecialCards();
+
+        // ゲームモードに応じた難易度・ルール設定
+        if (modeData.Mode == GameModeData.GameMode.KatinukiMode)
+        {
+            // 勝ち抜きモード：選択されたステージに応じて難易度を設定
+            ApplyStageSettings(modeData.SelectedStage);
+            Debug.Log($"勝ち抜きモード - ステージ {modeData.SelectedStage}を適用");
+            StartCoroutine(GameFlow()); // ゲーム進行コルーチン開始
+        }
+        else if (modeData.Mode == GameModeData.GameMode.BattleGroundMode)
+        {
+            // バトルグラウンドモード：標準ルール
+            Debug.Log("バトルグラウンドモード");
+            ApplyStageSettings(0);
+            StartCoroutine(GameFlow()); // ゲーム進行コルーチン開始
+        }
+    }
+
+    // ステージに応じた難易度設定を適用するメソッド
+    private void ApplyStageSettings(int stageNumber)
+    {
+        characterManager.SetCPUImage(stageNumber); // ステージに応じたキャラクター設定
+        // ステージ（0-8）に応じた難易度設定
+        // 例：CPU の戦略強度、ハンディキャップなど
+        switch (stageNumber)
+        {
+            case 0: // ステージ1：初級
+                gameState.maxHandTrashTurn = 2;
+                gameState.maxHandTrashCount = 5;
+                Debug.Log("ステージ1 (初級): 通常ルール");
+                break;
+            case 1: // ステージ2：初級
+                gameState.maxHandTrashTurn = 2;
+                gameState.maxHandTrashCount = 4;
+                Debug.Log("ステージ2 (初級): 通常ルール");
+                break;
+            case 2: // ステージ3：中級
+                gameState.maxHandTrashTurn = 2;
+                gameState.maxHandTrashCount = 3; // 交換枚数制限
+                Debug.Log("ステージ3 (中級): 交換枚数制限");
+                break;
+            case 3: // ステージ4：中級
+                gameState.maxHandTrashTurn = 1; // 交換回数制限
+                gameState.maxHandTrashCount = 5;
+                Debug.Log("ステージ4 (中級): 交換回数制限");
+                break;
+            case 4: // ステージ5：中級
+                gameState.maxHandTrashTurn = 1;
+                gameState.maxHandTrashCount = 4;
+                Debug.Log("ステージ5 (中級): 交換回数・枚数制限");
+                break;
+            case 5: // ステージ6：上級
+                gameState.maxHandTrashTurn = 1;
+                gameState.maxHandTrashCount = 3;
+                Debug.Log("ステージ6 (上級)");
+                break;
+            case 6: // ステージ7：上級
+                gameState.maxHandTrashTurn = 1;
+                gameState.maxHandTrashCount = 2;
+                Debug.Log("ステージ7 (上級)");
+                break;
+            case 7: // ステージ8：上級
+                gameState.maxHandTrashTurn = 1;
+                gameState.maxHandTrashCount = 1;
+                Debug.Log("ステージ8 (上級)");
+                break;
+            case 8: // ステージ9：最難関
+                gameState.maxHandTrashTurn = 1;
+                gameState.maxHandTrashCount = 1;
+                Debug.Log("ステージ9 (最難関)");
+                break;
+            default:
+                Debug.LogWarning($"未知のステージ: {stageNumber}");
+                break;
+        }
+    }
+
+    // 選択された特殊札をゲーム内に適用するメソッド
+    private void ApplySpecialCards()
+    {
+        // GameModeData から CardData リストを取得
+        GameModeData modeData = GameModeManager.GetGameModeData();
+        
+        if (modeData.SelectedSpecialCardDatas == null || modeData.SelectedSpecialCardDatas.Count == 0)
+        {
+            Debug.Log("特殊札が選択されていません");
+            return;
+        }
+        // PlayerState に特殊札を保存
+        if (gameState.PlayerStates != null && gameState.PlayerStates.Count > 0)
+        {
+            if (specialCardsDeck1 == null)
+            {
+                Debug.LogWarning("specialCardsDeck is not assigned.");
+                return;
+            }
+            gameState.PlayerStates[0].SpecialCards = specialCardsDeck1.GetCards(modeData.SelectedSpecialCardDatas);
+        }
     }
 
     // ゲーム進行のメインコルーチン
@@ -186,10 +300,22 @@ public class GameManager : MonoBehaviour
         // UI更新を待つ（必要ならUIManagerで表示を行う）
         yield return UIUpdateWithWaiting(5f);
 
-        // エディタの場合は再生停止
-        #if UNITY_EDITOR
-        EditorApplication.isPlaying = false;
-        #endif
+        // ゲーム実行フラグをリセット
+        isGameRunning = false;
+        
+        // タイトル画面に戻す
+        if (titleUIManager != null)
+        {
+            titleUIManager.ShowTitleScreen();
+            GameModeManager.ResetGameModeData();
+        }
+        else
+        {
+            // titleUIManagerがない場合はエディタの場合は再生停止
+            #if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+            #endif
+        }
         yield break;
     }
 

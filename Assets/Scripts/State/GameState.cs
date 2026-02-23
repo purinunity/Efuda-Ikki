@@ -25,8 +25,8 @@ public class GameState
     public List<Card> deckCards { get; private set; } = new List<Card>(); // デッキのカード
     public List<Card> commonCards { get; private set; } = new List<Card>(); // 共通カード
     public List<Card> trashCards { get; private set; } = new List<Card>(); // 捨て札
-    public int maxHandTrashTurn { get; private set; } = 2; // 手札交換の最大ターン数
-    public int maxHandTrashCount { get; private set; } = 2; // 手札交換の最大枚数
+    public int maxHandTrashTurn { get; set; } = 2; // 手札交換の最大ターン数（ステージで変更可能）
+    public int maxHandTrashCount { get; set; } = 5; // 手札交換の最大枚数（ステージで変更可能）
     public int playerCount { get; private set; } = 2; // プレイヤー数
     public int commonCount { get; private set; } = 2; // 共通カード数
     public int playerHandCount { get; private set; } = 5; // プレイヤーの手札枚数
@@ -161,11 +161,25 @@ public class GameState
     // 手札から削除して捨て札リストへ追加し、手札交換ターンの使用回数をインクリメントする。
     public void TrashCards(List<Card> cards)
     {
+        if (cards == null)
+        {
+            PlayerStates[CurrentPlayerIndex].IncrementHandTrashTurnsUsed();
+            return;
+        }
+
+        int discardLimit = Mathf.Max(0, maxHandTrashCount);
+        int discarded = 0;
+
         foreach (var card in cards)
         {
-            card.IsFaceUp = true; // 捨てるカードを表向きに設定
+            if (discarded >= discardLimit) break;
+            if (card == null) continue;
+            if (!PlayerStates[CurrentPlayerIndex].HandCards.Contains(card)) continue;
+
+            card.IsFaceUp = true;
             PlayerStates[CurrentPlayerIndex].RemoveCardFromHand(card);
             AddCardToTrash(card);
+            discarded++;
         }
         PlayerStates[CurrentPlayerIndex].IncrementHandTrashTurnsUsed();
     }
