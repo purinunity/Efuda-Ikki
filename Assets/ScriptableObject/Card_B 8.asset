@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f058b57e079b844468980c2e1cb266bb, type: 3}
   m_Name: Card_B 8
   m_EditorClassIdentifier: 
-  Image: {fileID: 21300000, guid: f8fd8bfee9ed5c2408b095ec2eb79265, type: 3}
-  BackImage: {fileID: 21300000, guid: 5c50366a26e5f6a4e908c3f05b21eaf6, type: 3}
+  Image: {fileID: 21300000, guid: ee12afe375208634b9290313b79c9a3e, type: 3}
+  BackImage: {fileID: 21300000, guid: 65e3e66536c08fb4284a331c59c9e0d6, type: 3}
   number: 8
   suit: 2
