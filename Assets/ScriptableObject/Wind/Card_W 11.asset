@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f058b57e079b844468980c2e1cb266bb, type: 3}
-  m_Name: sp 2
+  m_Name: Card_W 11
   m_EditorClassIdentifier: 
-  Image: {fileID: 21300000, guid: 199c164acb832a749aa481d52056d900, type: 3}
+  Image: {fileID: 21300000, guid: ed03c30dde341574da1c6cc0a80a816c, type: 3}
   BackImage: {fileID: 21300000, guid: 65e3e66536c08fb4284a331c59c9e0d6, type: 3}
-  number: 2
-  suit: 0
+  number: 11
+  suit: 3
