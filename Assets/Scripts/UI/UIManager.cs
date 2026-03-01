@@ -40,7 +40,7 @@ public class UIManager : MonoBehaviour
     {
         UIUpdateInProgress = true;
 
-        r.text = state.RoundNumber.ToString();
+        r.text = "第" + state.RoundNumber.ToString() + "局";
         L1.text = state.PlayerStates[0].LifePoints.ToString();
         L2.text = state.PlayerStates[1].LifePoints.ToString();
 
