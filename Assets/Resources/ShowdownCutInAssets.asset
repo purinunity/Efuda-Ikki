@@ -16,6 +16,8 @@ MonoBehaviour:
   characterBase: {fileID: 21300000, guid: a4edca6d2bfb8c24580bc0c13635a60d, type: 3}
   roleFrame: {fileID: 21300000, guid: fe2a869f8ddd80541a3279ff6b5cb8b8, type: 3}
   textFont: {fileID: 11400000, guid: 2a7b3e5085dcef945861217a568646fa, type: 2}
+  cpuRoleSpriteRect: {x: 208, y: 16, z: 624, w: 96}
+  playerRoleSpriteRect: {x: 208, y: 464, z: 624, w: 96}
   playerMiezu: {fileID: 21300000, guid: 5b053b77d65afaa4bb3a20e7b11ab920, type: 3}
   playerIsso: {fileID: 21300000, guid: 4111ddf24be5f0d448e749d28b142e28, type: 3}
   playerNiso: {fileID: 21300000, guid: a504614c8758e7744a811e2eec044747, type: 3}

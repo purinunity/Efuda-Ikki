@@ -481,15 +481,77 @@ public class GameManager : MonoBehaviour
 
     private ShowdownCutInPopup GetShowdownCutInPopup()
     {
-        if (showdownCutInPopup != null)
+        Transform popupParent = GetShowdownCutInParent();
+
+        if (IsUsableShowdownCutInPopup(showdownCutInPopup))
         {
+            showdownCutInPopup.SetPopupParent(popupParent);
             showdownCutInPopup.Initialize();
             return showdownCutInPopup;
         }
 
-        Transform parent = uiManager != null ? uiManager.transform : transform;
-        showdownCutInPopup = ShowdownCutInPopup.Create(parent);
+        if (showdownCutInPopup != null)
+        {
+            Debug.LogWarning("ShowdownCutInPopup must be attached to its own UI GameObject, not the GameManager GameObject. A popup object will be created under the game Canvas.");
+            showdownCutInPopup = null;
+        }
+
+        foreach (ShowdownCutInPopup candidate in FindObjectsOfType<ShowdownCutInPopup>(true))
+        {
+            if (!IsUsableShowdownCutInPopup(candidate))
+            {
+                continue;
+            }
+
+            showdownCutInPopup = candidate;
+            showdownCutInPopup.SetPopupParent(popupParent);
+            showdownCutInPopup.Initialize();
+            return showdownCutInPopup;
+        }
+
+        showdownCutInPopup = ShowdownCutInPopup.Create(popupParent);
         return showdownCutInPopup;
+    }
+
+    private bool IsUsableShowdownCutInPopup(ShowdownCutInPopup popup)
+    {
+        return popup != null && popup.gameObject != gameObject;
+    }
+
+    private Transform GetShowdownCutInParent()
+    {
+        Canvas gameCanvas = FindGameCanvas();
+        if (gameCanvas != null)
+        {
+            return gameCanvas.transform;
+        }
+
+        return uiManager != null ? uiManager.transform : transform;
+    }
+
+    private Canvas FindGameCanvas()
+    {
+        if (uiManager == null)
+        {
+            return GetComponentInParent<Canvas>();
+        }
+
+        Canvas canvas =
+            FindCanvas(uiManager.deck) ??
+            FindCanvas(uiManager.common) ??
+            FindCanvas(uiManager.player1) ??
+            FindCanvas(uiManager.player2) ??
+            FindCanvas(uiManager.player1Special) ??
+            FindCanvas(uiManager.player2Special) ??
+            FindCanvas(uiManager.trash) ??
+            uiManager.GetComponentInParent<Canvas>();
+
+        return canvas;
+    }
+
+    private static Canvas FindCanvas(Component component)
+    {
+        return component != null ? component.GetComponentInParent<Canvas>() : null;
     }
 
     private ShowdownCutInPopup.Data BuildShowdownCutInData(SpecialCardResolver.ShowdownResult showdownResult)
@@ -508,8 +570,74 @@ public class GameManager : MonoBehaviour
             GetFinalRoleName(cpuHand),
             GetFinalScore(playerHand),
             GetFinalScore(cpuHand),
+            BuildShowdownCardSprites(0),
+            BuildShowdownCardSprites(1),
+            GetSelectedSpecialCardSprite(0),
+            GetSelectedSpecialCardSprite(1),
             showdownResult.WinnerIndex,
             showdownResult.Damage);
+    }
+
+    private List<Sprite> BuildShowdownCardSprites(int playerId)
+    {
+        List<Sprite> sprites = new List<Sprite>();
+        if (gameState == null || gameState.PlayerStates == null || playerId < 0 || playerId >= gameState.PlayerStates.Count)
+        {
+            return sprites;
+        }
+
+        PlayerState playerState = gameState.PlayerStates[playerId];
+        if (playerState?.HandCards != null)
+        {
+            foreach (Card card in playerState.HandCards)
+            {
+                AddCardSprite(sprites, card);
+            }
+        }
+
+        if (gameState.commonCards != null)
+        {
+            foreach (Card card in gameState.commonCards)
+            {
+                AddCardSprite(sprites, card);
+            }
+        }
+
+        return sprites;
+    }
+
+    private Sprite GetSelectedSpecialCardSprite(int playerId)
+    {
+        if (gameState == null || gameState.PlayerStates == null || playerId < 0 || playerId >= gameState.PlayerStates.Count)
+        {
+            return null;
+        }
+
+        PlayerState playerState = gameState.PlayerStates[playerId];
+        if (playerState?.SpecialCards == null)
+        {
+            return null;
+        }
+
+        foreach (Card card in playerState.SpecialCards)
+        {
+            if (card != null && card.IsSelected && !playerState.IsSpecialCardUsed(card))
+            {
+                return card.CardData != null ? card.CardData.Image : null;
+            }
+        }
+
+        return null;
+    }
+
+    private static void AddCardSprite(List<Sprite> sprites, Card card)
+    {
+        if (sprites == null)
+        {
+            return;
+        }
+
+        sprites.Add(card != null && card.CardData != null ? card.CardData.Image : null);
     }
 
     private SpecialCardResolver.ResolvedHand FindResolvedHand(SpecialCardResolver.ShowdownResult showdownResult, int playerId)

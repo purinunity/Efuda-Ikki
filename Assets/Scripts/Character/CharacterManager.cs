@@ -1,15 +1,13 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Video;
+using UnityEngine.UI;
 
 public class CharacterManager : MonoBehaviour
 {
     public GameObject Player;
     public GameObject CPU;
 
-    SpriteRenderer PlayerSpriteRenderer;
-    SpriteRenderer CPUSpriteRenderer;
+    [SerializeField] private Image playerImage;
+    [SerializeField] private Image cpuImage;
 
     public Sprite PlayerSprite;
     public Sprite[] CPUSprite;
@@ -17,42 +15,66 @@ public class CharacterManager : MonoBehaviour
 
     void Awake()
     {
-        PlayerSpriteRenderer = Player != null ? Player.GetComponent<SpriteRenderer>() : null;
-        CPUSpriteRenderer = CPU != null ? CPU.GetComponent<SpriteRenderer>() : null;
+        ResolveImages();
+        ApplyPlayerSprite();
+        ApplyCpuSprite(CPUNuber);
+    }
 
-        if (PlayerSpriteRenderer != null)
+    private void ResolveImages()
+    {
+        if (playerImage == null && Player != null)
         {
-            PlayerSpriteRenderer.sprite = PlayerSprite;
+            playerImage = Player.GetComponent<Image>();
+            if (playerImage == null)
+            {
+                playerImage = Player.GetComponentInChildren<Image>(true);
+            }
         }
 
-        if (CPUSpriteRenderer != null && CPUSprite != null && CPUSprite.Length > 0)
+        if (cpuImage == null && CPU != null)
         {
-            CPUNuber = Mathf.Clamp(CPUNuber, 0, CPUSprite.Length - 1);
-            CPUSpriteRenderer.sprite = CPUSprite[CPUNuber];
+            cpuImage = CPU.GetComponent<Image>();
+            if (cpuImage == null)
+            {
+                cpuImage = CPU.GetComponentInChildren<Image>(true);
+            }
         }
     }
 
-    public void SetCPUImage(int cpuCharNum)
+    private void ApplyPlayerSprite()
     {
-        if (PlayerSpriteRenderer != null)
+        if (playerImage != null)
         {
-            PlayerSpriteRenderer.sprite = PlayerSprite;
+            playerImage.sprite = PlayerSprite;
+            playerImage.preserveAspect = true;
         }
+    }
 
-        if (CPUSpriteRenderer == null || CPUSprite == null || CPUSprite.Length == 0)
+    private void ApplyCpuSprite(int cpuCharNum)
+    {
+        if (cpuImage == null || CPUSprite == null || CPUSprite.Length == 0)
         {
             return;
         }
 
         CPUNuber = Mathf.Clamp(cpuCharNum, 0, CPUSprite.Length - 1);
-        CPUSpriteRenderer.sprite = CPUSprite[CPUNuber];
+        cpuImage.sprite = CPUSprite[CPUNuber];
+        cpuImage.preserveAspect = true;
+    }
+
+    public void SetCPUImage(int cpuCharNum)
+    {
+        ResolveImages();
+        ApplyPlayerSprite();
+        ApplyCpuSprite(cpuCharNum);
     }
 
     public Sprite GetPlayerSprite()
     {
-        if (PlayerSpriteRenderer != null && PlayerSpriteRenderer.sprite != null)
+        ResolveImages();
+        if (playerImage != null && playerImage.sprite != null)
         {
-            return PlayerSpriteRenderer.sprite;
+            return playerImage.sprite;
         }
 
         return PlayerSprite;
@@ -60,9 +82,10 @@ public class CharacterManager : MonoBehaviour
 
     public Sprite GetCpuSprite()
     {
-        if (CPUSpriteRenderer != null && CPUSpriteRenderer.sprite != null)
+        ResolveImages();
+        if (cpuImage != null && cpuImage.sprite != null)
         {
-            return CPUSpriteRenderer.sprite;
+            return cpuImage.sprite;
         }
 
         if (CPUSprite != null && CPUSprite.Length > 0)
