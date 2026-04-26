@@ -9,6 +9,8 @@ public class PlayerState
     public int LifePoints { get; private set; } = 100; // ライフポイント（初期値100）
     public List<Card> HandCards { get; private set; } // 手札
     public List<Card> SpecialCards { get; set; } // 特殊札
+    private readonly HashSet<Card> usedSpecialCards = new HashSet<Card>(); // 使用済み特殊札
+    public IReadOnlyCollection<Card> UsedSpecialCards => usedSpecialCards;
     public int HandTrashTurnsUsed { get; private set; } = 0; // 手札交換に使用したターン数
     public void IncrementHandTrashTurnsUsed()
     {
@@ -17,6 +19,22 @@ public class PlayerState
     public void ResetHandTrashTurnsUsed()
     {
         HandTrashTurnsUsed = 0;
+    }
+
+    public bool IsSpecialCardUsed(Card card)
+    {
+        return card != null && usedSpecialCards.Contains(card);
+    }
+
+    public bool MarkSpecialCardUsed(Card card)
+    {
+        if (card == null || SpecialCards == null || !SpecialCards.Contains(card))
+        {
+            return false;
+        }
+
+        card.IsSelected = false;
+        return usedSpecialCards.Add(card);
     }
 
     // コンストラクタ

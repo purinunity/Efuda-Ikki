@@ -5,18 +5,40 @@ using static HandEvaluator;
 
 public class GameManager : MonoBehaviour
 {
+    [System.Serializable]
+    private class CpuCharacterSettings
+    {
+        [SerializeField, Min(0)] private int characterIndex;
+        [SerializeField, Range(0f, 1f)] private float exchangeDecisionStrength = 1f;
+        [SerializeField, Range(0f, 1f)] private float specialCardDecisionStrength = 1f;
+        [SerializeField] private bool useConfiguredSpecialCards = true;
+        [SerializeField] private List<CardData> specialCardDatas = new List<CardData>();
+        [SerializeField, Min(0)] private int randomSpecialCardCount = 4;
+
+        public int CharacterIndex => characterIndex;
+        public float ExchangeDecisionStrength => exchangeDecisionStrength;
+        public float SpecialCardDecisionStrength => specialCardDecisionStrength;
+        public bool UseConfiguredSpecialCards => useConfiguredSpecialCards;
+        public List<CardData> SpecialCardDatas => specialCardDatas;
+        public int RandomSpecialCardCount => randomSpecialCardCount;
+    }
+
     public GameState gameState = new GameState();
 
     [SerializeField] private Cards allCards;
     [SerializeField] private PlayerController playerController;
     [SerializeField] private CPUController cpuController;
     [SerializeField] private UIManager uiManager;
+    [SerializeField] private ShowdownCutInPopup showdownCutInPopup;
     [SerializeField] private TitleUIManager titleUIManager;
     [SerializeField] private CharacterManager characterManager;
     [SerializeField] private Cards specialCardsDeck1;
     [SerializeField] private Cards specialCardsDeck2;
+    [SerializeField] private int cpuSpecialCardCount = 4;
+    [SerializeField] private List<CpuCharacterSettings> cpuCharacterSettings = new List<CpuCharacterSettings>();
 
     private Controller[] controllers;
+    private CpuCharacterSettings currentCpuCharacterSettings;
     private bool initialized = false;
     private bool gameOver = false;
     private bool isGameRunning = false;
@@ -28,6 +50,12 @@ public class GameManager : MonoBehaviour
 
     public void StartGameWithMode(GameModeData modeData)
     {
+        if (modeData == null)
+        {
+            Debug.LogWarning("GameModeData is null. Starting with default mode data.");
+            modeData = new GameModeData();
+        }
+
         if (isGameRunning)
         {
             return;
@@ -38,28 +66,32 @@ public class GameManager : MonoBehaviour
         gameState.InitializePlayerStates();
         controllers = new Controller[] { playerController, cpuController };
 
-        ApplySpecialCards();
+        int stageNumber = modeData.Mode == GameModeData.GameMode.KatinukiMode ? modeData.SelectedStage : 0;
+        ApplyStageSettings(stageNumber);
+        ApplySpecialCards(stageNumber);
 
         if (modeData.Mode == GameModeData.GameMode.KatinukiMode)
         {
-            ApplyStageSettings(modeData.SelectedStage);
             Debug.Log($"Katinuki mode started with stage {modeData.SelectedStage}.");
             StartCoroutine(GameFlow());
         }
         else if (modeData.Mode == GameModeData.GameMode.BattleGroundMode)
         {
             Debug.Log("BattleGround mode started.");
-            ApplyStageSettings(0);
             StartCoroutine(GameFlow());
         }
     }
 
     private void ApplyStageSettings(int stageNumber)
     {
+        currentCpuCharacterSettings = FindCpuCharacterSettings(stageNumber);
+
         if (characterManager != null)
         {
             characterManager.SetCPUImage(stageNumber);
         }
+
+        ApplyCpuDecisionSettings(stageNumber);
 
         gameState.maxHandTrashTurn = 2;
         gameState.maxHandTrashCount = 5;
@@ -67,26 +99,164 @@ public class GameManager : MonoBehaviour
         Debug.Log($"Stage {stageNumber}: exchange limit fixed to 2 turns / 5 cards.");
     }
 
-    private void ApplySpecialCards()
+    private void ApplySpecialCards(int stageNumber)
     {
         GameModeData modeData = GameModeManager.GetGameModeData();
 
-        if (modeData.SelectedSpecialCardDatas == null || modeData.SelectedSpecialCardDatas.Count == 0)
+        if (gameState.PlayerStates == null || gameState.PlayerStates.Count == 0)
         {
-            Debug.Log("No special cards selected.");
             return;
         }
 
-        if (gameState.PlayerStates != null && gameState.PlayerStates.Count > 0)
+        if (modeData.SelectedSpecialCardDatas != null && modeData.SelectedSpecialCardDatas.Count > 0)
         {
             if (specialCardsDeck1 == null)
             {
                 Debug.LogWarning("specialCardsDeck1 is not assigned.");
-                return;
             }
-
-            gameState.PlayerStates[0].SpecialCards = specialCardsDeck1.GetCards(modeData.SelectedSpecialCardDatas);
+            else
+            {
+                gameState.PlayerStates[0].SpecialCards = specialCardsDeck1.GetCards(modeData.SelectedSpecialCardDatas);
+            }
         }
+        else
+        {
+            Debug.Log("No player special cards selected.");
+        }
+
+        if (gameState.PlayerStates.Count > 1)
+        {
+            gameState.PlayerStates[1].SpecialCards = BuildCpuSpecialCards(stageNumber);
+        }
+    }
+
+    private List<Card> BuildCpuSpecialCards(int stageNumber)
+    {
+        CpuCharacterSettings settings = currentCpuCharacterSettings;
+        if (settings == null || settings.CharacterIndex != stageNumber)
+        {
+            settings = FindCpuCharacterSettings(stageNumber);
+        }
+
+        if (settings != null && settings.UseConfiguredSpecialCards)
+        {
+            return BuildConfiguredCpuSpecialCards(settings);
+        }
+
+        int count = settings != null ? settings.RandomSpecialCardCount : cpuSpecialCardCount;
+        return BuildRandomCpuSpecialCards(count);
+    }
+
+    private List<Card> BuildConfiguredCpuSpecialCards(CpuCharacterSettings settings)
+    {
+        List<Card> selectedCards = new List<Card>();
+        if (specialCardsDeck2 == null || specialCardsDeck2.cardList == null)
+        {
+            Debug.LogWarning("specialCardsDeck2 is not assigned.");
+            return selectedCards;
+        }
+
+        foreach (Card card in specialCardsDeck2.cardList)
+        {
+            if (card != null)
+            {
+                card.IsSelected = false;
+            }
+        }
+
+        if (settings.SpecialCardDatas != null)
+        {
+            foreach (CardData cardData in settings.SpecialCardDatas)
+            {
+                if (cardData == null)
+                {
+                    continue;
+                }
+
+                Card card = specialCardsDeck2.GetCard(cardData);
+                if (card != null && !selectedCards.Contains(card))
+                {
+                    card.IsSelected = false;
+                    selectedCards.Add(card);
+                }
+            }
+        }
+
+        Debug.Log($"CPU character {settings.CharacterIndex}: configured special cards selected: {selectedCards.Count}");
+        return selectedCards;
+    }
+
+    private List<Card> BuildRandomCpuSpecialCards(int requestedCount)
+    {
+        List<Card> selectedCards = new List<Card>();
+        if (specialCardsDeck2 == null || specialCardsDeck2.cardList == null)
+        {
+            Debug.LogWarning("specialCardsDeck2 is not assigned.");
+            return selectedCards;
+        }
+
+        List<Card> availableCards = new List<Card>();
+        foreach (Card card in specialCardsDeck2.cardList)
+        {
+            if (card != null)
+            {
+                card.IsSelected = false;
+                availableCards.Add(card);
+            }
+        }
+
+        int count = Mathf.Clamp(requestedCount, 0, availableCards.Count);
+        for (int i = 0; i < count; i++)
+        {
+            int randomIndex = Random.Range(i, availableCards.Count);
+            Card temp = availableCards[i];
+            availableCards[i] = availableCards[randomIndex];
+            availableCards[randomIndex] = temp;
+            selectedCards.Add(availableCards[i]);
+        }
+
+        Debug.Log($"CPU special cards selected: {selectedCards.Count}");
+        return selectedCards;
+    }
+
+    private void ApplyCpuDecisionSettings(int stageNumber)
+    {
+        if (cpuController == null)
+        {
+            return;
+        }
+
+        if (currentCpuCharacterSettings == null)
+        {
+            cpuController.ResetDecisionStrengths();
+            Debug.Log($"CPU character {stageNumber}: using CPUController default strengths.");
+            return;
+        }
+
+        cpuController.SetDecisionStrengths(
+            currentCpuCharacterSettings.ExchangeDecisionStrength,
+            currentCpuCharacterSettings.SpecialCardDecisionStrength);
+
+        Debug.Log(
+            $"CPU character {stageNumber}: strengths set to exchange {currentCpuCharacterSettings.ExchangeDecisionStrength}, special {currentCpuCharacterSettings.SpecialCardDecisionStrength}.");
+    }
+
+    private CpuCharacterSettings FindCpuCharacterSettings(int stageNumber)
+    {
+        if (cpuCharacterSettings == null)
+        {
+            return null;
+        }
+
+        foreach (CpuCharacterSettings settings in cpuCharacterSettings)
+        {
+            if (settings != null && settings.CharacterIndex == stageNumber)
+            {
+                return settings;
+            }
+        }
+
+        return null;
     }
 
     private IEnumerator GameFlow()
@@ -196,30 +366,43 @@ public class GameManager : MonoBehaviour
             gameState.OpenPlayerHands(i);
         }
 
-        yield return UIUpdateWithWaiting(5f);
-
-        List<HandInfo> results = new List<HandInfo>();
-        for (int i = 0; i < gameState.playerCount; i++)
+        if (cpuController != null)
         {
-            HandInfo result = HandEvaluator.EvaluateHand(gameState.PlayerStates[i].HandCards, gameState.commonCards);
-            results.Add(result);
-            Debug.Log($"Player {i} hand: {result.Name}");
+            cpuController.SelectSpecialCard(gameState);
         }
 
-        int winner = HandEvaluator.DetermineWinner(results);
-        if (winner == -1)
+        List<Card> specialCardsToConsume = CollectSelectedUsableSpecialCards();
+        SpecialCardResolver.ShowdownResult showdownResult = SpecialCardResolver.Resolve(gameState);
+        foreach (SpecialCardResolver.ResolvedHand hand in showdownResult.Hands)
+        {
+            Debug.Log(
+                $"Player {hand.PlayerId} hand: {hand.BaseHand.Rank} -> {hand.DisplayName} ({hand.Score})");
+        }
+
+        foreach (string logLine in showdownResult.Logs)
+        {
+            Debug.Log(logLine);
+        }
+
+        yield return StartCoroutine(PlayShowdownCutIn(showdownResult));
+        MarkSpecialCardsUsed(specialCardsToConsume);
+
+        if (showdownResult.IsDraw)
         {
             Debug.Log("Round ended in a draw.");
             yield break;
         }
 
-        Debug.Log($"Winner is Player {winner}.");
+        int winner = showdownResult.WinnerIndex;
+        int damage = showdownResult.Damage;
+
+        Debug.Log($"Winner is Player {winner}. Damage: {damage}");
 
         for (int i = 0; i < gameState.playerCount; i++)
         {
             if (i != winner)
             {
-                gameState.PlayerStates[i].decreaseLifePoints((int)results[winner].Rank);
+                gameState.PlayerStates[i].decreaseLifePoints(damage);
             }
 
             Debug.Log($"Player {i} life: {gameState.PlayerStates[i].LifePoints}");
@@ -229,6 +412,142 @@ public class GameManager : MonoBehaviour
         {
             StartCoroutine(HandleGameEnd());
         }
+    }
+
+    private List<Card> CollectSelectedUsableSpecialCards()
+    {
+        List<Card> selectedCards = new List<Card>();
+        if (gameState == null || gameState.PlayerStates == null)
+        {
+            return selectedCards;
+        }
+
+        foreach (PlayerState playerState in gameState.PlayerStates)
+        {
+            if (playerState?.SpecialCards == null)
+            {
+                continue;
+            }
+
+            foreach (Card card in playerState.SpecialCards)
+            {
+                if (card == null || !card.IsSelected || playerState.IsSpecialCardUsed(card))
+                {
+                    continue;
+                }
+
+                selectedCards.Add(card);
+            }
+        }
+
+        return selectedCards;
+    }
+
+    private void MarkSpecialCardsUsed(List<Card> usedCards)
+    {
+        if (usedCards == null || usedCards.Count == 0 || gameState?.PlayerStates == null)
+        {
+            return;
+        }
+
+        foreach (PlayerState playerState in gameState.PlayerStates)
+        {
+            if (playerState?.SpecialCards == null)
+            {
+                continue;
+            }
+
+            foreach (Card card in usedCards)
+            {
+                if (card != null && playerState.SpecialCards.Contains(card))
+                {
+                    playerState.MarkSpecialCardUsed(card);
+                }
+            }
+        }
+    }
+
+    private IEnumerator PlayShowdownCutIn(SpecialCardResolver.ShowdownResult showdownResult)
+    {
+        ShowdownCutInPopup popup = GetShowdownCutInPopup();
+        if (popup == null)
+        {
+            yield break;
+        }
+
+        ShowdownCutInPopup.Data cutInData = BuildShowdownCutInData(showdownResult);
+        yield return StartCoroutine(popup.Play(cutInData));
+    }
+
+    private ShowdownCutInPopup GetShowdownCutInPopup()
+    {
+        if (showdownCutInPopup != null)
+        {
+            showdownCutInPopup.Initialize();
+            return showdownCutInPopup;
+        }
+
+        Transform parent = uiManager != null ? uiManager.transform : transform;
+        showdownCutInPopup = ShowdownCutInPopup.Create(parent);
+        return showdownCutInPopup;
+    }
+
+    private ShowdownCutInPopup.Data BuildShowdownCutInData(SpecialCardResolver.ShowdownResult showdownResult)
+    {
+        SpecialCardResolver.ResolvedHand playerHand = FindResolvedHand(showdownResult, 0);
+        SpecialCardResolver.ResolvedHand cpuHand = FindResolvedHand(showdownResult, 1);
+
+        return new ShowdownCutInPopup.Data(
+            characterManager != null ? characterManager.GetPlayerSprite() : null,
+            characterManager != null ? characterManager.GetCpuSprite() : null,
+            GetBaseRoleName(playerHand),
+            GetBaseRoleName(cpuHand),
+            GetBaseScore(playerHand),
+            GetBaseScore(cpuHand),
+            GetFinalRoleName(playerHand),
+            GetFinalRoleName(cpuHand),
+            GetFinalScore(playerHand),
+            GetFinalScore(cpuHand),
+            showdownResult.WinnerIndex,
+            showdownResult.Damage);
+    }
+
+    private SpecialCardResolver.ResolvedHand FindResolvedHand(SpecialCardResolver.ShowdownResult showdownResult, int playerId)
+    {
+        if (showdownResult == null || showdownResult.Hands == null)
+        {
+            return null;
+        }
+
+        foreach (SpecialCardResolver.ResolvedHand hand in showdownResult.Hands)
+        {
+            if (hand != null && hand.PlayerId == playerId)
+            {
+                return hand;
+            }
+        }
+
+        return null;
+    }
+
+    private string GetBaseRoleName(SpecialCardResolver.ResolvedHand hand)
+    {
+        return hand != null ? hand.BaseDisplayName : "不見";
+    }
+
+    private string GetFinalRoleName(SpecialCardResolver.ResolvedHand hand)
+    {
+        return hand != null ? hand.DisplayName : "不見";
+    }
+
+    private int GetBaseScore(SpecialCardResolver.ResolvedHand hand)
+    {
+        return hand != null ? hand.BaseScore : 0;
+    }
+
+    private int GetFinalScore(SpecialCardResolver.ResolvedHand hand)
+    {
+        return hand != null ? hand.Score : 0;
     }
 
     private bool CheckGameOver()

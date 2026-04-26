@@ -29,6 +29,8 @@ public class PopupPreviewCardArea : CardArea
     [SerializeField] private float previewMoveSpeed = 1200f;
     [SerializeField] private float previewTurnSpeed = 1080f;
     [SerializeField] private bool useSuitRowLayout = true;
+    [SerializeField] private float closeButtonReservedHeight = 96f;
+    [SerializeField] private float popupBottomPadding = 24f;
 
     private readonly List<Card> previewCards = new List<Card>();
     private readonly Dictionary<Card, UnityAction> sourceCardClickHandlers = new Dictionary<Card, UnityAction>();
@@ -44,6 +46,7 @@ public class PopupPreviewCardArea : CardArea
         {
             closeButton.onClick.RemoveListener(ClosePopup);
             closeButton.onClick.AddListener(ClosePopup);
+            closeButton.transform.SetAsLastSibling();
         }
     }
 
@@ -68,6 +71,11 @@ public class PopupPreviewCardArea : CardArea
         }
 
         popupRoot.SetActive(true);
+        if (closeButton != null)
+        {
+            closeButton.transform.SetAsLastSibling();
+        }
+
         RebuildPreviewCards(focusedCard);
     }
 
@@ -200,8 +208,12 @@ public class PopupPreviewCardArea : CardArea
             return;
         }
 
+        float contentHeight = Mathf.Max(
+            0f,
+            popupCardArea.areaRect.rect.height - Mathf.Max(0f, closeButtonReservedHeight) - Mathf.Max(0f, popupBottomPadding));
+        float contentYOffset = (Mathf.Max(0f, popupBottomPadding) - Mathf.Max(0f, closeButtonReservedHeight)) * 0.5f;
         var rowHeights = rows.Select(GetMaxCardHeight).ToList();
-        var rowCentersY = ComputeCenters(popupCardArea.areaRect.rect.height, rowHeights, true);
+        var rowCentersY = ComputeCenters(contentHeight, rowHeights, true);
         int siblingIndex = 0;
 
         for (int rowIndex = 0; rowIndex < rows.Count; rowIndex++)
@@ -225,7 +237,7 @@ public class PopupPreviewCardArea : CardArea
 
                 card.transform.SetParent(popupCardArea.areaRect);
                 card.transform.SetSiblingIndex(siblingIndex++);
-                card.TargetPosition = new Vector2(rowCentersX[cardIndex], rowCentersY[rowIndex]);
+                card.TargetPosition = new Vector2(rowCentersX[cardIndex], rowCentersY[rowIndex] + contentYOffset);
 
                 if (card.MoveComplete)
                 {

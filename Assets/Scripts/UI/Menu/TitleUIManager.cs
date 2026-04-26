@@ -56,6 +56,11 @@ public class TitleUIManager : MonoBehaviour
     {
         HideAllPanels();
         SetPanelActive(specialCardSelectPanel, true);
+
+        var specialCardPanel = specialCardSelectPanel != null
+            ? specialCardSelectPanel.GetComponent<SpecialCardSelectPanel>()
+            : null;
+        specialCardPanel?.RefreshSelectionFromModeData();
     }
 
     public void ShowSettings()
@@ -76,10 +81,6 @@ public class TitleUIManager : MonoBehaviour
 
     public void BackFromSpecialCardSelect()
     {
-        var modeData = GameModeManager.GetGameModeData();
-        modeData?.ClearSpecialCards();
-        currentGameModeData?.ClearSpecialCards();
-
         if (currentGameModeData != null && currentGameModeData.Mode == GameModeData.GameMode.KatinukiMode)
         {
             ShowStageSelect();

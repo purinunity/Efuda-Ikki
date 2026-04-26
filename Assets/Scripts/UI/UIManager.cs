@@ -49,8 +49,8 @@ public class UIManager : MonoBehaviour
         playerRemainTrashCount.UpdateRemainTrashCount(state.maxHandTrashTurn - state.PlayerStates[0].HandTrashTurnsUsed);
 
         // 特殊札表示（プレイヤー状態が空なら GameModeData + sps から復元）
-        UpdateSpecialCardArea(state, 0, player1Special);
-        UpdateSpecialCardArea(state, 1, player2Special);
+        UpdateSpecialCardArea(state, 0, player1Special, specialCards1);
+        UpdateSpecialCardArea(state, 1, player2Special, specialCards2);
 
         deck.SetCardsBySpeed(state.deckCards, cardMoveSpeed, cardTurnSpeed);
         common.SetCardsBySpeed(state.commonCards, cardMoveSpeed, cardTurnSpeed);
@@ -91,23 +91,77 @@ public class UIManager : MonoBehaviour
         StartCoroutine(CheckUIUpdateComplete());
     }
 
-    private void UpdateSpecialCardArea(GameState state, int playerId, CardArea targetArea)
+    private void UpdateSpecialCardArea(GameState state, int playerId, CardArea targetArea, Cards sourceDeck)
     {
         if (targetArea == null) return;
+
+        PlayerState playerState = state != null &&
+                                  state.PlayerStates != null &&
+                                  playerId >= 0 &&
+                                  playerId < state.PlayerStates.Count
+            ? state.PlayerStates[playerId]
+            : null;
+
+        if (targetArea is SpecialCardArea specialCardArea)
+        {
+            specialCardArea.SetUsedCards(playerState != null ? playerState.UsedSpecialCards : null);
+        }
 
         var cards = ResolveSpecialCardsForPlayer(state, playerId);
         if (cards != null && cards.Count > 0)
         {
             foreach (var card in cards)
             {
-                if (card != null) card.ForceSetFaceUp(true);
+                if (card != null && !card.IsFaceUp) card.ForceSetFaceUp(true);
             }
-            targetArea.SetCardsBySpeed(cards, cardMoveSpeed, cardTurnSpeed);
+
+            List<Card> displayCards = BuildSpecialCardDisplayCards(cards, sourceDeck);
+            targetArea.SetCardsBySpeed(displayCards, cardMoveSpeed, cardTurnSpeed);
         }
         else
         {
             targetArea.SetCardsBySpeed(new List<Card>(), cardMoveSpeed, cardTurnSpeed);
         }
+    }
+
+    private List<Card> BuildSpecialCardDisplayCards(List<Card> specialCards, Cards sourceDeck)
+    {
+        List<Card> displayCards = new List<Card>(specialCards);
+        if (specialCards == null || specialCards.Count == 0)
+        {
+            return displayCards;
+        }
+
+        Card noUseCard = FindNoUseSpecialCard(specialCards, sourceDeck);
+        if (noUseCard == null)
+        {
+            return displayCards;
+        }
+
+        noUseCard.IsSelectable = false;
+        if (noUseCard.IsFaceUp)
+        {
+            noUseCard.ForceSetFaceUp(false);
+        }
+        displayCards.Add(noUseCard);
+        return displayCards;
+    }
+
+    private Card FindNoUseSpecialCard(List<Card> specialCards, Cards sourceDeck)
+    {
+        if (sourceDeck == null || sourceDeck.cardList == null)
+        {
+            return null;
+        }
+
+        foreach (var card in sourceDeck.cardList)
+        {
+            if (card == null) continue;
+            if (specialCards.Contains(card)) continue;
+            return card;
+        }
+
+        return null;
     }
 
     private List<Card> ResolveSpecialCardsForPlayer(GameState state, int playerId)
@@ -139,14 +193,12 @@ public class UIManager : MonoBehaviour
 
             if (allComplete && specialCards1 != null && specialCards1.cardList != null)
             {
-                foreach (var card in specialCards1.cardList)
-                {
-                    if (card != null && !card.MoveComplete)
-                    {
-                        allComplete = false;
-                        break;
-                    }
-                }
+                allComplete = AreCardsMoveComplete(specialCards1.cardList);
+            }
+
+            if (allComplete && specialCards2 != null && specialCards2.cardList != null)
+            {
+                allComplete = AreCardsMoveComplete(specialCards2.cardList);
             }
 
             if (H != null && H.IsAnimating) allComplete = false;
@@ -156,5 +208,18 @@ public class UIManager : MonoBehaviour
         }
 
         UIUpdateInProgress = false;
+    }
+
+    private bool AreCardsMoveComplete(List<Card> cards)
+    {
+        foreach (var card in cards)
+        {
+            if (card != null && !card.MoveComplete)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

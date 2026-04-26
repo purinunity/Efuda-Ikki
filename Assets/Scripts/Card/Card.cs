@@ -23,11 +23,16 @@ public class Card : MonoBehaviour // カードの表示・状態管理
     private Vector2 LastWorldPosition { get; set; } //最後に移動した位置を保存するプロパティ
     private float selectedYOffset = 20f; // 選択時のYオフセット
 
+    private Coroutine movementCoroutine;
+    private const float PositionTolerance = 0.1f;
+
     public float SelectedYOffset
     {
         get => selectedYOffset;
         set => selectedYOffset = value;
     }
+
+    public bool UseSelectedYOffset { get; set; } = true;
 
     // 初期化処理（Image, RectTransform取得）
     public void Initialize(float selectedYOffset = 20f)
@@ -105,9 +110,9 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         }
 
         // 内部状態を整える
+        StopMotion(true);
         LastFaceUp = IsFaceUp;
         LastSelected = IsSelected;
-        MoveComplete = true;
     }
 
     // カードの数字を取得
@@ -124,20 +129,23 @@ public class Card : MonoBehaviour // カードの表示・状態管理
     // カードを移動・回転させる（アニメーション用）
     public void MoveAndTurnCard(float moveDuration = 1f)
     {
-        MoveComplete = false;
-        StartCoroutine(MoveAndTurnToPosition(moveDuration));
+        StartMotion(MoveAndTurnToPosition(moveDuration));
+    }
+
+    public void MoveAlongArcToTarget(float moveDuration = 0.3f, float lift = 32f)
+    {
+        StartMotion(MoveAlongArcToTargetPosition(moveDuration, lift));
     }
 
     public void WaitAndMove(float waittime, float moveDuration = 1f)
     {
-        MoveComplete = false;
-        StartCoroutine(WaitAndMoveToPosition(waittime,moveDuration));
+        StartMotion(WaitAndMoveToPosition(waittime, moveDuration));
     }
     
     private IEnumerator WaitAndMoveToPosition(float waittime, float moveDuration)
     {
         yield return new WaitForSeconds(waittime); // 少し待ってから動かす
-        yield return StartCoroutine(MoveAndTurnToPosition(moveDuration));
+        yield return MoveAndTurnToPosition(moveDuration);
     }
 
     // --- 速度指定版 API ---
@@ -149,26 +157,118 @@ public class Card : MonoBehaviour // カードの表示・状態管理
     /// </summary>
     public void MoveAndTurnCardBySpeed(float moveSpeed = 100f, float turnSpeed = 100f)
     {
-        MoveComplete = false;
-        StartCoroutine(MoveAndTurnToPositionBySpeed(moveSpeed, turnSpeed));
+        StartMotion(MoveAndTurnToPositionBySpeed(moveSpeed, turnSpeed));
     }
 
     public void WaitAndMoveBySpeed(float waittime, float moveSpeed = 100f, float turnSpeed = 100f)
     {
-        MoveComplete = false;
-        StartCoroutine(WaitAndMoveToPositionBySpeed(waittime, moveSpeed, turnSpeed));
+        StartMotion(WaitAndMoveToPositionBySpeed(waittime, moveSpeed, turnSpeed));
     }
 
     private IEnumerator WaitAndMoveToPositionBySpeed(float waittime, float moveSpeed, float turnSpeed = 100f)
     {
         yield return new WaitForSeconds(waittime);
-        yield return StartCoroutine(MoveAndTurnToPositionBySpeed(moveSpeed, turnSpeed));
+        yield return MoveAndTurnToPositionBySpeed(moveSpeed, turnSpeed);
+    }
+
+    public bool NeedsAnimationForCurrentTarget()
+    {
+        if (cardRect == null)
+        {
+            cardRect = GetComponent<RectTransform>();
+        }
+
+        if (cardRect == null)
+        {
+            return true;
+        }
+
+        if (Vector2.Distance(cardRect.anchoredPosition, GetFinalAnchoredPosition()) > PositionTolerance)
+        {
+            return true;
+        }
+
+        if (IsFaceUp != LastFaceUp || IsSelected != LastSelected)
+        {
+            return true;
+        }
+
+        return HasWorldPositionChanged(GetTargetWorldPosition());
+    }
+
+    public void SnapToTargetPosition()
+    {
+        if (cardRect == null)
+        {
+            cardRect = GetComponent<RectTransform>();
+        }
+
+        StopMotion(true);
+        if (cardRect != null)
+        {
+            cardRect.anchoredPosition = GetFinalAnchoredPosition();
+        }
+
+        LastWorldPosition = GetTargetWorldPosition();
+        LastFaceUp = IsFaceUp;
+        LastSelected = IsSelected;
+    }
+
+    private void StartMotion(IEnumerator motion)
+    {
+        StopMotion(false);
+        MoveComplete = false;
+        movementCoroutine = StartCoroutine(RunMotion(motion));
+    }
+
+    private IEnumerator RunMotion(IEnumerator motion)
+    {
+        yield return motion;
+        SyncMotionState();
+        MoveComplete = true;
+        movementCoroutine = null;
+    }
+
+    private void StopMotion(bool markComplete)
+    {
+        if (movementCoroutine != null)
+        {
+            StopCoroutine(movementCoroutine);
+            movementCoroutine = null;
+        }
+
+        MoveComplete = markComplete;
+    }
+
+    private Vector2 GetFinalAnchoredPosition()
+    {
+        return IsSelected && UseSelectedYOffset
+            ? new Vector2(TargetPosition.x, TargetPosition.y + selectedYOffset)
+            : TargetPosition;
+    }
+
+    private Vector2 GetTargetWorldPosition()
+    {
+        return transform.parent != null ? (Vector2)transform.parent.TransformPoint(TargetPosition) : TargetPosition;
+    }
+
+    private void SyncMotionState()
+    {
+        LastWorldPosition = GetTargetWorldPosition();
+        LastFaceUp = IsFaceUp;
+        LastSelected = IsSelected;
+    }
+
+    private bool HasWorldPositionChanged(Vector2 worldPosition)
+    {
+        return Vector2.Distance(worldPosition, LastWorldPosition) > PositionTolerance;
     }
 
     private IEnumerator MoveAndTurnToPositionBySpeed(float moveSpeed, float turnSpeed)
     {
-        var WorldPosition = this.transform.parent != null ? (Vector2)this.transform.parent.TransformPoint(TargetPosition) : TargetPosition;
-        if (IsFaceUp != LastFaceUp && (WorldPosition != LastWorldPosition || IsSelected != LastSelected))
+        var WorldPosition = GetTargetWorldPosition();
+        bool worldPositionChanged = HasWorldPositionChanged(WorldPosition);
+        if (IsFaceUp != LastFaceUp && (worldPositionChanged || IsSelected != LastSelected))
         {
             LastFaceUp = IsFaceUp;
             LastWorldPosition = WorldPosition;
@@ -190,7 +290,7 @@ public class Card : MonoBehaviour // カードの表示・状態管理
             // Turnカードを裏表替える処理（速度指定）
             yield return TurnToPositionBySpeed(cardRect, turnSpeed);
         }
-        else if (WorldPosition != LastWorldPosition)
+        else if (worldPositionChanged)
         {
             LastWorldPosition = WorldPosition;
             // Moveカードを動かす処理（速度指定）
@@ -206,11 +306,16 @@ public class Card : MonoBehaviour // カードの表示・状態管理
     private IEnumerator MoveToPositionBySpeed(RectTransform rectTransform, float moveSpeed)
     {
         Vector2 startPos = rectTransform.anchoredPosition;
-        Vector2 finalTarget = IsSelected ? new Vector2(TargetPosition.x, TargetPosition.y + selectedYOffset) : TargetPosition;
+        Vector2 finalTarget = GetFinalAnchoredPosition();
         float distance = Vector2.Distance(startPos, finalTarget);
+        if (distance <= PositionTolerance)
+        {
+            rectTransform.anchoredPosition = finalTarget;
+            yield break;
+        }
         // moveSpeed <= 0 の場合は挙動を変えず 1 秒のデフォルト時間にフォールバックする
-        float moveDuration = (moveSpeed > 0f && distance > 0f) ? distance / moveSpeed : 1f;
-        yield return StartCoroutine(MoveToPosition(rectTransform, moveDuration));
+        float moveDuration = moveSpeed > 0f ? distance / moveSpeed : 1f;
+        yield return MoveToPosition(rectTransform, moveDuration);
     }
 
     private IEnumerator TurnToPositionBySpeed(RectTransform rectTransform, float turnSpeed)
@@ -221,20 +326,21 @@ public class Card : MonoBehaviour // カードの表示・状態管理
             // 幅を縮める（または戻す）時間は width / speed で計算されるため、合計の回転時間はその 2 倍とする
             float halfDuration = originalWidth / turnSpeed;
             float turnDuration = halfDuration * 2f;
-            yield return StartCoroutine(TurnToPosition(rectTransform, turnDuration));
+            yield return TurnToPosition(rectTransform, turnDuration);
         }
         else
         {
             // フォールバックとしてデフォルトで 1 秒の回転時間を使用する
-            yield return StartCoroutine(TurnToPosition(rectTransform, 1f));
+            yield return TurnToPosition(rectTransform, 1f);
         }
     }
 
     private IEnumerator MoveAndTurnToPosition( float moveDuration)
     {
         // カード移動のデバッグ用ログ（必要なら有効化）
-        var WorldPosition = this.transform.parent != null ? (Vector2)this.transform.parent.TransformPoint(TargetPosition) : TargetPosition;
-        if (IsFaceUp != LastFaceUp && (WorldPosition != LastWorldPosition || IsSelected != LastSelected))
+        var WorldPosition = GetTargetWorldPosition();
+        bool worldPositionChanged = HasWorldPositionChanged(WorldPosition);
+        if (IsFaceUp != LastFaceUp && (worldPositionChanged || IsSelected != LastSelected))
         {
             LastFaceUp = IsFaceUp;
             LastWorldPosition = WorldPosition;
@@ -256,7 +362,7 @@ public class Card : MonoBehaviour // カードの表示・状態管理
             // Turnカードを裏表替える処理
             yield return TurnToPosition(cardRect, moveDuration);
         }
-        else if (WorldPosition != LastWorldPosition)
+        else if (worldPositionChanged)
         {
             LastWorldPosition = WorldPosition;
             // Moveカードを動かす処理
@@ -272,32 +378,64 @@ public class Card : MonoBehaviour // カードの表示・状態管理
     private IEnumerator MoveToPosition(RectTransform rectTransform, float moveDuration)
     {
         Vector2 startPos = rectTransform.anchoredPosition;
+        Vector2 finalTarget = GetFinalAnchoredPosition();
+        if (moveDuration <= 0f || Vector2.Distance(startPos, finalTarget) <= PositionTolerance)
+        {
+            rectTransform.anchoredPosition = finalTarget;
+            yield break;
+        }
+
         float elapsed = 0f;
 
         while (elapsed < moveDuration)
         {
             elapsed += Time.deltaTime;
             float t = Mathf.Clamp01(elapsed / moveDuration);
-            if (IsSelected)
-            {
-                rectTransform.anchoredPosition = Vector2.Lerp(startPos, new Vector2(TargetPosition.x, TargetPosition.y + selectedYOffset), EaseOutCubic(t));
-            }
-            else
-            {
-                rectTransform.anchoredPosition = Vector2.Lerp(startPos, TargetPosition, EaseOutCubic(t));
-            }
+            rectTransform.anchoredPosition = Vector2.Lerp(startPos, finalTarget, EaseOutCubic(t));
             
             yield return null;
         }
 
-        if (IsSelected)
+        rectTransform.anchoredPosition = finalTarget;
+    }
+
+    private IEnumerator MoveAlongArcToTargetPosition(float moveDuration, float lift)
+    {
+        if (cardRect == null)
         {
-            rectTransform.anchoredPosition = new Vector2(TargetPosition.x, TargetPosition.y + selectedYOffset);
+            cardRect = GetComponent<RectTransform>();
         }
-        else
+
+        if (cardRect == null)
         {
-            rectTransform.anchoredPosition = TargetPosition;
+            yield break;
         }
+
+        Vector2 startPos = cardRect.anchoredPosition;
+        Vector2 finalTarget = GetFinalAnchoredPosition();
+        float distance = Vector2.Distance(startPos, finalTarget);
+        if (moveDuration <= 0f || distance <= PositionTolerance)
+        {
+            cardRect.anchoredPosition = finalTarget;
+            yield break;
+        }
+
+        float requestedLift = Mathf.Max(0f, lift);
+        float effectiveLift = requestedLift <= 0f ? 0f : Mathf.Min(requestedLift, distance * 0.8f + 8f);
+        Vector2 controlPos = (startPos + finalTarget) * 0.5f + Vector2.up * effectiveLift;
+        float elapsed = 0f;
+
+        while (elapsed < moveDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = EaseInOutCubic(Mathf.Clamp01(elapsed / moveDuration));
+            Vector2 startToControl = Vector2.Lerp(startPos, controlPos, t);
+            Vector2 controlToEnd = Vector2.Lerp(controlPos, finalTarget, t);
+            cardRect.anchoredPosition = Vector2.Lerp(startToControl, controlToEnd, t);
+            yield return null;
+        }
+
+        cardRect.anchoredPosition = finalTarget;
     }
 
     private IEnumerator TurnToPosition(RectTransform rectTransform, float turnDuration)
@@ -350,5 +488,12 @@ public class Card : MonoBehaviour // カードの表示・状態管理
     private float EaseOutCubic(float t)
     {
         return 1f - Mathf.Pow(1f - t, 3f);
+    }
+
+    private float EaseInOutCubic(float t)
+    {
+        return t < 0.5f
+            ? 4f * t * t * t
+            : 1f - Mathf.Pow(-2f * t + 2f, 3f) / 2f;
     }
 }

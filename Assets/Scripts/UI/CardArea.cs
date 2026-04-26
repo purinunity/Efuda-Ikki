@@ -94,7 +94,7 @@ public class CardArea : MonoBehaviour
         ApplyLayout(
             animate: (card, idx, count) =>
             {
-                if (!card.MoveComplete)
+                if (!card.MoveComplete || !card.NeedsAnimationForCurrentTarget())
                 {
                     return;
                 }
@@ -109,7 +109,7 @@ public class CardArea : MonoBehaviour
         ApplyLayout(
             animate: (card, _, __) =>
             {
-                if (!card.MoveComplete)
+                if (!card.MoveComplete || !card.NeedsAnimationForCurrentTarget())
                 {
                     return;
                 }
@@ -166,6 +166,7 @@ public class CardArea : MonoBehaviour
         for (int idx = 0; idx < visibleCount; idx++)
         {
             var card = validCards[idx];
+            card.UseSelectedYOffset = true;
             float centerX = centersX.Count > idx ? centersX[idx] : 0f;
             float centerY = centersY.Count > idx ? centersY[idx] : 0f;
 

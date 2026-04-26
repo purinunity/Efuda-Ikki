@@ -16,6 +16,7 @@ public class SpecialCardSelectPanel : MonoBehaviour
     public TitleUIManager titleUIManager;
 
     private GameModeData currentGameModeData;
+    private readonly HashSet<Card> subscribedCards = new HashSet<Card>();
 
     private void Start()
     {
@@ -31,6 +32,7 @@ public class SpecialCardSelectPanel : MonoBehaviour
 
         CreateSpecialCardUI();
         ConfigureSelectionLimiter();
+        RefreshSelectionFromModeData();
         SyncSelectedCardsToModeData();
     }
 
@@ -38,7 +40,6 @@ public class SpecialCardSelectPanel : MonoBehaviour
     {
         if (specialCardsDeck == null || selectionCardArea == null) return;
 
-        currentGameModeData = GameModeManager.GetGameModeData();
         List<Card> cardsToDisplay = new List<Card>();
         for (int i = 0; i < specialCardsDeck.cardList.Count; i++)
         {
@@ -46,10 +47,6 @@ public class SpecialCardSelectPanel : MonoBehaviour
             if (card == null) continue;
 
             card.ForceSetFaceUp(true);
-            bool isPreSelected = currentGameModeData != null &&
-                                 currentGameModeData.SelectedSpecialCardDatas != null &&
-                                 currentGameModeData.SelectedSpecialCardDatas.Contains(card.CardData);
-            card.IsSelected = isPreSelected;
             SetupCardSelection(card);
             cardsToDisplay.Add(card);
         }
@@ -64,6 +61,11 @@ public class SpecialCardSelectPanel : MonoBehaviour
 
     private void SetupCardSelection(Card card)
     {
+        if (card == null || !subscribedCards.Add(card))
+        {
+            return;
+        }
+
         Button cardButton = card.GetComponent<Button>();
         if (cardButton == null) return;
 
@@ -78,6 +80,36 @@ public class SpecialCardSelectPanel : MonoBehaviour
         }
         selectionCardArea.SetSelectionCountText(selectedCountText);
         selectionCardArea.SetMaxSelectableCount(maxSelectableSpecialCards);
+        selectionCardArea.RefreshSelectionState();
+    }
+
+    public void RefreshSelectionFromModeData()
+    {
+        currentGameModeData = GameModeManager.GetGameModeData();
+        if (selectionCardArea == null || selectionCardArea.cardsInArea == null)
+        {
+            return;
+        }
+
+        HashSet<CardData> selectedCards = new HashSet<CardData>();
+        if (currentGameModeData != null && currentGameModeData.SelectedSpecialCardDatas != null)
+        {
+            foreach (var cardData in currentGameModeData.SelectedSpecialCardDatas)
+            {
+                if (cardData != null)
+                {
+                    selectedCards.Add(cardData);
+                }
+            }
+        }
+
+        foreach (var card in selectionCardArea.cardsInArea)
+        {
+            if (card == null || card.CardData == null) continue;
+            card.IsSelected = selectedCards.Contains(card.CardData);
+            card.IsSelectable = true;
+        }
+
         selectionCardArea.RefreshSelectionState();
     }
 

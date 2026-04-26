@@ -1,0 +1,537 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+using static HandEvaluator;
+
+public static class SpecialCardResolver
+{
+    public enum SpecialCardId
+    {
+        Aiko,
+        Seal,
+        Bonus5,
+        Curse,
+        Bonus10,
+        Bonus15,
+        DoubleScore,
+        Bet,
+        Rain,
+        Festival,
+        Sunny,
+        Swap
+    }
+
+    private sealed class HandRoleDefinition
+    {
+        public HandRank Rank { get; }
+        public string DisplayName { get; }
+        public int Score { get; }
+
+        public HandRoleDefinition(HandRank rank, string displayName, int score)
+        {
+            Rank = rank;
+            DisplayName = displayName;
+            Score = score;
+        }
+    }
+
+    private static readonly HandRoleDefinition[] HandRoles =
+    {
+        new HandRoleDefinition(HandRank.Miezu, "不見", 0),
+        new HandRoleDefinition(HandRank.Isso, "一双", 5),
+        new HandRoleDefinition(HandRank.Niso, "二双", 10),
+        new HandRoleDefinition(HandRank.Sanju, "三珠", 20),
+        new HandRoleDefinition(HandRank.Yonju, "四珠", 40),
+        new HandRoleDefinition(HandRank.Tenshu, "天守", 40),
+        new HandRoleDefinition(HandRank.Suzi, "筋", 50),
+        new HandRoleDefinition(HandRank.Hikari, "光", 50),
+        new HandRoleDefinition(HandRank.Nanasuzi, "七筋", 80),
+        new HandRoleDefinition(HandRank.Nanahikari, "七光", 80),
+        new HandRoleDefinition(HandRank.Tenshukaku, "天守閣", 100)
+    };
+
+    private static readonly Dictionary<string, int> HandRoleIndexByName = BuildHandRoleIndexByName();
+
+    public sealed class ResolvedHand
+    {
+        public int PlayerId { get; }
+        public HandInfo BaseHand { get; }
+        public int BaseRoleIndex { get; }
+        public int CurrentRoleIndex { get; private set; }
+        public HandRank CurrentRank => HandRoles[CurrentRoleIndex].Rank;
+        public int BaseScore => HandRoles[BaseRoleIndex].Score;
+        public string BaseDisplayName => HandRoles[BaseRoleIndex].DisplayName;
+        public int Score { get; private set; }
+        public string DisplayName => HandRoles[CurrentRoleIndex].DisplayName;
+
+        public ResolvedHand(int playerId, HandInfo baseHand)
+        {
+            PlayerId = playerId;
+            BaseHand = baseHand;
+            BaseRoleIndex = FindHandRoleIndex(baseHand);
+            CurrentRoleIndex = BaseRoleIndex;
+            Score = BaseScore;
+        }
+
+        public void AddScore(int delta)
+        {
+            Score = Mathf.Max(0, Score + delta);
+        }
+
+        public void MultiplyScore(int factor)
+        {
+            Score = Mathf.Max(0, Score * Mathf.Max(0, factor));
+        }
+
+        public bool StepUpRank(int steps = 1)
+        {
+            int newIndex = Mathf.Clamp(CurrentRoleIndex + Mathf.Max(0, steps), 0, HandRoles.Length - 1);
+            if (newIndex == CurrentRoleIndex)
+            {
+                return false;
+            }
+
+            int delta = HandRoles[newIndex].Score - HandRoles[CurrentRoleIndex].Score;
+            CurrentRoleIndex = newIndex;
+            AddScore(delta);
+            return true;
+        }
+
+        public bool StepDownRank(int steps = 1)
+        {
+            int newIndex = Mathf.Clamp(CurrentRoleIndex - Mathf.Max(0, steps), 0, HandRoles.Length - 1);
+            if (newIndex == CurrentRoleIndex)
+            {
+                return false;
+            }
+
+            int delta = HandRoles[newIndex].Score - HandRoles[CurrentRoleIndex].Score;
+            CurrentRoleIndex = newIndex;
+            AddScore(delta);
+            return true;
+        }
+
+        public HandSnapshot CreateSnapshot()
+        {
+            return new HandSnapshot(CurrentRoleIndex, Score);
+        }
+
+        public void ApplySnapshot(HandSnapshot snapshot)
+        {
+            CurrentRoleIndex = Mathf.Clamp(snapshot.RoleIndex, 0, HandRoles.Length - 1);
+            Score = Mathf.Max(0, snapshot.Score);
+        }
+    }
+
+    public readonly struct HandSnapshot
+    {
+        public int RoleIndex { get; }
+        public HandRank Rank { get; }
+        public int Score { get; }
+
+        public HandSnapshot(int roleIndex, int score)
+        {
+            RoleIndex = Mathf.Clamp(roleIndex, 0, HandRoles.Length - 1);
+            Rank = HandRoles[RoleIndex].Rank;
+            Score = score;
+        }
+    }
+
+    public sealed class ShowdownResult
+    {
+        public IReadOnlyList<ResolvedHand> Hands { get; }
+        public int WinnerIndex { get; }
+        public int Damage { get; }
+        public IReadOnlyList<string> Logs { get; }
+        public bool IsDraw => WinnerIndex < 0;
+
+        public ShowdownResult(IReadOnlyList<ResolvedHand> hands, int winnerIndex, int damage, IReadOnlyList<string> logs)
+        {
+            Hands = hands;
+            WinnerIndex = winnerIndex;
+            Damage = damage;
+            Logs = logs;
+        }
+    }
+
+    private sealed class SpecialCardDefinition
+    {
+        public SpecialCardId Id { get; }
+        public string DisplayName { get; }
+        public int Priority { get; }
+        public string[] AssetNames { get; }
+
+        public SpecialCardDefinition(SpecialCardId id, string displayName, int priority, params string[] assetNames)
+        {
+            Id = id;
+            DisplayName = displayName;
+            Priority = priority;
+            AssetNames = assetNames ?? Array.Empty<string>();
+        }
+    }
+
+    private sealed class PendingEffect
+    {
+        public int OwnerPlayerId { get; }
+        public Card Card { get; }
+        public SpecialCardDefinition Definition { get; }
+
+        public PendingEffect(int ownerPlayerId, Card card, SpecialCardDefinition definition)
+        {
+            OwnerPlayerId = ownerPlayerId;
+            Card = card;
+            Definition = definition;
+        }
+    }
+
+    private sealed class ResolutionContext
+    {
+        public IReadOnlyList<ResolvedHand> Hands { get; }
+        public List<string> Logs { get; } = new List<string>();
+        public bool ForceDraw { get; set; }
+        public bool AreRemainingEffectsSealed { get; private set; }
+        public int DamageMultiplier { get; private set; } = 1;
+        public int? FestivalSwingOverride { get; }
+        public int? BetMultiplierOverride { get; }
+
+        public ResolutionContext(List<ResolvedHand> hands, int? festivalSwingOverride, int? betMultiplierOverride)
+        {
+            Hands = hands;
+            FestivalSwingOverride = festivalSwingOverride;
+            BetMultiplierOverride = betMultiplierOverride;
+        }
+
+        public void SealRemainingEffects()
+        {
+            AreRemainingEffectsSealed = true;
+        }
+
+        public void DoubleDamage()
+        {
+            DamageMultiplier *= 2;
+        }
+
+        public IEnumerable<int> GetOpponentIds(int ownerPlayerId)
+        {
+            for (int i = 0; i < Hands.Count; i++)
+            {
+                if (i != ownerPlayerId)
+                {
+                    yield return i;
+                }
+            }
+        }
+
+        public int GetWinnerIndex()
+        {
+            if (ForceDraw)
+            {
+                return -1;
+            }
+
+            int winnerIndex = -1;
+            int highestScore = int.MinValue;
+
+            for (int i = 0; i < Hands.Count; i++)
+            {
+                int score = Hands[i].Score;
+                if (score > highestScore)
+                {
+                    highestScore = score;
+                    winnerIndex = i;
+                    continue;
+                }
+
+                if (score == highestScore)
+                {
+                    winnerIndex = -1;
+                }
+            }
+
+            return winnerIndex;
+        }
+
+        public int GetDamage()
+        {
+            int winnerIndex = GetWinnerIndex();
+            if (winnerIndex < 0)
+            {
+                return 0;
+            }
+
+            return Mathf.Max(0, Hands[winnerIndex].Score * DamageMultiplier);
+        }
+    }
+
+    // Priority is centralized here so effect order can be adjusted without
+    // changing the showdown flow code.
+    private static readonly SpecialCardDefinition[] Definitions =
+    {
+        new SpecialCardDefinition(SpecialCardId.Seal, "Seal", 100, "sp 2", "sp_seal"),
+        new SpecialCardDefinition(SpecialCardId.Rain, "Rain", 200, "sp 9", "sp_rain"),
+        new SpecialCardDefinition(SpecialCardId.Sunny, "Sunny", 300, "sp 11", "sp_sunny"),
+        new SpecialCardDefinition(SpecialCardId.Swap, "Swap", 400, "sp 12", "sp_swap"),
+        new SpecialCardDefinition(SpecialCardId.Bonus5, "Bonus+5", 500, "sp 3", "sp_bonus5"),
+        new SpecialCardDefinition(SpecialCardId.Bonus10, "Bonus+10", 600, "sp 5", "sp_bonus10"),
+        new SpecialCardDefinition(SpecialCardId.Bonus15, "Bonus+15", 700, "sp 6", "sp_bonus15"),
+        new SpecialCardDefinition(SpecialCardId.Festival, "Festival", 800, "sp 10", "sp_festival"),
+        new SpecialCardDefinition(SpecialCardId.Curse, "Curse", 900, "sp 4", "sp_curse"),
+        new SpecialCardDefinition(SpecialCardId.DoubleScore, "DoubleScore", 1000, "sp 7", "sp_double_score"),
+        new SpecialCardDefinition(SpecialCardId.Bet, "Bet", 1100, "sp 8", "sp_bet"),
+        new SpecialCardDefinition(SpecialCardId.Aiko, "Aiko", 1200, "sp 1", "sp_aiko")
+    };
+
+    private static readonly Dictionary<string, SpecialCardDefinition> DefinitionByAssetName = BuildDefinitionMap();
+
+    public static ShowdownResult Resolve(
+        GameState gameState,
+        int? festivalSwingOverride = null,
+        int? betMultiplierOverride = null)
+    {
+        List<ResolvedHand> hands = new List<ResolvedHand>();
+        for (int i = 0; i < gameState.PlayerStates.Count; i++)
+        {
+            HandInfo baseHand = EvaluateHand(gameState.PlayerStates[i].HandCards, gameState.commonCards);
+            hands.Add(new ResolvedHand(i, baseHand));
+        }
+
+        ResolutionContext context = new ResolutionContext(hands, festivalSwingOverride, betMultiplierOverride);
+        List<PendingEffect> pendingEffects = CollectEffects(gameState);
+
+        foreach (PendingEffect effect in pendingEffects)
+        {
+            if (context.AreRemainingEffectsSealed)
+            {
+                context.Logs.Add($"Player {effect.OwnerPlayerId}: {effect.Definition.DisplayName} was sealed.");
+                continue;
+            }
+
+            ApplyEffect(effect, context);
+        }
+
+        return new ShowdownResult(
+            hands,
+            context.GetWinnerIndex(),
+            context.GetDamage(),
+            context.Logs);
+    }
+
+    private static void ApplyEffect(PendingEffect effect, ResolutionContext context)
+    {
+        ResolvedHand ownerHand = context.Hands[effect.OwnerPlayerId];
+
+        switch (effect.Definition.Id)
+        {
+            case SpecialCardId.Aiko:
+            {
+                context.ForceDraw = true;
+                context.Logs.Add($"Player {effect.OwnerPlayerId}: Aiko forced the round to a draw.");
+                break;
+            }
+            case SpecialCardId.Seal:
+            {
+                context.SealRemainingEffects();
+                context.Logs.Add($"Player {effect.OwnerPlayerId}: Seal disabled every later special card.");
+                break;
+            }
+            case SpecialCardId.Bonus5:
+            {
+                ownerHand.AddScore(5);
+                context.Logs.Add($"Player {effect.OwnerPlayerId}: Bonus+5 applied.");
+                break;
+            }
+            case SpecialCardId.Curse:
+            {
+                foreach (int opponentId in context.GetOpponentIds(effect.OwnerPlayerId))
+                {
+                    context.Hands[opponentId].AddScore(-10);
+                }
+                context.Logs.Add($"Player {effect.OwnerPlayerId}: Curse reduced the opponent by 10.");
+                break;
+            }
+            case SpecialCardId.Bonus10:
+            {
+                ownerHand.AddScore(10);
+                context.Logs.Add($"Player {effect.OwnerPlayerId}: Bonus+10 applied.");
+                break;
+            }
+            case SpecialCardId.Bonus15:
+            {
+                ownerHand.AddScore(15);
+                context.Logs.Add($"Player {effect.OwnerPlayerId}: Bonus+15 applied.");
+                break;
+            }
+            case SpecialCardId.DoubleScore:
+            {
+                ownerHand.MultiplyScore(2);
+                context.Logs.Add($"Player {effect.OwnerPlayerId}: DoubleScore doubled the hand score.");
+                break;
+            }
+            case SpecialCardId.Bet:
+            {
+                int multiplier = context.BetMultiplierOverride ?? (UnityEngine.Random.Range(0, 2) == 0 ? 0 : 2);
+                ownerHand.MultiplyScore(multiplier);
+                context.Logs.Add($"Player {effect.OwnerPlayerId}: Bet multiplied the hand score by {multiplier}.");
+                break;
+            }
+            case SpecialCardId.Rain:
+            {
+                foreach (int opponentId in context.GetOpponentIds(effect.OwnerPlayerId))
+                {
+                    bool steppedDown = context.Hands[opponentId].StepDownRank(1);
+                    if (steppedDown)
+                    {
+                        context.Logs.Add($"Player {effect.OwnerPlayerId}: Rain lowered Player {opponentId}'s hand by one rank.");
+                    }
+                    else
+                    {
+                        context.Logs.Add($"Player {effect.OwnerPlayerId}: Rain had no lower rank for Player {opponentId}.");
+                    }
+                }
+                break;
+            }
+            case SpecialCardId.Festival:
+            {
+                int swing = context.FestivalSwingOverride ?? (UnityEngine.Random.Range(0, 2) == 0 ? -20 : 20);
+                ownerHand.AddScore(swing);
+                string direction = swing >= 0 ? "+20" : "-20";
+                context.Logs.Add($"Player {effect.OwnerPlayerId}: Festival changed the hand score by {direction}.");
+                break;
+            }
+            case SpecialCardId.Sunny:
+            {
+                bool steppedUp = ownerHand.StepUpRank(1);
+                if (steppedUp)
+                {
+                    context.Logs.Add($"Player {effect.OwnerPlayerId}: Sunny raised the hand by one rank.");
+                }
+                else
+                {
+                    context.Logs.Add($"Player {effect.OwnerPlayerId}: Sunny had no higher rank to raise.");
+                }
+                break;
+            }
+            case SpecialCardId.Swap:
+            {
+                int opponentId = context.GetOpponentIds(effect.OwnerPlayerId).FirstOrDefault();
+                if (opponentId != effect.OwnerPlayerId)
+                {
+                    ResolvedHand opponentHand = context.Hands[opponentId];
+                    HandSnapshot ownerSnapshot = ownerHand.CreateSnapshot();
+                    HandSnapshot opponentSnapshot = opponentHand.CreateSnapshot();
+                    ownerHand.ApplySnapshot(opponentSnapshot);
+                    opponentHand.ApplySnapshot(ownerSnapshot);
+                    context.Logs.Add($"Player {effect.OwnerPlayerId}: Swap exchanged both hand results.");
+                }
+                break;
+            }
+        }
+    }
+
+    private static List<PendingEffect> CollectEffects(GameState gameState)
+    {
+        List<PendingEffect> effects = new List<PendingEffect>();
+
+        for (int playerId = 0; playerId < gameState.PlayerStates.Count; playerId++)
+        {
+            PlayerState playerState = gameState.PlayerStates[playerId];
+            if (playerState == null)
+            {
+                continue;
+            }
+
+            List<Card> specialCards = playerState.SpecialCards;
+            if (specialCards == null)
+            {
+                continue;
+            }
+
+            foreach (Card card in specialCards)
+            {
+                if (card?.CardData == null)
+                {
+                    continue;
+                }
+                if (!card.IsSelected)
+                {
+                    continue;
+                }
+                if (playerState.IsSpecialCardUsed(card))
+                {
+                    continue;
+                }
+
+                if (!DefinitionByAssetName.TryGetValue(card.CardData.name, out SpecialCardDefinition definition))
+                {
+                    Debug.LogWarning($"Unknown special card: {card.CardData.name}");
+                    continue;
+                }
+
+                effects.Add(new PendingEffect(playerId, card, definition));
+            }
+        }
+
+        return effects
+            .OrderBy(effect => effect.Definition.Priority)
+            .ThenBy(effect => effect.OwnerPlayerId)
+            .ToList();
+    }
+
+    private static int FindHandRoleIndex(HandInfo handInfo)
+    {
+        if (handInfo == null)
+        {
+            return 0;
+        }
+
+        if (!string.IsNullOrEmpty(handInfo.Name) &&
+            HandRoleIndexByName.TryGetValue(handInfo.Name, out int namedIndex))
+        {
+            return namedIndex;
+        }
+
+        int score = Mathf.Max(0, (int)handInfo.Rank);
+        for (int i = 0; i < HandRoles.Length; i++)
+        {
+            if (HandRoles[i].Score == score)
+            {
+                return i;
+            }
+        }
+
+        return 0;
+    }
+
+    private static Dictionary<string, int> BuildHandRoleIndexByName()
+    {
+        Dictionary<string, int> map = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        for (int i = 0; i < HandRoles.Length; i++)
+        {
+            map[HandRoles[i].DisplayName] = i;
+        }
+
+        return map;
+    }
+
+    private static Dictionary<string, SpecialCardDefinition> BuildDefinitionMap()
+    {
+        Dictionary<string, SpecialCardDefinition> map = new Dictionary<string, SpecialCardDefinition>(StringComparer.Ordinal);
+
+        foreach (SpecialCardDefinition definition in Definitions)
+        {
+            foreach (string assetName in definition.AssetNames)
+            {
+                if (string.IsNullOrWhiteSpace(assetName))
+                {
+                    continue;
+                }
+
+                map[assetName] = definition;
+            }
+        }
+
+        return map;
+    }
+}
