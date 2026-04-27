@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using static HandEvaluator;
@@ -572,8 +572,11 @@ public class GameManager : MonoBehaviour
             GetFinalScore(cpuHand),
             BuildShowdownCardSprites(0),
             BuildShowdownCardSprites(1),
+            BuildRoleHighlightFlags(0, GetBaseRoleName(playerHand)),
+            BuildRoleHighlightFlags(1, GetBaseRoleName(cpuHand)),
             GetSelectedSpecialCardSprite(0),
             GetSelectedSpecialCardSprite(1),
+            BuildEffectStepData(showdownResult),
             showdownResult.WinnerIndex,
             showdownResult.Damage);
     }
@@ -638,6 +641,318 @@ public class GameManager : MonoBehaviour
         }
 
         sprites.Add(card != null && card.CardData != null ? card.CardData.Image : null);
+    }
+
+    private List<bool> BuildRoleHighlightFlags(int playerId, string roleName)
+    {
+        List<Card> cards = BuildShowdownCards(playerId);
+        HashSet<Card> relatedCards = FindRoleRelatedCards(cards, roleName);
+        List<bool> highlights = new List<bool>();
+
+        foreach (Card card in cards)
+        {
+            highlights.Add(card != null && relatedCards.Contains(card));
+        }
+
+        return highlights;
+    }
+
+    private List<Card> BuildShowdownCards(int playerId)
+    {
+        List<Card> cards = new List<Card>();
+        if (gameState == null || gameState.PlayerStates == null || playerId < 0 || playerId >= gameState.PlayerStates.Count)
+        {
+            return cards;
+        }
+
+        PlayerState playerState = gameState.PlayerStates[playerId];
+        if (playerState?.HandCards != null)
+        {
+            cards.AddRange(playerState.HandCards);
+        }
+
+        if (gameState.commonCards != null)
+        {
+            cards.AddRange(gameState.commonCards);
+        }
+
+        return cards;
+    }
+
+    private HashSet<Card> FindRoleRelatedCards(List<Card> cards, string roleName)
+    {
+        HashSet<Card> relatedCards = new HashSet<Card>();
+        if (cards == null || string.IsNullOrEmpty(roleName) || roleName == "不見")
+        {
+            return relatedCards;
+        }
+
+        Dictionary<Number, List<Card>> numberGroups = BuildNumberGroups(cards);
+        Dictionary<Suit, List<Card>> suitGroups = BuildSuitGroups(cards);
+
+        switch (roleName)
+        {
+            case "一双":
+                AddNumberGroupByCount(relatedCards, numberGroups, 2, 1);
+                break;
+            case "二双":
+                AddNumberGroupByCount(relatedCards, numberGroups, 2, 2);
+                break;
+            case "三珠":
+                AddNumberGroupByCount(relatedCards, numberGroups, 3, 1);
+                break;
+            case "四珠":
+                AddNumberGroupByCount(relatedCards, numberGroups, 4, 1);
+                break;
+            case "天守":
+                AddTenshuGroups(relatedCards, suitGroups, 1);
+                break;
+            case "筋":
+                AddSequenceCards(relatedCards, numberGroups, 5);
+                break;
+            case "光":
+                AddSuitGroupByCount(relatedCards, suitGroups, 5, 1);
+                break;
+            case "七筋":
+                AddSequenceCards(relatedCards, numberGroups, 7);
+                break;
+            case "七光":
+                AddSuitGroupByCount(relatedCards, suitGroups, 7, 1);
+                break;
+            case "天守閣":
+                AddTenshuGroups(relatedCards, suitGroups, 2);
+                break;
+        }
+
+        return relatedCards;
+    }
+
+    private static Dictionary<Number, List<Card>> BuildNumberGroups(List<Card> cards)
+    {
+        Dictionary<Number, List<Card>> groups = new Dictionary<Number, List<Card>>();
+        foreach (Card card in cards)
+        {
+            if (card?.CardData == null)
+            {
+                continue;
+            }
+
+            Number number = card.CardData.number;
+            if (!groups.TryGetValue(number, out List<Card> group))
+            {
+                group = new List<Card>();
+                groups[number] = group;
+            }
+
+            group.Add(card);
+        }
+
+        return groups;
+    }
+
+    private static Dictionary<Suit, List<Card>> BuildSuitGroups(List<Card> cards)
+    {
+        Dictionary<Suit, List<Card>> groups = new Dictionary<Suit, List<Card>>();
+        foreach (Card card in cards)
+        {
+            if (card?.CardData == null)
+            {
+                continue;
+            }
+
+            Suit suit = card.CardData.suit;
+            if (!groups.TryGetValue(suit, out List<Card> group))
+            {
+                group = new List<Card>();
+                groups[suit] = group;
+            }
+
+            group.Add(card);
+        }
+
+        return groups;
+    }
+
+    private static void AddNumberGroupByCount(
+        HashSet<Card> relatedCards,
+        Dictionary<Number, List<Card>> numberGroups,
+        int requiredCount,
+        int requiredGroups)
+    {
+        int addedGroups = 0;
+        foreach (KeyValuePair<Number, List<Card>> group in numberGroups)
+        {
+            if (group.Value.Count < requiredCount)
+            {
+                continue;
+            }
+
+            foreach (Card card in group.Value)
+            {
+                relatedCards.Add(card);
+            }
+
+            addedGroups++;
+            if (addedGroups >= requiredGroups)
+            {
+                return;
+            }
+        }
+    }
+
+    private static void AddSuitGroupByCount(
+        HashSet<Card> relatedCards,
+        Dictionary<Suit, List<Card>> suitGroups,
+        int requiredCount,
+        int requiredGroups)
+    {
+        int addedGroups = 0;
+        foreach (KeyValuePair<Suit, List<Card>> group in suitGroups)
+        {
+            if (group.Value.Count < requiredCount)
+            {
+                continue;
+            }
+
+            foreach (Card card in group.Value)
+            {
+                relatedCards.Add(card);
+            }
+
+            addedGroups++;
+            if (addedGroups >= requiredGroups)
+            {
+                return;
+            }
+        }
+    }
+
+    private static void AddTenshuGroups(
+        HashSet<Card> relatedCards,
+        Dictionary<Suit, List<Card>> suitGroups,
+        int requiredGroups)
+    {
+        int addedGroups = 0;
+        foreach (KeyValuePair<Suit, List<Card>> group in suitGroups)
+        {
+            if (!HasNumber(group.Value, Number.Jack) ||
+                !HasNumber(group.Value, Number.Queen) ||
+                !HasNumber(group.Value, Number.King))
+            {
+                continue;
+            }
+
+            AddCardsWithNumber(relatedCards, group.Value, Number.Jack);
+            AddCardsWithNumber(relatedCards, group.Value, Number.Queen);
+            AddCardsWithNumber(relatedCards, group.Value, Number.King);
+
+            addedGroups++;
+            if (addedGroups >= requiredGroups)
+            {
+                return;
+            }
+        }
+    }
+
+    private static void AddSequenceCards(
+        HashSet<Card> relatedCards,
+        Dictionary<Number, List<Card>> numberGroups,
+        int sequenceLength)
+    {
+        List<Number> sequence = FindSequence(numberGroups, sequenceLength);
+        foreach (Number number in sequence)
+        {
+            if (!numberGroups.TryGetValue(number, out List<Card> cards))
+            {
+                continue;
+            }
+
+            foreach (Card card in cards)
+            {
+                relatedCards.Add(card);
+            }
+        }
+    }
+
+    private static List<Number> FindSequence(Dictionary<Number, List<Card>> numberGroups, int sequenceLength)
+    {
+        Number[] order =
+        {
+            Number.One, Number.Two, Number.Three, Number.Four, Number.Five,
+            Number.Six, Number.Seven, Number.Eight, Number.Nine, Number.Ten,
+            Number.Jack, Number.Queen, Number.King, Number.One
+        };
+
+        List<Number> current = new List<Number>();
+        foreach (Number number in order)
+        {
+            if (numberGroups.ContainsKey(number))
+            {
+                current.Add(number);
+                if (current.Count >= sequenceLength)
+                {
+                    return current.GetRange(current.Count - sequenceLength, sequenceLength);
+                }
+            }
+            else
+            {
+                current.Clear();
+            }
+        }
+
+        return new List<Number>();
+    }
+
+    private static bool HasNumber(List<Card> cards, Number number)
+    {
+        foreach (Card card in cards)
+        {
+            if (card?.CardData != null && card.CardData.number == number)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void AddCardsWithNumber(HashSet<Card> relatedCards, List<Card> cards, Number number)
+    {
+        foreach (Card card in cards)
+        {
+            if (card?.CardData != null && card.CardData.number == number)
+            {
+                relatedCards.Add(card);
+            }
+        }
+    }
+
+    private List<ShowdownCutInPopup.Data.EffectStepData> BuildEffectStepData(
+        SpecialCardResolver.ShowdownResult showdownResult)
+    {
+        List<ShowdownCutInPopup.Data.EffectStepData> steps =
+            new List<ShowdownCutInPopup.Data.EffectStepData>();
+
+        if (showdownResult?.EffectSteps == null)
+        {
+            return steps;
+        }
+
+        foreach (SpecialCardResolver.EffectStep step in showdownResult.EffectSteps)
+        {
+            steps.Add(new ShowdownCutInPopup.Data.EffectStepData(
+                step.OwnerPlayerId,
+                step.Card != null && step.Card.CardData != null ? step.Card.CardData.Image : null,
+                step.EffectName,
+                step.Message,
+                step.WasSealed,
+                step.PlayerRoleName,
+                step.CpuRoleName,
+                step.PlayerScore,
+                step.CpuScore));
+        }
+
+        return steps;
     }
 
     private SpecialCardResolver.ResolvedHand FindResolvedHand(SpecialCardResolver.ShowdownResult showdownResult, int playerId)

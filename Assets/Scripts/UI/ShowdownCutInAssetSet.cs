@@ -1,4 +1,4 @@
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "ShowdownCutInAssets", menuName = "Efuda Ikki/Showdown Cut In Assets")]

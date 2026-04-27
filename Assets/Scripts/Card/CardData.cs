@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 // カード情報を保持する ScriptableObject
 [CreateAssetMenu(fileName = "NewCard", menuName = "ScriptableObjects/CardData")]

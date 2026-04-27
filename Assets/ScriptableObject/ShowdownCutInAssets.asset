@@ -34,9 +34,9 @@ MonoBehaviour:
   cpuNiso: {fileID: 21300000, guid: 65233197e5c39324bbc20faeddad1ee3, type: 3}
   cpuSanju: {fileID: 21300000, guid: 65b3d12e2bd37df49bec80037112f072, type: 3}
   cpuYonju: {fileID: 21300000, guid: 648785add244e3d40a272987acafca64, type: 3}
-  cpuTenshu: {fileID: 21300000, guid: a85167513cc32d04fbfba4eb65ba03c2, type: 3}
-  cpuSuzi: {fileID: 21300000, guid: ba0c09eb7183f1e4494397ad9fb1ec42, type: 3}
-  cpuHikari: {fileID: 21300000, guid: b72d6027991444549a0979e2ba557875, type: 3}
+  cpuTenshu: {fileID: 21300000, guid: e1dd3dcbc4d7cfa4f93ca128890823a7, type: 3}
+  cpuSuzi: {fileID: 21300000, guid: b72d6027991444549a0979e2ba557875, type: 3}
+  cpuHikari: {fileID: 21300000, guid: a85167513cc32d04fbfba4eb65ba03c2, type: 3}
   cpuNanasuzi: {fileID: 21300000, guid: 779dfde546bf50848b39b2125af9a723, type: 3}
-  cpuNanahikari: {fileID: 21300000, guid: e1dd3dcbc4d7cfa4f93ca128890823a7, type: 3}
+  cpuNanahikari: {fileID: 21300000, guid: ba0c09eb7183f1e4494397ad9fb1ec42, type: 3}
   cpuTenshukaku: {fileID: 21300000, guid: 384dd808a2701f34fb3842ce19e8b4e5, type: 3}

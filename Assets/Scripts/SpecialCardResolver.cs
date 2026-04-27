@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -144,14 +144,56 @@ public static class SpecialCardResolver
         public int WinnerIndex { get; }
         public int Damage { get; }
         public IReadOnlyList<string> Logs { get; }
+        public IReadOnlyList<EffectStep> EffectSteps { get; }
         public bool IsDraw => WinnerIndex < 0;
 
-        public ShowdownResult(IReadOnlyList<ResolvedHand> hands, int winnerIndex, int damage, IReadOnlyList<string> logs)
+        public ShowdownResult(
+            IReadOnlyList<ResolvedHand> hands,
+            int winnerIndex,
+            int damage,
+            IReadOnlyList<string> logs,
+            IReadOnlyList<EffectStep> effectSteps)
         {
             Hands = hands;
             WinnerIndex = winnerIndex;
             Damage = damage;
             Logs = logs;
+            EffectSteps = effectSteps;
+        }
+    }
+
+    public sealed class EffectStep
+    {
+        public int OwnerPlayerId { get; }
+        public Card Card { get; }
+        public string EffectName { get; }
+        public string Message { get; }
+        public bool WasSealed { get; }
+        public string PlayerRoleName { get; }
+        public string CpuRoleName { get; }
+        public int PlayerScore { get; }
+        public int CpuScore { get; }
+
+        public EffectStep(
+            int ownerPlayerId,
+            Card card,
+            string effectName,
+            string message,
+            bool wasSealed,
+            string playerRoleName,
+            string cpuRoleName,
+            int playerScore,
+            int cpuScore)
+        {
+            OwnerPlayerId = ownerPlayerId;
+            Card = card;
+            EffectName = effectName;
+            Message = message;
+            WasSealed = wasSealed;
+            PlayerRoleName = playerRoleName;
+            CpuRoleName = cpuRoleName;
+            PlayerScore = playerScore;
+            CpuScore = cpuScore;
         }
     }
 
@@ -189,6 +231,7 @@ public static class SpecialCardResolver
     {
         public IReadOnlyList<ResolvedHand> Hands { get; }
         public List<string> Logs { get; } = new List<string>();
+        public List<EffectStep> EffectSteps { get; } = new List<EffectStep>();
         public bool ForceDraw { get; set; }
         public bool AreRemainingEffectsSealed { get; private set; }
         public int DamageMultiplier { get; private set; } = 1;
@@ -268,18 +311,18 @@ public static class SpecialCardResolver
     // changing the showdown flow code.
     private static readonly SpecialCardDefinition[] Definitions =
     {
-        new SpecialCardDefinition(SpecialCardId.Seal, "Seal", 100, "sp 2", "sp_seal"),
-        new SpecialCardDefinition(SpecialCardId.Rain, "Rain", 200, "sp 9", "sp_rain"),
-        new SpecialCardDefinition(SpecialCardId.Sunny, "Sunny", 300, "sp 11", "sp_sunny"),
-        new SpecialCardDefinition(SpecialCardId.Swap, "Swap", 400, "sp 12", "sp_swap"),
-        new SpecialCardDefinition(SpecialCardId.Bonus5, "Bonus+5", 500, "sp 3", "sp_bonus5"),
-        new SpecialCardDefinition(SpecialCardId.Bonus10, "Bonus+10", 600, "sp 5", "sp_bonus10"),
-        new SpecialCardDefinition(SpecialCardId.Bonus15, "Bonus+15", 700, "sp 6", "sp_bonus15"),
-        new SpecialCardDefinition(SpecialCardId.Festival, "Festival", 800, "sp 10", "sp_festival"),
-        new SpecialCardDefinition(SpecialCardId.Curse, "Curse", 900, "sp 4", "sp_curse"),
-        new SpecialCardDefinition(SpecialCardId.DoubleScore, "DoubleScore", 1000, "sp 7", "sp_double_score"),
-        new SpecialCardDefinition(SpecialCardId.Bet, "Bet", 1100, "sp 8", "sp_bet"),
-        new SpecialCardDefinition(SpecialCardId.Aiko, "Aiko", 1200, "sp 1", "sp_aiko")
+        new SpecialCardDefinition(SpecialCardId.Seal, "封札", 100, "sp 2", "sp_seal"),
+        new SpecialCardDefinition(SpecialCardId.Rain, "雨札", 200, "sp 9", "sp_rain"),
+        new SpecialCardDefinition(SpecialCardId.Sunny, "晴札", 300, "sp 11", "sp_sunny"),
+        new SpecialCardDefinition(SpecialCardId.Swap, "換札", 400, "sp 12", "sp_swap"),
+        new SpecialCardDefinition(SpecialCardId.Bonus5, "副札5", 500, "sp 3", "sp_bonus5"),
+        new SpecialCardDefinition(SpecialCardId.Bonus10, "副札10", 600, "sp 5", "sp_bonus10"),
+        new SpecialCardDefinition(SpecialCardId.Bonus15, "副札15", 700, "sp 6", "sp_bonus15"),
+        new SpecialCardDefinition(SpecialCardId.Festival, "祭札", 800, "sp 10", "sp_festival"),
+        new SpecialCardDefinition(SpecialCardId.Curse, "呪い札", 900, "sp 4", "sp_curse"),
+        new SpecialCardDefinition(SpecialCardId.DoubleScore, "倍札", 1000, "sp 7", "sp_double_score"),
+        new SpecialCardDefinition(SpecialCardId.Bet, "賭札", 1100, "sp 8", "sp_bet"),
+        new SpecialCardDefinition(SpecialCardId.Aiko, "相子札", 1200, "sp 1", "sp_aiko")
     };
 
     private static readonly Dictionary<string, SpecialCardDefinition> DefinitionByAssetName = BuildDefinitionMap();
@@ -303,18 +346,24 @@ public static class SpecialCardResolver
         {
             if (context.AreRemainingEffectsSealed)
             {
-                context.Logs.Add($"Player {effect.OwnerPlayerId}: {effect.Definition.DisplayName} was sealed.");
+                string sealedMessage = $"Player {effect.OwnerPlayerId}: {effect.Definition.DisplayName} was sealed.";
+                context.Logs.Add(sealedMessage);
+                context.EffectSteps.Add(CreateEffectStep(effect, context, sealedMessage, wasSealed: true));
                 continue;
             }
 
+            int logStartIndex = context.Logs.Count;
             ApplyEffect(effect, context);
+            string message = BuildEffectStepMessage(context.Logs, logStartIndex, effect.Definition.DisplayName);
+            context.EffectSteps.Add(CreateEffectStep(effect, context, message, wasSealed: false));
         }
 
         return new ShowdownResult(
             hands,
             context.GetWinnerIndex(),
             context.GetDamage(),
-            context.Logs);
+            context.Logs,
+            context.EffectSteps);
     }
 
     private static void ApplyEffect(PendingEffect effect, ResolutionContext context)
@@ -427,6 +476,47 @@ public static class SpecialCardResolver
                 break;
             }
         }
+    }
+
+    private static EffectStep CreateEffectStep(
+        PendingEffect effect,
+        ResolutionContext context,
+        string message,
+        bool wasSealed)
+    {
+        ResolvedHand playerHand = GetHand(context.Hands, 0);
+        ResolvedHand cpuHand = GetHand(context.Hands, 1);
+
+        return new EffectStep(
+            effect.OwnerPlayerId,
+            effect.Card,
+            effect.Definition.DisplayName,
+            message,
+            wasSealed,
+            playerHand != null ? playerHand.DisplayName : string.Empty,
+            cpuHand != null ? cpuHand.DisplayName : string.Empty,
+            playerHand != null ? playerHand.Score : 0,
+            cpuHand != null ? cpuHand.Score : 0);
+    }
+
+    private static string BuildEffectStepMessage(List<string> logs, int startIndex, string fallback)
+    {
+        if (logs == null || startIndex < 0 || startIndex >= logs.Count)
+        {
+            return fallback;
+        }
+
+        return string.Join("\n", logs.Skip(startIndex));
+    }
+
+    private static ResolvedHand GetHand(IReadOnlyList<ResolvedHand> hands, int playerId)
+    {
+        if (hands == null || playerId < 0 || playerId >= hands.Count)
+        {
+            return null;
+        }
+
+        return hands[playerId];
     }
 
     private static List<PendingEffect> CollectEffects(GameState gameState)

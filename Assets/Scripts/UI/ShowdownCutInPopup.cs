@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -12,6 +12,41 @@ public class ShowdownCutInPopup : MonoBehaviour
 
     public sealed class Data
     {
+        public sealed class EffectStepData
+        {
+            public int OwnerPlayerId { get; }
+            public Sprite SpecialCardSprite { get; }
+            public string EffectName { get; }
+            public string Message { get; }
+            public bool WasSealed { get; }
+            public string PlayerRoleName { get; }
+            public string CpuRoleName { get; }
+            public int PlayerScore { get; }
+            public int CpuScore { get; }
+
+            public EffectStepData(
+                int ownerPlayerId,
+                Sprite specialCardSprite,
+                string effectName,
+                string message,
+                bool wasSealed,
+                string playerRoleName,
+                string cpuRoleName,
+                int playerScore,
+                int cpuScore)
+            {
+                OwnerPlayerId = ownerPlayerId;
+                SpecialCardSprite = specialCardSprite;
+                EffectName = effectName;
+                Message = message;
+                WasSealed = wasSealed;
+                PlayerRoleName = playerRoleName;
+                CpuRoleName = cpuRoleName;
+                PlayerScore = playerScore;
+                CpuScore = cpuScore;
+            }
+        }
+
         public Sprite PlayerCharacterSprite { get; }
         public Sprite CpuCharacterSprite { get; }
         public string PlayerBaseRoleName { get; }
@@ -24,8 +59,11 @@ public class ShowdownCutInPopup : MonoBehaviour
         public int CpuFinalScore { get; }
         public IReadOnlyList<Sprite> PlayerCardSprites { get; }
         public IReadOnlyList<Sprite> CpuCardSprites { get; }
+        public IReadOnlyList<bool> PlayerCardHighlights { get; }
+        public IReadOnlyList<bool> CpuCardHighlights { get; }
         public Sprite PlayerSpecialCardSprite { get; }
         public Sprite CpuSpecialCardSprite { get; }
+        public IReadOnlyList<EffectStepData> EffectSteps { get; }
         public int WinnerIndex { get; }
         public int Damage { get; }
         public bool IsDraw => WinnerIndex < 0;
@@ -43,8 +81,11 @@ public class ShowdownCutInPopup : MonoBehaviour
             int cpuFinalScore,
             IReadOnlyList<Sprite> playerCardSprites,
             IReadOnlyList<Sprite> cpuCardSprites,
+            IReadOnlyList<bool> playerCardHighlights,
+            IReadOnlyList<bool> cpuCardHighlights,
             Sprite playerSpecialCardSprite,
             Sprite cpuSpecialCardSprite,
+            IReadOnlyList<EffectStepData> effectSteps,
             int winnerIndex,
             int damage)
         {
@@ -60,17 +101,21 @@ public class ShowdownCutInPopup : MonoBehaviour
             CpuFinalScore = cpuFinalScore;
             PlayerCardSprites = playerCardSprites;
             CpuCardSprites = cpuCardSprites;
+            PlayerCardHighlights = playerCardHighlights;
+            CpuCardHighlights = cpuCardHighlights;
             PlayerSpecialCardSprite = playerSpecialCardSprite;
             CpuSpecialCardSprite = cpuSpecialCardSprite;
+            EffectSteps = effectSteps;
             WinnerIndex = winnerIndex;
             Damage = damage;
         }
     }
 
     [SerializeField] private ShowdownCutInAssetSet assetSet;
-    [SerializeField] private float baseDisplaySeconds = 1.8f;
-    [SerializeField] private float specialCallSeconds = 0.9f;
     [SerializeField] private bool buildMissingUiAtRuntime = true;
+    [SerializeField] private Color roleCardDimColor = new Color(1f, 1f, 1f, 0.34f);
+    [SerializeField] private Color activeSpecialCardTint = new Color(1f, 0.86f, 0.18f, 1f);
+    [SerializeField] private Color inactiveSpecialCardTint = new Color(1f, 1f, 1f, 0.42f);
     [SerializeField] private Vector4 fallbackCpuRoleSpriteRect = new Vector4(208f, 16f, 624f, 96f);
     [SerializeField] private Vector4 fallbackPlayerRoleSpriteRect = new Vector4(208f, 464f, 624f, 96f);
     [SerializeField] private Vector4 fallbackCpuCardStartRect = new Vector4(304f, 160f, 54f, 76f);
@@ -78,6 +123,7 @@ public class ShowdownCutInPopup : MonoBehaviour
     [SerializeField] private float fallbackCardGap = 8f;
     [SerializeField] private Vector4 fallbackCpuSpecialCardRect = new Vector4(856f, 184f, 54f, 76f);
     [SerializeField] private Vector4 fallbackPlayerSpecialCardRect = new Vector4(112f, 316f, 54f, 76f);
+    [SerializeField] private float scoreStepInterval = 0.02f;
 
     [Header("Hierarchy References")]
     [SerializeField] private CanvasGroup canvasGroup;
@@ -90,10 +136,10 @@ public class ShowdownCutInPopup : MonoBehaviour
     [SerializeField] private Image cpuCharacterImage;
     [SerializeField] private Image playerRoleImage;
     [SerializeField] private Image cpuRoleImage;
-    [SerializeField] private TextMeshProUGUI playerRoleFallbackText;
-    [SerializeField] private TextMeshProUGUI cpuRoleFallbackText;
     [SerializeField] private TextMeshProUGUI playerScoreText;
     [SerializeField] private TextMeshProUGUI cpuScoreText;
+    [SerializeField] private Image specialCallBackdropImage;
+    [SerializeField] private Image resultBackdropImage;
     [SerializeField] private TextMeshProUGUI specialCallText;
     [SerializeField] private TextMeshProUGUI resultText;
     [SerializeField] private TextMeshProUGUI damageText;
@@ -104,6 +150,8 @@ public class ShowdownCutInPopup : MonoBehaviour
     [SerializeField] private Button closeButton;
     private bool closeRequested;
     private bool initialized;
+    private int currentPlayerScore;
+    private int currentCpuScore;
 
     private void Awake()
     {
@@ -234,15 +282,63 @@ public class ShowdownCutInPopup : MonoBehaviour
         closeRequested = false;
 
         ShowBaseResult(data);
-        yield return new WaitForSeconds(baseDisplaySeconds);
+        yield return WaitForAdvanceInput();
 
-        ShowSpecialCall();
-        yield return new WaitForSeconds(specialCallSeconds);
+        if (HasEffectSteps(data))
+        {
+            ShowSpecialCall();
+            yield return WaitForAdvanceInput();
 
-        ShowFinalResult(data);
+            foreach (Data.EffectStepData step in data.EffectSteps)
+            {
+                yield return ShowEffectStep(step);
+                yield return WaitForAdvanceInput();
+            }
+        }
+
+        yield return ShowFinalResult(data);
         yield return new WaitUntil(() => closeRequested);
 
         HideImmediately();
+    }
+
+    private static bool HasEffectSteps(Data data)
+    {
+        return data != null && data.EffectSteps != null && data.EffectSteps.Count > 0;
+    }
+
+    private IEnumerator WaitForAdvanceInput()
+    {
+        yield return null;
+
+        while (Input.GetMouseButton(0) || Input.touchCount > 0)
+        {
+            yield return null;
+        }
+
+        while (!IsAdvanceInputDown())
+        {
+            yield return null;
+        }
+    }
+
+    private static bool IsAdvanceInputDown()
+    {
+        if (Input.GetMouseButtonDown(0) ||
+            Input.GetKeyDown(KeyCode.Space) ||
+            Input.GetKeyDown(KeyCode.Return) ||
+            Input.GetKeyDown(KeyCode.KeypadEnter))
+        {
+            return true;
+        }
+
+        if (Input.touchCount <= 0)
+        {
+            return false;
+        }
+
+        Touch touch = Input.GetTouch(0);
+        return touch.phase == TouchPhase.Began;
     }
 
     private void CacheRootComponents()
@@ -270,10 +366,10 @@ public class ShowdownCutInPopup : MonoBehaviour
                cpuCharacterImage != null &&
                playerRoleImage != null &&
                cpuRoleImage != null &&
-               playerRoleFallbackText != null &&
-               cpuRoleFallbackText != null &&
                playerScoreText != null &&
                cpuScoreText != null &&
+               specialCallBackdropImage != null &&
+               resultBackdropImage != null &&
                specialCallText != null &&
                resultText != null &&
                damageText != null &&
@@ -311,14 +407,20 @@ public class ShowdownCutInPopup : MonoBehaviour
         ConfigureImageArray(cpuCardImages, preserveAspect: true);
         ConfigureImage(playerSpecialCardImage, preserveAspect: true);
         ConfigureImage(cpuSpecialCardImage, preserveAspect: true);
+        ConfigureTextBackdrop(specialCallBackdropImage);
+        ConfigureTextBackdrop(resultBackdropImage);
+        PlaceBackdropBehindText(specialCallBackdropImage, specialCallText);
+        PlaceBackdropBehindText(resultBackdropImage, resultText);
+        DisableLegacyRoleFallbackTexts();
 
-        ApplyTextDefaults(playerRoleFallbackText);
-        ApplyTextDefaults(cpuRoleFallbackText);
         ApplyTextDefaults(playerScoreText);
         ApplyTextDefaults(cpuScoreText);
         ApplyTextDefaults(specialCallText);
         ApplyTextDefaults(resultText);
         ApplyTextDefaults(damageText);
+        ApplyReadableOverlayText(specialCallText, new Color(1f, 0.9f, 0.35f, 1f));
+        ApplyReadableOverlayText(resultText, Color.white);
+        ApplyReadableOverlayText(damageText, new Color(1f, 0.92f, 0.72f, 1f));
     }
 
     private void ConfigureImage(Image image, bool preserveAspect)
@@ -343,6 +445,28 @@ public class ShowdownCutInPopup : MonoBehaviour
         {
             ConfigureImage(image, preserveAspect);
         }
+    }
+
+    private void ConfigureTextBackdrop(Image image)
+    {
+        if (image == null)
+        {
+            return;
+        }
+
+        image.color = new Color(0f, 0f, 0f, 0.68f);
+        image.preserveAspect = false;
+        image.raycastTarget = false;
+    }
+
+    private static void PlaceBackdropBehindText(Image backdrop, TextMeshProUGUI text)
+    {
+        if (backdrop == null || text == null || backdrop.transform.parent != text.transform.parent)
+        {
+            return;
+        }
+
+        backdrop.transform.SetSiblingIndex(text.transform.GetSiblingIndex());
     }
 
     private static bool HasImageSlots(Image[] images, int requiredCount)
@@ -376,6 +500,39 @@ public class ShowdownCutInPopup : MonoBehaviour
         }
 
         text.raycastTarget = false;
+    }
+
+    private void ApplyReadableOverlayText(TextMeshProUGUI text, Color color)
+    {
+        if (text == null)
+        {
+            return;
+        }
+
+        text.color = color;
+        text.fontStyle = FontStyles.Bold;
+        text.outlineColor = Color.black;
+        text.outlineWidth = 0.28f;
+    }
+
+    private void DisableLegacyRoleFallbackTexts()
+    {
+        if (stage == null)
+        {
+            return;
+        }
+
+        DisableStageChild("PlayerRoleText");
+        DisableStageChild("CpuRoleText");
+    }
+
+    private void DisableStageChild(string childName)
+    {
+        Transform child = stage.Find(childName);
+        if (child != null)
+        {
+            child.gameObject.SetActive(false);
+        }
     }
 
     private void WireCloseButton()
@@ -487,17 +644,7 @@ public class ShowdownCutInPopup : MonoBehaviour
             SetReferencePixelRect(playerRoleImage.rectTransform, GetPlayerRoleSpriteRect());
         }
 
-        if (cpuRoleFallbackText == null)
-        {
-            cpuRoleFallbackText = CreateText("CpuRoleText", stage, 30, Color.black);
-            SetReferencePixelRect(cpuRoleFallbackText.rectTransform, GetCpuRoleSpriteRect());
-        }
-
-        if (playerRoleFallbackText == null)
-        {
-            playerRoleFallbackText = CreateText("PlayerRoleText", stage, 30, Color.black);
-            SetReferencePixelRect(playerRoleFallbackText.rectTransform, GetPlayerRoleSpriteRect());
-        }
+        DisableLegacyRoleFallbackTexts();
 
         if (cpuScoreText == null)
         {
@@ -524,6 +671,18 @@ public class ShowdownCutInPopup : MonoBehaviour
         {
             playerSpecialCardImage = CreateImage("PlayerSpecialCard", stage, null, true);
             SetReferencePixelRect(playerSpecialCardImage.rectTransform, fallbackPlayerSpecialCardRect);
+        }
+
+        if (specialCallBackdropImage == null)
+        {
+            specialCallBackdropImage = CreateImage("SpecialCallBackdrop", stage, null, false);
+            SetNormalizedRect(specialCallBackdropImage.rectTransform, 0.16f, 0.39f, 0.84f, 0.6f);
+        }
+
+        if (resultBackdropImage == null)
+        {
+            resultBackdropImage = CreateImage("ResultBackdrop", stage, null, false);
+            SetNormalizedRect(resultBackdropImage.rectTransform, 0.14f, 0.27f, 0.86f, 0.56f);
         }
 
         if (specialCallText == null)
@@ -596,14 +755,16 @@ public class ShowdownCutInPopup : MonoBehaviour
     {
         SetBackground(assetSet != null ? assetSet.cutInBackground : null, new Color(0.82f, 0.82f, 0.82f, 1f));
         SetCharacters(data);
-        SetCardImages(playerCardImages, data.PlayerCardSprites);
-        SetCardImages(cpuCardImages, data.CpuCardSprites);
+        SetCardImages(playerCardImages, data.PlayerCardSprites, data.PlayerCardHighlights);
+        SetCardImages(cpuCardImages, data.CpuCardSprites, data.CpuCardHighlights);
         SetImage(playerSpecialCardImage, data.PlayerSpecialCardSprite);
         SetImage(cpuSpecialCardImage, data.CpuSpecialCardSprite);
-        SetRole(playerRoleImage, playerRoleFallbackText, true, data.PlayerBaseRoleName);
-        SetRole(cpuRoleImage, cpuRoleFallbackText, false, data.CpuBaseRoleName);
-        playerScoreText.text = $"{data.PlayerBaseScore}点";
-        cpuScoreText.text = $"{data.CpuBaseScore}点";
+        ResetSpecialCardHighlights();
+        SetRole(playerRoleImage, null, true, data.PlayerBaseRoleName);
+        SetRole(cpuRoleImage, null, false, data.CpuBaseRoleName);
+        SetScoresImmediately(data.PlayerBaseScore, data.CpuBaseScore);
+        SetActive(specialCallBackdropImage, false);
+        SetActive(resultBackdropImage, false);
         specialCallText.gameObject.SetActive(false);
         resultText.gameObject.SetActive(false);
         damageText.gameObject.SetActive(false);
@@ -613,26 +774,137 @@ public class ShowdownCutInPopup : MonoBehaviour
     private void ShowSpecialCall()
     {
         specialCallText.text = "特殊札発動";
+        SetActive(specialCallBackdropImage, true);
+        SetActive(resultBackdropImage, false);
+        ResetSpecialCardHighlights();
         specialCallText.gameObject.SetActive(true);
         resultText.gameObject.SetActive(false);
         damageText.gameObject.SetActive(false);
         closeButton.gameObject.SetActive(false);
     }
 
-    private void ShowFinalResult(Data data)
+    private IEnumerator ShowEffectStep(Data.EffectStepData step)
+    {
+        if (step == null)
+        {
+            yield break;
+        }
+
+        SetRole(playerRoleImage, null, true, step.PlayerRoleName);
+        SetRole(cpuRoleImage, null, false, step.CpuRoleName);
+        HighlightSpecialCard(step.OwnerPlayerId);
+
+        specialCallText.text = $"{GetOwnerName(step.OwnerPlayerId)}の{step.EffectName}";
+        SetActive(specialCallBackdropImage, true);
+        SetActive(resultBackdropImage, false);
+        specialCallText.gameObject.SetActive(true);
+        resultText.gameObject.SetActive(false);
+        damageText.gameObject.SetActive(false);
+        closeButton.gameObject.SetActive(false);
+        yield return AnimateScoresTo(step.PlayerScore, step.CpuScore);
+    }
+
+    private IEnumerator ShowFinalResult(Data data)
     {
         SetBackground(assetSet != null ? assetSet.cutInBackground : null, Color.black);
-        SetRole(playerRoleImage, playerRoleFallbackText, true, data.PlayerFinalRoleName);
-        SetRole(cpuRoleImage, cpuRoleFallbackText, false, data.CpuFinalRoleName);
-        playerScoreText.text = $"{data.PlayerFinalScore}点";
-        cpuScoreText.text = $"{data.CpuFinalScore}点";
+        SetRole(playerRoleImage, null, true, data.PlayerFinalRoleName);
+        SetRole(cpuRoleImage, null, false, data.CpuFinalRoleName);
+        ResetSpecialCardHighlights();
+        SetActive(specialCallBackdropImage, false);
+        SetActive(resultBackdropImage, true);
         specialCallText.gameObject.SetActive(false);
         resultText.text = BuildWinnerText(data);
-        damageText.text = data.IsDraw ? "ダメージ 0" : $"ダメージ {data.Damage}";
+        damageText.text = BuildDamageText(data);
         resultText.gameObject.SetActive(true);
         damageText.gameObject.SetActive(true);
+        closeButton.gameObject.SetActive(false);
+        yield return AnimateScoresTo(data.PlayerFinalScore, data.CpuFinalScore);
         closeButton.gameObject.SetActive(true);
         closeButton.Select();
+    }
+
+    private void SetScoresImmediately(int playerScore, int cpuScore)
+    {
+        currentPlayerScore = playerScore;
+        currentCpuScore = cpuScore;
+        SetScoreText(playerScoreText, currentPlayerScore);
+        SetScoreText(cpuScoreText, currentCpuScore);
+    }
+
+    private IEnumerator AnimateScoresTo(int targetPlayerScore, int targetCpuScore)
+    {
+        if (currentPlayerScore == targetPlayerScore && currentCpuScore == targetCpuScore)
+        {
+            yield break;
+        }
+
+        WaitForSecondsRealtime wait = scoreStepInterval > 0f
+            ? new WaitForSecondsRealtime(scoreStepInterval)
+            : null;
+
+        while (currentPlayerScore != targetPlayerScore || currentCpuScore != targetCpuScore)
+        {
+            currentPlayerScore = MoveScoreOneStep(currentPlayerScore, targetPlayerScore);
+            currentCpuScore = MoveScoreOneStep(currentCpuScore, targetCpuScore);
+            SetScoreText(playerScoreText, currentPlayerScore);
+            SetScoreText(cpuScoreText, currentCpuScore);
+
+            if (wait != null)
+            {
+                yield return wait;
+            }
+            else
+            {
+                yield return null;
+            }
+        }
+    }
+
+    private static int MoveScoreOneStep(int current, int target)
+    {
+        if (current < target)
+        {
+            return current + 1;
+        }
+
+        if (current > target)
+        {
+            return current - 1;
+        }
+
+        return current;
+    }
+
+    private static void SetScoreText(TextMeshProUGUI text, int score)
+    {
+        if (text != null)
+        {
+            text.text = $"{score}点";
+        }
+    }
+
+    private static string GetOwnerName(int ownerPlayerId)
+    {
+        return ownerPlayerId == 0 ? "プレイヤー" : "CPU";
+    }
+
+    private static string BuildDamageText(Data data)
+    {
+        if (data == null || data.IsDraw || data.Damage <= 0)
+        {
+            return "ダメージなし";
+        }
+
+        string damagedPlayer = data.WinnerIndex == 0 ? "CPU" : "プレイヤー";
+        return $"{damagedPlayer} {data.Damage}ダメージ";
+    }
+
+    private void SetActive(Image image, bool isActive)
+    {
+        if (image != null)
+        {
+            image.gameObject.SetActive(isActive);
+        }
     }
 
     private void SetBackground(Sprite sprite, Color fillColor)
@@ -665,18 +937,65 @@ public class ShowdownCutInPopup : MonoBehaviour
         }
     }
 
-    private void SetCardImages(Image[] images, IReadOnlyList<Sprite> sprites)
+    private void SetCardImages(Image[] images, IReadOnlyList<Sprite> sprites, IReadOnlyList<bool> highlights)
     {
         if (images == null)
         {
             return;
         }
 
+        bool hasHighlights = HasAnyHighlight(highlights);
         for (int i = 0; i < images.Length; i++)
         {
             Sprite sprite = sprites != null && i < sprites.Count ? sprites[i] : null;
             SetImage(images[i], sprite);
+            if (images[i] != null && sprite != null && hasHighlights)
+            {
+                bool highlighted = highlights != null && i < highlights.Count && highlights[i];
+                images[i].color = highlighted ? Color.white : roleCardDimColor;
+            }
         }
+    }
+
+    private static bool HasAnyHighlight(IReadOnlyList<bool> highlights)
+    {
+        if (highlights == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < highlights.Count; i++)
+        {
+            if (highlights[i])
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void HighlightSpecialCard(int ownerPlayerId)
+    {
+        ApplySpecialCardHighlight(playerSpecialCardImage, ownerPlayerId == 0);
+        ApplySpecialCardHighlight(cpuSpecialCardImage, ownerPlayerId == 1);
+    }
+
+    private void ResetSpecialCardHighlights()
+    {
+        ApplySpecialCardHighlight(playerSpecialCardImage, false, dimInactive: false);
+        ApplySpecialCardHighlight(cpuSpecialCardImage, false, dimInactive: false);
+    }
+
+    private void ApplySpecialCardHighlight(Image image, bool isActive, bool dimInactive = true)
+    {
+        if (image == null || !image.gameObject.activeSelf)
+        {
+            return;
+        }
+
+        image.color = isActive ? activeSpecialCardTint : dimInactive ? inactiveSpecialCardTint : Color.white;
+        image.rectTransform.localScale = isActive ? Vector3.one * 1.08f : Vector3.one;
     }
 
     private void SetImage(Image image, Sprite sprite)
@@ -714,6 +1033,9 @@ public class ShowdownCutInPopup : MonoBehaviour
         {
             closeButton.gameObject.SetActive(false);
         }
+
+        SetActive(specialCallBackdropImage, false);
+        SetActive(resultBackdropImage, false);
 
         gameObject.SetActive(false);
     }
