@@ -8255,9 +8255,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   assetSet: {fileID: 11400000, guid: c6dc7d8f5f8342db8ab97cfe7921740f, type: 2}
-  baseDisplaySeconds: 1.8
-  specialCallSeconds: 0.9
-  effectStepDisplaySeconds: 1.2
   buildMissingUiAtRuntime: 1
   roleCardDimColor: {r: 1, g: 1, b: 1, a: 0.34}
   activeSpecialCardTint: {r: 1, g: 0.86, b: 0.18, a: 1}
@@ -8269,6 +8266,7 @@ MonoBehaviour:
   fallbackCardGap: 8
   fallbackCpuSpecialCardRect: {x: 856, y: 184, z: 54, w: 76}
   fallbackPlayerSpecialCardRect: {x: 112, y: 316, z: 54, w: 76}
+  scoreStepInterval: 0.02
   canvasGroup: {fileID: 1237827061}
   stage: {fileID: 1264107228}
   screenFillImage: {fileID: 825147058}
