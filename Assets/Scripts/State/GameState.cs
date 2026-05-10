@@ -1,5 +1,3 @@
-﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -116,7 +114,6 @@ public class GameState
         if (card != null && !deckCards.Contains(card))
         {
             deckCards.Add(card);
-            Console.WriteLine($"Card {card.CardData.number} of {card.CardData.suit} added to deck.");
         }
     }
 
@@ -140,7 +137,7 @@ public class GameState
     {
         if (playerId < 0 || playerId >= PlayerStates.Count)
         {
-            Console.WriteLine("Invalid player ID.");
+            Debug.LogWarning("Invalid player ID.");
             return;
         }
 
@@ -189,7 +186,7 @@ public class GameState
     {
         if (playerId < 0 || playerId >= PlayerStates.Count)
         {
-            Console.WriteLine("Invalid player ID.");
+            Debug.LogWarning("Invalid player ID.");
             return;
         }
 
@@ -219,7 +216,7 @@ public class GameState
         }
         else
         {
-            Console.WriteLine("No cards left to draw.");
+            Debug.LogWarning("No cards left to draw.");
             return null; // 例外を投げる実装に変更してもよい
         }
     }
@@ -230,11 +227,10 @@ public class GameState
         if (card != null && !trashCards.Contains(card))
         {
             trashCards.Add(card);
-            Console.WriteLine($"Card {card.CardData.number} of {card.CardData.suit} added to trash.");
         }
         else
         {
-            Console.WriteLine($"Card {card?.CardData.number} of {card?.CardData.suit} is already in trash or is null.");
+            Debug.LogWarning($"Card {card?.CardData.number} of {card?.CardData.suit} is already in trash or is null.");
         }
     }
 }

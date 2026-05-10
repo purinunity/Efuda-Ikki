@@ -13,10 +13,7 @@ public class PlayerRole : MonoBehaviour
     public bool IsAnimating => rouletteCoroutine != null;
 
     // ルーレットで表示する候補役一覧（表示順などは任意）
-    private static readonly string[] RoleCandidates = new[]
-    {
-        "不見", "一双", "二双", "三珠", "四珠", "天守", "筋", "光", "七筋", "七光", "天守閣"
-    };
+    private static readonly string[] RoleCandidates = HandRoleCatalog.GetDisplayNames();
 
     // 初期化処理：必要なコンポーネント参照を取得する
     private void Awake()

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using static HandEvaluator;
 
 public class ShowdownCutInPopup : MonoBehaviour
 {
@@ -21,6 +22,8 @@ public class ShowdownCutInPopup : MonoBehaviour
             public bool WasSealed { get; }
             public string PlayerRoleName { get; }
             public string CpuRoleName { get; }
+            public HandRank PlayerRoleRank { get; }
+            public HandRank CpuRoleRank { get; }
             public int PlayerScore { get; }
             public int CpuScore { get; }
 
@@ -32,6 +35,8 @@ public class ShowdownCutInPopup : MonoBehaviour
                 bool wasSealed,
                 string playerRoleName,
                 string cpuRoleName,
+                HandRank playerRoleRank,
+                HandRank cpuRoleRank,
                 int playerScore,
                 int cpuScore)
             {
@@ -42,6 +47,8 @@ public class ShowdownCutInPopup : MonoBehaviour
                 WasSealed = wasSealed;
                 PlayerRoleName = playerRoleName;
                 CpuRoleName = cpuRoleName;
+                PlayerRoleRank = playerRoleRank;
+                CpuRoleRank = cpuRoleRank;
                 PlayerScore = playerScore;
                 CpuScore = cpuScore;
             }
@@ -51,10 +58,14 @@ public class ShowdownCutInPopup : MonoBehaviour
         public Sprite CpuCharacterSprite { get; }
         public string PlayerBaseRoleName { get; }
         public string CpuBaseRoleName { get; }
+        public HandRank PlayerBaseRoleRank { get; }
+        public HandRank CpuBaseRoleRank { get; }
         public int PlayerBaseScore { get; }
         public int CpuBaseScore { get; }
         public string PlayerFinalRoleName { get; }
         public string CpuFinalRoleName { get; }
+        public HandRank PlayerFinalRoleRank { get; }
+        public HandRank CpuFinalRoleRank { get; }
         public int PlayerFinalScore { get; }
         public int CpuFinalScore { get; }
         public IReadOnlyList<Sprite> PlayerCardSprites { get; }
@@ -73,10 +84,14 @@ public class ShowdownCutInPopup : MonoBehaviour
             Sprite cpuCharacterSprite,
             string playerBaseRoleName,
             string cpuBaseRoleName,
+            HandRank playerBaseRoleRank,
+            HandRank cpuBaseRoleRank,
             int playerBaseScore,
             int cpuBaseScore,
             string playerFinalRoleName,
             string cpuFinalRoleName,
+            HandRank playerFinalRoleRank,
+            HandRank cpuFinalRoleRank,
             int playerFinalScore,
             int cpuFinalScore,
             IReadOnlyList<Sprite> playerCardSprites,
@@ -93,10 +108,14 @@ public class ShowdownCutInPopup : MonoBehaviour
             CpuCharacterSprite = cpuCharacterSprite;
             PlayerBaseRoleName = playerBaseRoleName;
             CpuBaseRoleName = cpuBaseRoleName;
+            PlayerBaseRoleRank = playerBaseRoleRank;
+            CpuBaseRoleRank = cpuBaseRoleRank;
             PlayerBaseScore = playerBaseScore;
             CpuBaseScore = cpuBaseScore;
             PlayerFinalRoleName = playerFinalRoleName;
             CpuFinalRoleName = cpuFinalRoleName;
+            PlayerFinalRoleRank = playerFinalRoleRank;
+            CpuFinalRoleRank = cpuFinalRoleRank;
             PlayerFinalScore = playerFinalScore;
             CpuFinalScore = cpuFinalScore;
             PlayerCardSprites = playerCardSprites;
@@ -760,8 +779,8 @@ public class ShowdownCutInPopup : MonoBehaviour
         SetImage(playerSpecialCardImage, data.PlayerSpecialCardSprite);
         SetImage(cpuSpecialCardImage, data.CpuSpecialCardSprite);
         ResetSpecialCardHighlights();
-        SetRole(playerRoleImage, null, true, data.PlayerBaseRoleName);
-        SetRole(cpuRoleImage, null, false, data.CpuBaseRoleName);
+        SetRole(playerRoleImage, null, true, data.PlayerBaseRoleName, data.PlayerBaseRoleRank);
+        SetRole(cpuRoleImage, null, false, data.CpuBaseRoleName, data.CpuBaseRoleRank);
         SetScoresImmediately(data.PlayerBaseScore, data.CpuBaseScore);
         SetActive(specialCallBackdropImage, false);
         SetActive(resultBackdropImage, false);
@@ -790,8 +809,8 @@ public class ShowdownCutInPopup : MonoBehaviour
             yield break;
         }
 
-        SetRole(playerRoleImage, null, true, step.PlayerRoleName);
-        SetRole(cpuRoleImage, null, false, step.CpuRoleName);
+        SetRole(playerRoleImage, null, true, step.PlayerRoleName, step.PlayerRoleRank);
+        SetRole(cpuRoleImage, null, false, step.CpuRoleName, step.CpuRoleRank);
         HighlightSpecialCard(step.OwnerPlayerId);
 
         specialCallText.text = $"{GetOwnerName(step.OwnerPlayerId)}の{step.EffectName}";
@@ -807,8 +826,8 @@ public class ShowdownCutInPopup : MonoBehaviour
     private IEnumerator ShowFinalResult(Data data)
     {
         SetBackground(assetSet != null ? assetSet.cutInBackground : null, Color.black);
-        SetRole(playerRoleImage, null, true, data.PlayerFinalRoleName);
-        SetRole(cpuRoleImage, null, false, data.CpuFinalRoleName);
+        SetRole(playerRoleImage, null, true, data.PlayerFinalRoleName, data.PlayerFinalRoleRank);
+        SetRole(cpuRoleImage, null, false, data.CpuFinalRoleName, data.CpuFinalRoleRank);
         ResetSpecialCardHighlights();
         SetActive(specialCallBackdropImage, false);
         SetActive(resultBackdropImage, true);
@@ -926,9 +945,9 @@ public class ShowdownCutInPopup : MonoBehaviour
         SetImage(cpuCharacterBaseImage, assetSet != null ? assetSet.characterBase : null);
     }
 
-    private void SetRole(Image image, TextMeshProUGUI fallbackText, bool isPlayer, string roleName)
+    private void SetRole(Image image, TextMeshProUGUI fallbackText, bool isPlayer, string roleName, HandRank roleRank)
     {
-        Sprite roleSprite = assetSet != null ? assetSet.GetRoleSprite(isPlayer, roleName) : null;
+        Sprite roleSprite = assetSet != null ? assetSet.GetRoleSprite(isPlayer, roleRank) : null;
         SetImage(image, roleSprite);
         if (fallbackText != null)
         {

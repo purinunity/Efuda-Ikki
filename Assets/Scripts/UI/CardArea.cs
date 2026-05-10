@@ -327,16 +327,6 @@ public class CardArea : MonoBehaviour
 
     public List<Card> GetSelectedCardData()
     {
-        List<Card> selectedCards = new List<Card>(cardsInArea.Count);
-
-        foreach (var card in cardsInArea)
-        {
-            if (card != null && card.IsSelected)
-            {
-                selectedCards.Add(card);
-            }
-        }
-
-        return selectedCards;
+        return CardSelectionUtility.GetSelectedCards(cardsInArea);
     }
 }

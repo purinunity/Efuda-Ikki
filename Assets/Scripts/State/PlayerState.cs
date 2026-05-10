@@ -1,4 +1,3 @@
-﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -53,11 +52,10 @@ public class PlayerState
             HandCards.Add(card);
             // 追加後に手札をソート（花鳥風月の順、同じスートは数字の小さい順）
             SortHand();
-            Console.WriteLine($"Card {card.CardData.number} of {card.CardData.suit} added to player {PlayerId}'s hand.");
         }
         else
         {
-            Console.WriteLine($"Card {card?.CardData.number} of {card?.CardData.suit} is already in player {PlayerId}'s hand or is null.");
+            Debug.LogWarning($"Card {card?.CardData.number} of {card?.CardData.suit} is already in player {PlayerId}'s hand or is null.");
         }
     }
 
@@ -97,11 +95,10 @@ public class PlayerState
         if (card != null && HandCards.Contains(card))
         {
             HandCards.Remove(card);
-            Console.WriteLine($"Card {card.CardData.number} of {card.CardData.suit} removed from player {PlayerId}'s hand.");
         }
         else
         {
-            Console.WriteLine($"Card {card?.CardData.number} of {card?.CardData.suit} is not in player {PlayerId}'s hand or is null.");
+            Debug.LogWarning($"Card {card?.CardData.number} of {card?.CardData.suit} is not in player {PlayerId}'s hand or is null.");
         }
     }
 
@@ -110,6 +107,5 @@ public class PlayerState
     {
         LifePoints -= amount;
         if (LifePoints < 0) LifePoints = 0; // マイナスにならないよう制御
-        Console.WriteLine($"Player {PlayerId} life points decreased by {amount}. Current life points: {LifePoints}");
     }
 }

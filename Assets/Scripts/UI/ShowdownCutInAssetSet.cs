@@ -1,5 +1,6 @@
 ﻿using TMPro;
 using UnityEngine;
+using static HandEvaluator;
 
 [CreateAssetMenu(fileName = "ShowdownCutInAssets", menuName = "Efuda Ikki/Showdown Cut In Assets")]
 public class ShowdownCutInAssetSet : ScriptableObject
@@ -35,31 +36,31 @@ public class ShowdownCutInAssetSet : ScriptableObject
     public Sprite cpuNanahikari;
     public Sprite cpuTenshukaku;
 
-    public Sprite GetRoleSprite(bool isPlayer, string roleName)
+    public Sprite GetRoleSprite(bool isPlayer, HandRank roleRank)
     {
-        switch (roleName)
+        switch (roleRank)
         {
-            case "一双":
+            case HandRank.Isso:
                 return isPlayer ? playerIsso : cpuIsso;
-            case "二双":
+            case HandRank.Niso:
                 return isPlayer ? playerNiso : cpuNiso;
-            case "三珠":
+            case HandRank.Sanju:
                 return isPlayer ? playerSanju : cpuSanju;
-            case "四珠":
+            case HandRank.Yonju:
                 return isPlayer ? playerYonju : cpuYonju;
-            case "天守":
-                return isPlayer ? playerTenshu : cpuTenshu;
-            case "筋":
-                return isPlayer ? playerSuzi : cpuSuzi;
-            case "光":
+            case HandRank.Hikari:
                 return isPlayer ? playerHikari : cpuHikari;
-            case "七筋":
-                return isPlayer ? playerNanasuzi : cpuNanasuzi;
-            case "七光":
+            case HandRank.Suzi:
+                return isPlayer ? playerSuzi : cpuSuzi;
+            case HandRank.Tenshu:
+                return isPlayer ? playerTenshu : cpuTenshu;
+            case HandRank.Nanahikari:
                 return isPlayer ? playerNanahikari : cpuNanahikari;
-            case "天守閣":
+            case HandRank.Nanasuzi:
+                return isPlayer ? playerNanasuzi : cpuNanasuzi;
+            case HandRank.Tenshukaku:
                 return isPlayer ? playerTenshukaku : cpuTenshukaku;
-            case "不見":
+            case HandRank.Miezu:
             default:
                 return isPlayer ? playerMiezu : cpuMiezu;
         }

@@ -22,54 +22,23 @@ public static class SpecialCardResolver
         Swap
     }
 
-    private sealed class HandRoleDefinition
-    {
-        public HandRank Rank { get; }
-        public string DisplayName { get; }
-        public int Score { get; }
-
-        public HandRoleDefinition(HandRank rank, string displayName, int score)
-        {
-            Rank = rank;
-            DisplayName = displayName;
-            Score = score;
-        }
-    }
-
-    private static readonly HandRoleDefinition[] HandRoles =
-    {
-        new HandRoleDefinition(HandRank.Miezu, "不見", 0),
-        new HandRoleDefinition(HandRank.Isso, "一双", 5),
-        new HandRoleDefinition(HandRank.Niso, "二双", 10),
-        new HandRoleDefinition(HandRank.Sanju, "三珠", 20),
-        new HandRoleDefinition(HandRank.Yonju, "四珠", 40),
-        new HandRoleDefinition(HandRank.Tenshu, "天守", 40),
-        new HandRoleDefinition(HandRank.Suzi, "筋", 50),
-        new HandRoleDefinition(HandRank.Hikari, "光", 50),
-        new HandRoleDefinition(HandRank.Nanasuzi, "七筋", 80),
-        new HandRoleDefinition(HandRank.Nanahikari, "七光", 80),
-        new HandRoleDefinition(HandRank.Tenshukaku, "天守閣", 100)
-    };
-
-    private static readonly Dictionary<string, int> HandRoleIndexByName = BuildHandRoleIndexByName();
-
     public sealed class ResolvedHand
     {
         public int PlayerId { get; }
         public HandInfo BaseHand { get; }
         public int BaseRoleIndex { get; }
         public int CurrentRoleIndex { get; private set; }
-        public HandRank CurrentRank => HandRoles[CurrentRoleIndex].Rank;
-        public int BaseScore => HandRoles[BaseRoleIndex].Score;
-        public string BaseDisplayName => HandRoles[BaseRoleIndex].DisplayName;
+        public HandRank CurrentRank => HandRoleCatalog.GetAt(CurrentRoleIndex).Rank;
+        public int BaseScore => HandRoleCatalog.GetAt(BaseRoleIndex).Score;
+        public string BaseDisplayName => HandRoleCatalog.GetAt(BaseRoleIndex).DisplayName;
         public int Score { get; private set; }
-        public string DisplayName => HandRoles[CurrentRoleIndex].DisplayName;
+        public string DisplayName => HandRoleCatalog.GetAt(CurrentRoleIndex).DisplayName;
 
         public ResolvedHand(int playerId, HandInfo baseHand)
         {
             PlayerId = playerId;
             BaseHand = baseHand;
-            BaseRoleIndex = FindHandRoleIndex(baseHand);
+            BaseRoleIndex = HandRoleCatalog.FindIndex(baseHand);
             CurrentRoleIndex = BaseRoleIndex;
             Score = BaseScore;
         }
@@ -86,13 +55,13 @@ public static class SpecialCardResolver
 
         public bool StepUpRank(int steps = 1)
         {
-            int newIndex = Mathf.Clamp(CurrentRoleIndex + Mathf.Max(0, steps), 0, HandRoles.Length - 1);
+            int newIndex = HandRoleCatalog.ClampIndex(CurrentRoleIndex + Mathf.Max(0, steps));
             if (newIndex == CurrentRoleIndex)
             {
                 return false;
             }
 
-            int delta = HandRoles[newIndex].Score - HandRoles[CurrentRoleIndex].Score;
+            int delta = HandRoleCatalog.GetAt(newIndex).Score - HandRoleCatalog.GetAt(CurrentRoleIndex).Score;
             CurrentRoleIndex = newIndex;
             AddScore(delta);
             return true;
@@ -100,13 +69,13 @@ public static class SpecialCardResolver
 
         public bool StepDownRank(int steps = 1)
         {
-            int newIndex = Mathf.Clamp(CurrentRoleIndex - Mathf.Max(0, steps), 0, HandRoles.Length - 1);
+            int newIndex = HandRoleCatalog.ClampIndex(CurrentRoleIndex - Mathf.Max(0, steps));
             if (newIndex == CurrentRoleIndex)
             {
                 return false;
             }
 
-            int delta = HandRoles[newIndex].Score - HandRoles[CurrentRoleIndex].Score;
+            int delta = HandRoleCatalog.GetAt(newIndex).Score - HandRoleCatalog.GetAt(CurrentRoleIndex).Score;
             CurrentRoleIndex = newIndex;
             AddScore(delta);
             return true;
@@ -119,7 +88,7 @@ public static class SpecialCardResolver
 
         public void ApplySnapshot(HandSnapshot snapshot)
         {
-            CurrentRoleIndex = Mathf.Clamp(snapshot.RoleIndex, 0, HandRoles.Length - 1);
+            CurrentRoleIndex = HandRoleCatalog.ClampIndex(snapshot.RoleIndex);
             Score = Mathf.Max(0, snapshot.Score);
         }
     }
@@ -132,8 +101,8 @@ public static class SpecialCardResolver
 
         public HandSnapshot(int roleIndex, int score)
         {
-            RoleIndex = Mathf.Clamp(roleIndex, 0, HandRoles.Length - 1);
-            Rank = HandRoles[RoleIndex].Rank;
+            RoleIndex = HandRoleCatalog.ClampIndex(roleIndex);
+            Rank = HandRoleCatalog.GetAt(RoleIndex).Rank;
             Score = score;
         }
     }
@@ -171,6 +140,8 @@ public static class SpecialCardResolver
         public bool WasSealed { get; }
         public string PlayerRoleName { get; }
         public string CpuRoleName { get; }
+        public HandRank PlayerRoleRank { get; }
+        public HandRank CpuRoleRank { get; }
         public int PlayerScore { get; }
         public int CpuScore { get; }
 
@@ -182,6 +153,8 @@ public static class SpecialCardResolver
             bool wasSealed,
             string playerRoleName,
             string cpuRoleName,
+            HandRank playerRoleRank,
+            HandRank cpuRoleRank,
             int playerScore,
             int cpuScore)
         {
@@ -192,6 +165,8 @@ public static class SpecialCardResolver
             WasSealed = wasSealed;
             PlayerRoleName = playerRoleName;
             CpuRoleName = cpuRoleName;
+            PlayerRoleRank = playerRoleRank;
+            CpuRoleRank = cpuRoleRank;
             PlayerScore = playerScore;
             CpuScore = cpuScore;
         }
@@ -495,6 +470,8 @@ public static class SpecialCardResolver
             wasSealed,
             playerHand != null ? playerHand.DisplayName : string.Empty,
             cpuHand != null ? cpuHand.DisplayName : string.Empty,
+            playerHand != null ? playerHand.CurrentRank : HandRank.Miezu,
+            cpuHand != null ? cpuHand.CurrentRank : HandRank.Miezu,
             playerHand != null ? playerHand.Score : 0,
             cpuHand != null ? cpuHand.Score : 0);
     }
@@ -537,17 +514,11 @@ public static class SpecialCardResolver
                 continue;
             }
 
-            foreach (Card card in specialCards)
+            foreach (Card card in CardSelectionUtility.GetSelectedCards(
+                specialCards,
+                card => !playerState.IsSpecialCardUsed(card)))
             {
                 if (card?.CardData == null)
-                {
-                    continue;
-                }
-                if (!card.IsSelected)
-                {
-                    continue;
-                }
-                if (playerState.IsSpecialCardUsed(card))
                 {
                     continue;
                 }
@@ -566,43 +537,6 @@ public static class SpecialCardResolver
             .OrderBy(effect => effect.Definition.Priority)
             .ThenBy(effect => effect.OwnerPlayerId)
             .ToList();
-    }
-
-    private static int FindHandRoleIndex(HandInfo handInfo)
-    {
-        if (handInfo == null)
-        {
-            return 0;
-        }
-
-        if (!string.IsNullOrEmpty(handInfo.Name) &&
-            HandRoleIndexByName.TryGetValue(handInfo.Name, out int namedIndex))
-        {
-            return namedIndex;
-        }
-
-        int score = Mathf.Max(0, (int)handInfo.Rank);
-        for (int i = 0; i < HandRoles.Length; i++)
-        {
-            if (HandRoles[i].Score == score)
-            {
-                return i;
-            }
-        }
-
-        return 0;
-    }
-
-    private static Dictionary<string, int> BuildHandRoleIndexByName()
-    {
-        Dictionary<string, int> map = new Dictionary<string, int>(StringComparer.Ordinal);
-
-        for (int i = 0; i < HandRoles.Length; i++)
-        {
-            map[HandRoles[i].DisplayName] = i;
-        }
-
-        return map;
     }
 
     private static Dictionary<string, SpecialCardDefinition> BuildDefinitionMap()

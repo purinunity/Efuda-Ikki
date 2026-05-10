@@ -8,17 +8,17 @@ public static class HandEvaluator
     // ポーカーの役を表す列挙型
     public enum HandRank
     {
-        Miezu = 0,
-        Isso = 5,
-        Niso = 10,
-        Sanju = 20,
-        Yonju = 40,
-        Tenshu = 40,
-        Suzi = 50,
-        Hikari = 50,
-        Nanasuzi = 80,
-        Nanahikari = 80,
-        Tenshukaku = 100
+        Miezu,
+        Isso,
+        Niso,
+        Sanju,
+        Hikari,
+        Suzi,
+        Yonju,
+        Tenshu,
+        Nanahikari,
+        Nanasuzi,
+        Tenshukaku
     }
 
     // 役判定結果を格納するクラス
@@ -26,6 +26,7 @@ public static class HandEvaluator
     {
         public HandRank Rank { get; private set; }
         public string Name { get; private set; }
+        public int Score => HandRoleCatalog.GetScore(Rank);
 
         public HandInfo(HandRank rank, string name)
         {
@@ -54,145 +55,107 @@ public static class HandEvaluator
         }
 
         // 手札と共通札を結合
-        List<Card> allCards = playerHand.Concat(commonCards).ToList();
+        List<Card> allCards = playerHand.Concat(commonCards ?? Enumerable.Empty<Card>()).ToList();
 
         // 数字・スートごとの枚数を集計
-        var numberCounts = allCards.GroupBy(c => c.CardData.number)
-                    .ToDictionary(g => (int)g.Key, g => g.Count());
-
-        var suitCounts = allCards.GroupBy(c => c.CardData.suit)
-                    .ToDictionary(g => g.Key, g => g.Count());
-
-        var suitGroups = allCards.GroupBy(c => c.CardData.suit)
-                    .ToDictionary(g => g.Key, g => g.Select(card => card.CardData.number).ToList());
-        string rankName = "不見";
+        Dictionary<Number, List<Card>> numberGroups = CardPatternUtility.BuildNumberGroups(allCards);
+        Dictionary<Suit, List<Card>> suitGroups = CardPatternUtility.BuildSuitGroups(allCards);
+        string rankName = HandRoleCatalog.GetDisplayName(HandRank.Miezu);
         HandRank rank = HandRank.Miezu;
         // 一双判定
-        foreach (var count in numberCounts.Values)
+        foreach (List<Card> group in numberGroups.Values)
         {
-            if (count >= 2)
+            if (group.Count >= 2)
             {
-                rankName = "一双";
-                rank = HandRank.Isso;
+                SetBestHand(ref rank, ref rankName, HandRank.Isso);
                 break;
             }
         }
         // 二双判定
-        if (numberCounts.Values.Count(c => c >= 2) >= 2)
+        if (numberGroups.Values.Count(group => group.Count >= 2) >= 2)
         {
-            rankName = "二双";
-            rank = HandRank.Niso;
+            SetBestHand(ref rank, ref rankName, HandRank.Niso);
         }
         // 三珠判定
-        foreach (var count in numberCounts.Values)
+        foreach (List<Card> group in numberGroups.Values)
         {
-            if (count >= 3)
+            if (group.Count >= 3)
             {
-                rankName = "三珠";
-                rank = HandRank.Sanju;
+                SetBestHand(ref rank, ref rankName, HandRank.Sanju);
                 break;
             }
         }
         // 四珠判定
-        foreach (var count in numberCounts.Values)
+        foreach (List<Card> group in numberGroups.Values)
         {
-            if (count >= 4)
+            if (group.Count >= 4)
             {
-                rankName = "四珠";
-                rank = HandRank.Yonju;
+                SetBestHand(ref rank, ref rankName, HandRank.Yonju);
                 break;
             }
         }
         // 天守判定
-        if (suitGroups.Values.Any(numbers =>
-            numbers.Contains(Number.Jack) &&
-            numbers.Contains(Number.Queen) &&
-            numbers.Contains(Number.King)))
+        if (suitGroups.Values.Any(cards =>
+            CardPatternUtility.HasNumber(cards, Number.Jack) &&
+            CardPatternUtility.HasNumber(cards, Number.Queen) &&
+            CardPatternUtility.HasNumber(cards, Number.King)))
         {
-            rankName = "天守";
-            rank = HandRank.Tenshu;
+            SetBestHand(ref rank, ref rankName, HandRank.Tenshu);
         }
         // 筋判定
-        int suziCount = 0;
-        List<Number> nums = new List<Number> {
-            Number.One, Number.Two, Number.Three,
-            Number.Four, Number.Five, Number.Six,
-            Number.Seven, Number.Eight, Number.Nine,
-            Number.Ten, Number.Jack, Number.Queen,
-            Number.King, Number.One }; // エースは高値または低値として扱う
-        foreach (var num in nums)
+        if (CardPatternUtility.FindSequence(numberGroups, 5).Count >= 5)
         {
-            if (numberCounts.ContainsKey((int)num))
-            {
-                suziCount++;
-            }
-            else
-            {
-                suziCount = 0;
-            }
-            if (suziCount >= 5)
-            {
-                rankName = "筋";
-                rank = HandRank.Suzi;
-                break;
-            }
+            SetBestHand(ref rank, ref rankName, HandRank.Suzi);
         }
         // 光判定
-        if (suitCounts.Values.Any(number => number >= 5))
+        if (suitGroups.Values.Any(cards => cards.Count >= 5))
         {
-            rankName = "光";
-            rank = HandRank.Hikari;
+            SetBestHand(ref rank, ref rankName, HandRank.Hikari);
         }
         // 七筋判定
-        suziCount = 0;
-        foreach (var num in nums)
+        if (CardPatternUtility.FindSequence(numberGroups, 7).Count >= 7)
         {
-            if (numberCounts.ContainsKey((int)num))
-            {
-                suziCount++;
-            }
-            else
-            {
-                suziCount = 0;
-            }
-            if (suziCount >= 7)
-            {
-                rankName = "七筋";
-                rank = HandRank.Nanasuzi;
-                break;
-            }
+            SetBestHand(ref rank, ref rankName, HandRank.Nanasuzi);
         }
         // 七光判定
-        if (suitCounts.Values.Any(number => number >= 7))
+        if (suitGroups.Values.Any(cards => cards.Count >= 7))
         {
-            rankName = "七光";
-            rank = HandRank.Nanahikari;
+            SetBestHand(ref rank, ref rankName, HandRank.Nanahikari);
         }
         // 天守閣判定
-        if (suitGroups.Values.Count(numbers =>
-            numbers.Contains(Number.Jack) &&
-            numbers.Contains(Number.Queen) &&
-            numbers.Contains(Number.King)) >= 2)
+        if (suitGroups.Values.Count(cards =>
+            CardPatternUtility.HasNumber(cards, Number.Jack) &&
+            CardPatternUtility.HasNumber(cards, Number.Queen) &&
+            CardPatternUtility.HasNumber(cards, Number.King)) >= 2)
         {
-            rankName = "天守閣";
-            rank = HandRank.Tenshukaku;
+            SetBestHand(ref rank, ref rankName, HandRank.Tenshukaku);
         }
         return new HandInfo(rank, rankName);
+    }
+
+    private static void SetBestHand(ref HandRank rank, ref string rankName, HandRank candidateRank)
+    {
+        if (HandRoleCatalog.IsHigherRole(candidateRank, rank))
+        {
+            rank = candidateRank;
+            rankName = HandRoleCatalog.GetDisplayName(candidateRank);
+        }
     }
     
     public static int DetermineWinner(List<HandInfo> handInfos)
     {
         List<int> winners = new List<int>();
-        HandRank highestRank = HandRank.Miezu;
+        int highestScore = HandRoleCatalog.GetScore(HandRank.Miezu);
 
         for (int i = 0; i < handInfos.Count; i++)
         {
-            if (handInfos[i].Rank > highestRank)
+            int score = handInfos[i] != null ? handInfos[i].Score : 0;
+            if (score > highestScore)
             {
-                highestRank = handInfos[i].Rank;
+                highestScore = score;
                 winners = new List<int> { i };
             }
-            else if (handInfos[i].Rank == highestRank)
+            else if (score == highestScore)
             {
                 winners.Add(i);
             }
