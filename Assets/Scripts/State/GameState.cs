@@ -64,6 +64,15 @@ public class GameState
         CurrentState = GameStateType.RoundReady;
     }
 
+    public void ResetForNewMatch()
+    {
+        CurrentState = GameStateType.RoundReady;
+        CurrentPlayerIndex = 0;
+        CurrentParentIndex = 0;
+        RoundNumber = 1;
+        InitializePlayerStates();
+    }
+
     // 現在のプレイヤー状態を取得
     public PlayerState GetPlayerState()
     {

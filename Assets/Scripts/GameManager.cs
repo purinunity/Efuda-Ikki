@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -24,14 +24,15 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Cards specialCardsDeck2;
 
     [Header("CPU Character Settings")]
-    [Tooltip("Used when a character does not have configured special cards.")]
+    [Tooltip("Legacy fallback count. CPU mode progression now uses CpuLevelCatalog.")]
     [SerializeField] private int cpuSpecialCardCount = 4;
-    [Tooltip("Per-character CPU difficulty and special-card loadout settings. Character Index matches the selected stage number.")]
+    [Tooltip("Per-character CPU difficulty settings. Character Index matches CPU level - 1.")]
     [SerializeField] private List<CpuCharacterSettings> cpuCharacterSettings = new List<CpuCharacterSettings>();
 
     private Controller[] controllers;
     private bool gameOver = false;
     private bool isGameRunning = false;
+    private int currentMatchWinnerIndex = -1;
 
     private void Start()
     {
@@ -46,6 +47,13 @@ public class GameManager : MonoBehaviour
             modeData = new GameModeData();
         }
 
+        if (modeData.Mode == GameModeData.GameMode.KachinukiMode &&
+            !GameProgressStore.IsKachinukiUnlocked)
+        {
+            Debug.LogWarning("Kachinuki mode is locked until Ikki mode is cleared.");
+            return;
+        }
+
         if (isGameRunning)
         {
             return;
@@ -53,46 +61,81 @@ public class GameManager : MonoBehaviour
 
         isGameRunning = true;
         gameOver = false;
-        gameState.InitializePlayerStates();
         controllers = new Controller[] { playerController, cpuController };
 
-        int stageNumber = modeData.Mode == GameModeData.GameMode.KatinukiMode ? modeData.SelectedStage : 0;
+        StartCoroutine(GameModeFlow(modeData));
+    }
+
+    private IEnumerator GameModeFlow(GameModeData modeData)
+    {
+        InitializeModeProgress(modeData);
+
+        while (isGameRunning)
+        {
+            yield return StartCoroutine(RunSingleMatch(modeData));
+            int winnerIndex = currentMatchWinnerIndex;
+
+            yield return UIUpdateWithWaiting(5f);
+
+            if (winnerIndex != 0)
+            {
+                Debug.Log($"Mode ended. Winner: Player {winnerIndex}.");
+                break;
+            }
+
+            if (modeData.Mode == GameModeData.GameMode.IkkiMode)
+            {
+                if (modeData.CurrentLevel >= CpuLevelCatalog.MaxLevel)
+                {
+                    GameProgressStore.MarkIkkiCleared();
+                    Debug.Log("Ikki mode cleared. Kachinuki mode unlocked.");
+                    break;
+                }
+
+                modeData.AdvanceLevel(wrap: false);
+                Debug.Log($"Ikki mode advanced to CPU level {modeData.CurrentLevel}.");
+                continue;
+            }
+
+            modeData.IncrementWinStreak();
+            int bestStreak = GameProgressStore.RecordKachinukiStreak(modeData.CurrentWinStreak);
+            Debug.Log($"Kachinuki streak: {modeData.CurrentWinStreak}. Best: {bestStreak}.");
+            modeData.AdvanceLevel(wrap: true);
+            Debug.Log($"Kachinuki mode advanced to CPU level {modeData.CurrentLevel}.");
+        }
+
+        FinishModeAndReturnToTitle();
+    }
+
+    private void InitializeModeProgress(GameModeData modeData)
+    {
+        if (modeData.Mode == GameModeData.GameMode.KachinukiMode)
+        {
+            modeData.SetCurrentLevel(CpuLevelCatalog.MinLevel);
+            modeData.ResetWinStreak();
+            return;
+        }
+
+        modeData.SetCurrentLevel(modeData.CurrentLevel);
+    }
+
+    private IEnumerator RunSingleMatch(GameModeData modeData)
+    {
+        gameOver = false;
+        currentMatchWinnerIndex = -1;
+
+        gameState.ResetForNewMatch();
         CpuSetupService cpuSetupService = CreateCpuSetupService();
-        cpuSetupService.ApplyStageSettings(stageNumber);
-        cpuSetupService.ApplySpecialCards(modeData, stageNumber);
+        cpuSetupService.ApplyLevelSettings(modeData.CurrentLevel);
+        cpuSetupService.ApplySpecialCardsForLevel(modeData, modeData.CurrentLevel);
 
-        if (modeData.Mode == GameModeData.GameMode.KatinukiMode)
-        {
-            Debug.Log($"Katinuki mode started with stage {modeData.SelectedStage}.");
-            StartCoroutine(GameFlow());
-        }
-        else if (modeData.Mode == GameModeData.GameMode.BattleGroundMode)
-        {
-            Debug.Log("BattleGround mode started.");
-            StartCoroutine(GameFlow());
-        }
-    }
+        Debug.Log($"{modeData.Mode} match started. CPU level {modeData.CurrentLevel}.");
 
-    private CpuSetupService CreateCpuSetupService()
-    {
-        return new CpuSetupService(
-            gameState,
-            cpuController,
-            characterManager,
-            specialCardsDeck1,
-            specialCardsDeck2,
-            cpuSpecialCardCount,
-            cpuCharacterSettings);
-    }
-
-    private IEnumerator GameFlow()
-    {
         while (!gameOver)
         {
             RoundFlowService roundFlowService = CreateRoundFlowService();
             yield return roundFlowService.InitializeRound();
 
-            Debug.Log("Game flow started.");
             Debug.Log($"Round {gameState.RoundNumber} started.");
 
             yield return roundFlowService.RunExchangeRound();
@@ -105,6 +148,20 @@ public class GameManager : MonoBehaviour
 
             gameState.NextRound();
         }
+
+        currentMatchWinnerIndex = DetermineMatchWinnerIndex();
+    }
+
+    private CpuSetupService CreateCpuSetupService()
+    {
+        return new CpuSetupService(
+            gameState,
+            cpuController,
+            characterManager,
+            specialCardsDeck1,
+            specialCardsDeck2,
+            cpuSpecialCardCount,
+            cpuCharacterSettings);
     }
 
     private RoundFlowService CreateRoundFlowService()
@@ -129,7 +186,7 @@ public class GameManager : MonoBehaviour
         yield return StartCoroutine(PlayShowdownCutIn(showdownResult));
         showdownService.MarkSpecialCardsUsed(preparedShowdown.SpecialCardsToConsume);
 
-        if (showdownResult.IsDraw)
+        if (showdownResult == null || showdownResult.IsDraw)
         {
             Debug.Log("Round ended in a draw.");
             yield break;
@@ -145,7 +202,9 @@ public class GameManager : MonoBehaviour
 
         if (showdownService.CheckGameOver())
         {
-            StartCoroutine(HandleGameEnd());
+            gameOver = true;
+            currentMatchWinnerIndex = DetermineMatchWinnerIndex();
+            Debug.Log($"Match ended. Winner: Player {currentMatchWinnerIndex}.");
         }
     }
 
@@ -206,32 +265,28 @@ public class GameManager : MonoBehaviour
         return new ShowdownCutInDataBuilder(gameState, characterManager).Build(showdownResult);
     }
 
-    private IEnumerator HandleGameEnd()
+    private int DetermineMatchWinnerIndex()
     {
-        gameOver = true;
+        if (gameState?.PlayerStates == null)
+        {
+            return -1;
+        }
 
-        int winnerIndex = -1;
         for (int i = 0; i < gameState.playerCount; i++)
         {
             if (gameState.PlayerStates[i].LifePoints > 0)
             {
-                winnerIndex = i;
-                break;
+                return i;
             }
         }
 
-        if (winnerIndex == -1)
-        {
-            Debug.Log("Game ended with no remaining players.");
-        }
-        else
-        {
-            Debug.Log($"Game over. Winner: Player {winnerIndex}.");
-        }
+        return -1;
+    }
 
-        yield return UIUpdateWithWaiting(5f);
-
+    private void FinishModeAndReturnToTitle()
+    {
         isGameRunning = false;
+        gameOver = false;
 
         if (titleUIManager != null)
         {

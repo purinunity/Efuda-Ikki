@@ -302,6 +302,28 @@ public static class SpecialCardResolver
 
     private static readonly Dictionary<string, SpecialCardDefinition> DefinitionByAssetName = BuildDefinitionMap();
 
+    public static bool TryGetSpecialCardId(CardData cardData, out SpecialCardId id)
+    {
+        id = default;
+        if (cardData == null || string.IsNullOrWhiteSpace(cardData.name))
+        {
+            return false;
+        }
+
+        if (!DefinitionByAssetName.TryGetValue(cardData.name, out SpecialCardDefinition definition))
+        {
+            return false;
+        }
+
+        id = definition.Id;
+        return true;
+    }
+
+    public static bool IsSpecialCard(CardData cardData, SpecialCardId id)
+    {
+        return TryGetSpecialCardId(cardData, out SpecialCardId resolvedId) && resolvedId == id;
+    }
+
     public static ShowdownResult Resolve(
         GameState gameState,
         int? festivalSwingOverride = null,

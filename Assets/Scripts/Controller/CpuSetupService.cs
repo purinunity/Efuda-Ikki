@@ -8,9 +8,9 @@ public sealed class CpuSetupService
     private readonly CharacterManager characterManager;
     private readonly Cards playerSpecialCardsDeck;
     private readonly Cards cpuSpecialCardsDeck;
-    private readonly int defaultCpuSpecialCardCount;
     private readonly List<CpuCharacterSettings> characterSettings;
     private CpuCharacterSettings currentCharacterSettings;
+    private CpuLevelDefinition currentLevelDefinition;
 
     public CpuSetupService(
         GameState gameState,
@@ -26,28 +26,47 @@ public sealed class CpuSetupService
         this.characterManager = characterManager;
         this.playerSpecialCardsDeck = playerSpecialCardsDeck;
         this.cpuSpecialCardsDeck = cpuSpecialCardsDeck;
-        this.defaultCpuSpecialCardCount = defaultCpuSpecialCardCount;
         this.characterSettings = characterSettings;
     }
 
     public void ApplyStageSettings(int stageNumber)
     {
-        currentCharacterSettings = FindCharacterSettings(stageNumber);
+        ApplyLevelSettings(stageNumber + 1);
+    }
+
+    public void ApplyLevelSettings(int level)
+    {
+        currentLevelDefinition = CpuLevelCatalog.GetLevel(level);
+        int characterIndex = currentLevelDefinition.CharacterIndex;
+        currentCharacterSettings = FindCharacterSettings(characterIndex);
 
         if (characterManager != null)
         {
-            characterManager.SetCPUImage(stageNumber);
+            characterManager.SetCPUImage(characterIndex);
         }
 
-        ApplyDifficulty(stageNumber);
+        ApplyDifficulty(characterIndex);
+        ApplyLifePoints(currentLevelDefinition);
+
+        if (cpuController != null)
+        {
+            cpuController.ApplyLevelDefinition(currentLevelDefinition);
+        }
 
         gameState.maxHandTrashTurn = 2;
         gameState.maxHandTrashCount = 5;
 
-        Debug.Log($"Stage {stageNumber}: exchange limit fixed to 2 turns / 5 cards.");
+        Debug.Log(
+            $"CPU level {currentLevelDefinition.Level}: HP {currentLevelDefinition.InitialLifePoints}, " +
+            $"special logic {currentLevelDefinition.UsageMode}.");
     }
 
     public void ApplySpecialCards(GameModeData modeData, int stageNumber)
+    {
+        ApplySpecialCardsForLevel(modeData, stageNumber + 1);
+    }
+
+    public void ApplySpecialCardsForLevel(GameModeData modeData, int level)
     {
         if (gameState.PlayerStates == null || gameState.PlayerStates.Count == 0)
         {
@@ -58,7 +77,30 @@ public sealed class CpuSetupService
 
         if (gameState.PlayerStates.Count > 1)
         {
-            gameState.PlayerStates[1].SpecialCards = BuildCpuSpecialCards(stageNumber);
+            CpuLevelDefinition levelDefinition = currentLevelDefinition != null &&
+                                                 currentLevelDefinition.Level == CpuLevelCatalog.ClampLevel(level)
+                ? currentLevelDefinition
+                : CpuLevelCatalog.GetLevel(level);
+
+            gameState.PlayerStates[1].SpecialCards = BuildCpuSpecialCards(levelDefinition);
+        }
+    }
+
+    private void ApplyLifePoints(CpuLevelDefinition levelDefinition)
+    {
+        if (gameState?.PlayerStates == null)
+        {
+            return;
+        }
+
+        if (gameState.PlayerStates.Count > 0)
+        {
+            gameState.PlayerStates[0].ResetForMatch(PlayerState.DefaultLifePoints);
+        }
+
+        if (gameState.PlayerStates.Count > 1)
+        {
+            gameState.PlayerStates[1].ResetForMatch(levelDefinition.InitialLifePoints);
         }
     }
 
@@ -80,26 +122,14 @@ public sealed class CpuSetupService
         Debug.Log("No player special cards selected.");
     }
 
-    private List<Card> BuildCpuSpecialCards(int stageNumber)
-    {
-        CpuCharacterSettings settings = currentCharacterSettings;
-        if (settings == null || settings.CharacterIndex != stageNumber)
-        {
-            settings = FindCharacterSettings(stageNumber);
-        }
-
-        if (settings != null && settings.UseConfiguredSpecialCards)
-        {
-            return BuildConfiguredCpuSpecialCards(settings);
-        }
-
-        int count = settings != null ? settings.RandomSpecialCardCount : defaultCpuSpecialCardCount;
-        return BuildRandomCpuSpecialCards(count);
-    }
-
-    private List<Card> BuildConfiguredCpuSpecialCards(CpuCharacterSettings settings)
+    private List<Card> BuildCpuSpecialCards(CpuLevelDefinition levelDefinition)
     {
         List<Card> selectedCards = new List<Card>();
+        if (levelDefinition == null)
+        {
+            return selectedCards;
+        }
+
         if (cpuSpecialCardsDeck == null || cpuSpecialCardsDeck.cardList == null)
         {
             Debug.LogWarning("specialCardsDeck2 is not assigned.");
@@ -108,61 +138,37 @@ public sealed class CpuSetupService
 
         ClearCpuSpecialCardSelections();
 
-        if (settings.SpecialCardDatas != null)
+        foreach (SpecialCardResolver.SpecialCardId cardId in levelDefinition.SpecialCardIds)
         {
-            foreach (CardData cardData in settings.SpecialCardDatas)
+            Card card = FindCpuSpecialCard(cardId);
+            if (card != null && !selectedCards.Contains(card))
             {
-                if (cardData == null)
-                {
-                    continue;
-                }
-
-                Card card = cpuSpecialCardsDeck.GetCard(cardData);
-                if (card != null && !selectedCards.Contains(card))
-                {
-                    selectedCards.Add(card);
-                }
+                selectedCards.Add(card);
+            }
+            else if (card == null)
+            {
+                Debug.LogWarning($"CPU level {levelDefinition.Level}: special card {cardId} was not found.");
             }
         }
 
-        Debug.Log($"CPU character {settings.CharacterIndex}: configured special cards selected: {selectedCards.Count}");
+        Debug.Log($"CPU level {levelDefinition.Level}: configured special cards selected: {selectedCards.Count}");
         return selectedCards;
     }
 
-    private List<Card> BuildRandomCpuSpecialCards(int requestedCount)
+    private Card FindCpuSpecialCard(SpecialCardResolver.SpecialCardId cardId)
     {
-        List<Card> selectedCards = new List<Card>();
-        if (cpuSpecialCardsDeck == null || cpuSpecialCardsDeck.cardList == null)
-        {
-            Debug.LogWarning("specialCardsDeck2 is not assigned.");
-            return selectedCards;
-        }
-
-        List<Card> availableCards = new List<Card>();
         foreach (Card card in cpuSpecialCardsDeck.cardList)
         {
-            if (card != null)
+            if (card != null && SpecialCardResolver.IsSpecialCard(card.CardData, cardId))
             {
-                availableCards.Add(card);
+                return card;
             }
         }
-        CardSelectionUtility.ClearSelections(availableCards);
 
-        int count = Mathf.Clamp(requestedCount, 0, availableCards.Count);
-        for (int i = 0; i < count; i++)
-        {
-            int randomIndex = Random.Range(i, availableCards.Count);
-            Card temp = availableCards[i];
-            availableCards[i] = availableCards[randomIndex];
-            availableCards[randomIndex] = temp;
-            selectedCards.Add(availableCards[i]);
-        }
-
-        Debug.Log($"CPU special cards selected: {selectedCards.Count}");
-        return selectedCards;
+        return null;
     }
 
-    private void ApplyDifficulty(int stageNumber)
+    private void ApplyDifficulty(int characterIndex)
     {
         if (cpuController == null)
         {
@@ -172,15 +178,15 @@ public sealed class CpuSetupService
         if (currentCharacterSettings == null)
         {
             cpuController.ResetDifficulty();
-            Debug.Log($"CPU character {stageNumber}: using CPUController default difficulty settings.");
+            Debug.Log($"CPU character {characterIndex}: using CPUController default difficulty settings.");
             return;
         }
 
         cpuController.ApplyDifficulty(currentCharacterSettings.DifficultySettings);
-        Debug.Log($"CPU character {stageNumber}: difficulty settings applied.");
+        Debug.Log($"CPU character {characterIndex}: difficulty settings applied.");
     }
 
-    private CpuCharacterSettings FindCharacterSettings(int stageNumber)
+    private CpuCharacterSettings FindCharacterSettings(int characterIndex)
     {
         if (characterSettings == null)
         {
@@ -189,7 +195,7 @@ public sealed class CpuSetupService
 
         foreach (CpuCharacterSettings settings in characterSettings)
         {
-            if (settings != null && settings.CharacterIndex == stageNumber)
+            if (settings != null && settings.CharacterIndex == characterIndex)
             {
                 return settings;
             }

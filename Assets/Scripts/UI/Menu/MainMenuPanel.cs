@@ -12,15 +12,25 @@ public class MainMenuPanel : MonoBehaviour
     {
         if (kinouAriButton != null)
         {
-            kinouAriButton.onClick.AddListener(() => titleUIManager.SelectKatinukiMode());
+            kinouAriButton.onClick.AddListener(() => titleUIManager.SelectIkkiMode());
         }
         if (battleGroundButton != null)
         {
-            battleGroundButton.onClick.AddListener(() => titleUIManager.SelectBattleGroundMode());
+            battleGroundButton.onClick.AddListener(() => titleUIManager.SelectKachinukiMode());
         }
         if (settingsButton != null)
         {
             settingsButton.onClick.AddListener(() => titleUIManager.ShowSettings());
+        }
+
+        RefreshModeAvailability();
+    }
+
+    public void RefreshModeAvailability()
+    {
+        if (battleGroundButton != null)
+        {
+            battleGroundButton.interactable = GameProgressStore.IsKachinukiUnlocked;
         }
     }
 }
