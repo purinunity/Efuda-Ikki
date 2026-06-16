@@ -33,10 +33,14 @@ public class GameManager : MonoBehaviour
     private bool gameOver = false;
     private bool isGameRunning = false;
     private int currentMatchWinnerIndex = -1;
+    private GameUiUpdateService uiUpdateService;
+    private ShowdownPresentationService showdownPresentationService;
+    private GameEndNavigationService gameEndNavigationService;
 
     private void Start()
     {
         isGameRunning = false;
+        CreatePresentationServices();
     }
 
     public void StartGameWithMode(GameModeData modeData)
@@ -62,8 +66,21 @@ public class GameManager : MonoBehaviour
         isGameRunning = true;
         gameOver = false;
         controllers = new Controller[] { playerController, cpuController };
+        CreatePresentationServices();
 
         StartCoroutine(GameModeFlow(modeData));
+    }
+
+    private void CreatePresentationServices()
+    {
+        uiUpdateService = new GameUiUpdateService(gameState, uiManager);
+        showdownPresentationService = new ShowdownPresentationService(
+            this,
+            gameState,
+            uiManager,
+            characterManager,
+            showdownCutInPopup);
+        gameEndNavigationService = new GameEndNavigationService(titleUIManager);
     }
 
     private IEnumerator GameModeFlow(GameModeData modeData)
@@ -75,7 +92,7 @@ public class GameManager : MonoBehaviour
             yield return StartCoroutine(RunSingleMatch(modeData));
             int winnerIndex = currentMatchWinnerIndex;
 
-            yield return UIUpdateWithWaiting(5f);
+            yield return uiUpdateService.WaitForUpdate(5f);
 
             if (winnerIndex != 0)
             {
@@ -170,7 +187,7 @@ public class GameManager : MonoBehaviour
             gameState,
             allCards,
             controllers,
-            UIUpdateWithWaiting,
+            uiUpdateService.WaitForUpdate,
             () => gameOver);
     }
 
@@ -183,7 +200,8 @@ public class GameManager : MonoBehaviour
         SpecialCardResolver.ShowdownResult showdownResult = preparedShowdown.Result;
         LogShowdownResult(showdownResult);
 
-        yield return StartCoroutine(PlayShowdownCutIn(showdownResult));
+        yield return showdownPresentationService.Play(showdownResult);
+        showdownCutInPopup = showdownPresentationService.CurrentPopup;
         showdownService.MarkSpecialCardsUsed(preparedShowdown.SpecialCardsToConsume);
 
         if (showdownResult == null || showdownResult.IsDraw)
@@ -240,31 +258,6 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    private IEnumerator PlayShowdownCutIn(SpecialCardResolver.ShowdownResult showdownResult)
-    {
-        ShowdownCutInPopupProvider popupProvider = CreateShowdownCutInPopupProvider();
-        ShowdownCutInPopup popup = popupProvider.GetOrCreate();
-        showdownCutInPopup = popupProvider.CurrentPopup;
-
-        if (popup == null)
-        {
-            yield break;
-        }
-
-        ShowdownCutInPopup.Data cutInData = BuildShowdownCutInData(showdownResult);
-        yield return StartCoroutine(popup.Play(cutInData));
-    }
-
-    private ShowdownCutInPopupProvider CreateShowdownCutInPopupProvider()
-    {
-        return new ShowdownCutInPopupProvider(this, uiManager, showdownCutInPopup);
-    }
-
-    private ShowdownCutInPopup.Data BuildShowdownCutInData(SpecialCardResolver.ShowdownResult showdownResult)
-    {
-        return new ShowdownCutInDataBuilder(gameState, characterManager).Build(showdownResult);
-    }
-
     private int DetermineMatchWinnerIndex()
     {
         if (gameState?.PlayerStates == null)
@@ -288,28 +281,6 @@ public class GameManager : MonoBehaviour
         isGameRunning = false;
         gameOver = false;
 
-        if (titleUIManager != null)
-        {
-            titleUIManager.ShowTitleScreen();
-            GameModeManager.ResetGameModeData();
-        }
-        else
-        {
-#if UNITY_EDITOR
-            UnityEditor.EditorApplication.isPlaying = false;
-#endif
-        }
-    }
-
-    private IEnumerator UIUpdateWithWaiting(float duration = 5f)
-    {
-        uiManager.UIUpdate(gameState, duration);
-
-        while (uiManager.UIUpdateInProgress)
-        {
-            yield return null;
-        }
-
-        Debug.Log("UI update completed.");
+        gameEndNavigationService.ReturnToTitleOrStopEditor();
     }
 }
