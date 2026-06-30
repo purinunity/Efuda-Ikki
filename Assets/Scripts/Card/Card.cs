@@ -9,15 +9,30 @@ using UnityEngine.UI;
 
 public class Card : MonoBehaviour // カードの表示・状態管理
 {
-    public CardData CardData { get; private set; } // カード情報
+    private readonly CardRuntimeState runtimeState = new CardRuntimeState();
+
+    public CardRuntimeState RuntimeState => runtimeState;
+    public CardData CardData => runtimeState.CardData; // カード情報
     private Image cardImage; // カード画像
     private RectTransform cardRect; // RectTransform参照
-    public bool IsFaceUp = false; // 表向きかどうか
+    public bool IsFaceUp // 表向きかどうか
+    {
+        get => runtimeState.IsFaceUp;
+        set => runtimeState.IsFaceUp = value;
+    }
     private bool LastFaceUp { get; set; } = false; // 最後に表向きだったかどうか
     public bool MoveComplete { get; private set; } = true; // 移動完了フラグ
-    public bool IsSelectable = false; // 選択可能フラグ
+    public bool IsSelectable // 選択可能フラグ
+    {
+        get => runtimeState.IsSelectable;
+        set => runtimeState.IsSelectable = value;
+    }
     private bool LastSelected { get; set; } = false; // 最後に選択されていたかどうか
-    public bool IsSelected = false; // 選択状態フラグ
+    public bool IsSelected // 選択状態フラグ
+    {
+        get => runtimeState.IsSelected;
+        set => runtimeState.IsSelected = value;
+    }
 
     public Vector2 TargetPosition { get; set; } //位置を保存するプロパティ
     private Vector2 LastWorldPosition { get; set; } //最後に移動した位置を保存するプロパティ
@@ -83,7 +98,7 @@ public class Card : MonoBehaviour // カードの表示・状態管理
     // カード情報をセットし、画像を更新
     public void SetCardData(CardData cardData)
     {
-        CardData = cardData;
+        runtimeState.SetCardData(cardData);
         if (cardImage != null && CardData != null)
         {
             cardImage.sprite = CardData.BackImage;
@@ -118,12 +133,12 @@ public class Card : MonoBehaviour // カードの表示・状態管理
     // カードの数字を取得
     public Number GetCardNumber()
     {
-        return CardData.number;
+        return runtimeState.Number;
     }
     // カードのスートを取得
     public Suit GetCardSuit()
     {
-        return CardData.suit;
+        return runtimeState.Suit;
     }
 
     // カードを移動・回転させる（アニメーション用）

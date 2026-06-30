@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.UI;
 
 public class TitleUIManager : MonoBehaviour
 {
@@ -20,6 +19,11 @@ public class TitleUIManager : MonoBehaviour
 
     private void SetPanelActive(CanvasGroup panel, bool isActive)
     {
+        if (panel == null)
+        {
+            return;
+        }
+
         panel.alpha = isActive ? 1f : 0f;
         panel.interactable = isActive;
         panel.blocksRaycasts = isActive;
@@ -44,6 +48,7 @@ public class TitleUIManager : MonoBehaviour
     {
         HideAllPanels();
         SetPanelActive(modeSelectPanel, true);
+        RefreshMainMenuState();
     }
 
     public void ShowStageSelect()
@@ -81,14 +86,7 @@ public class TitleUIManager : MonoBehaviour
 
     public void BackFromSpecialCardSelect()
     {
-        if (currentGameModeData != null && currentGameModeData.Mode == GameModeData.GameMode.KatinukiMode)
-        {
-            ShowStageSelect();
-        }
-        else
-        {
-            ShowMainMenu();
-        }
+        ShowMainMenu();
     }
 
     public void SetSpecialCard(CardData cardData)
@@ -122,27 +120,53 @@ public class TitleUIManager : MonoBehaviour
         }
     }
 
-    public void SelectKatinukiMode()
+    public void SelectIkkiMode()
     {
-        currentGameModeData = new GameModeData(GameModeData.GameMode.KatinukiMode);
-        GameModeManager.SetGameModeData(currentGameModeData);
-        ShowStageSelect();
-    }
-
-    public void SelectBattleGroundMode()
-    {
-        currentGameModeData = new GameModeData(GameModeData.GameMode.BattleGroundMode);
+        currentGameModeData = new GameModeData(GameModeData.GameMode.IkkiMode);
+        currentGameModeData.SetCurrentLevel(CpuLevelCatalog.MinLevel);
         GameModeManager.SetGameModeData(currentGameModeData);
         ShowSpecialCardSelect();
     }
 
+    public void SelectKachinukiMode()
+    {
+        if (!GameProgressStore.IsKachinukiUnlocked)
+        {
+            Debug.LogWarning("Kachinuki mode is locked until Ikki mode is cleared.");
+            RefreshMainMenuState();
+            return;
+        }
+
+        currentGameModeData = new GameModeData(GameModeData.GameMode.KachinukiMode);
+        currentGameModeData.SetCurrentLevel(CpuLevelCatalog.MinLevel);
+        currentGameModeData.ResetWinStreak();
+        GameModeManager.SetGameModeData(currentGameModeData);
+        ShowSpecialCardSelect();
+    }
+
+    public void SelectKatinukiMode()
+    {
+        SelectIkkiMode();
+    }
+
+    public void SelectBattleGroundMode()
+    {
+        SelectKachinukiMode();
+    }
+
     public void SelectStage(int stageNumber)
     {
-        if (currentGameModeData != null && currentGameModeData.Mode == GameModeData.GameMode.KatinukiMode)
-        {
-            currentGameModeData.SelectedStage = stageNumber;
-            GameModeManager.SetGameModeData(currentGameModeData);
-            ShowSpecialCardSelect();
-        }
+        currentGameModeData = new GameModeData(GameModeData.GameMode.IkkiMode);
+        currentGameModeData.SetCurrentLevel(stageNumber + 1);
+        GameModeManager.SetGameModeData(currentGameModeData);
+        ShowSpecialCardSelect();
+    }
+
+    private void RefreshMainMenuState()
+    {
+        var mainMenuPanel = modeSelectPanel != null
+            ? modeSelectPanel.GetComponent<MainMenuPanel>()
+            : null;
+        mainMenuPanel?.RefreshModeAvailability();
     }
 }

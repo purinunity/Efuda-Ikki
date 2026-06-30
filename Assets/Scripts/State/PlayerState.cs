@@ -1,23 +1,47 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// プレイヤーの状態を管理するクラス
 public class PlayerState
 {
-    public int PlayerId { get; private set; } // プレイヤーID
-    public int LifePoints { get; private set; } = 100; // ライフポイント（初期値100）
-    public List<Card> HandCards { get; private set; } // 手札
-    public List<Card> SpecialCards { get; set; } // 特殊札
-    private readonly HashSet<Card> usedSpecialCards = new HashSet<Card>(); // 使用済み特殊札
+    public const int DefaultLifePoints = 100;
+
+    public int PlayerId { get; private set; }
+    public int LifePoints { get; private set; } = DefaultLifePoints;
+    public List<Card> HandCards { get; private set; }
+    public List<Card> SpecialCards { get; set; }
+    private readonly HashSet<Card> usedSpecialCards = new HashSet<Card>();
     public IReadOnlyCollection<Card> UsedSpecialCards => usedSpecialCards;
-    public int HandTrashTurnsUsed { get; private set; } = 0; // 手札交換に使用したターン数
+    public int HandTrashTurnsUsed { get; private set; } = 0;
+
+    public PlayerState(int playerId)
+    {
+        PlayerId = playerId;
+        HandCards = new List<Card>();
+        SpecialCards = new List<Card>();
+    }
+
     public void IncrementHandTrashTurnsUsed()
     {
         HandTrashTurnsUsed++;
     }
+
     public void ResetHandTrashTurnsUsed()
     {
         HandTrashTurnsUsed = 0;
+    }
+
+    public void SetLifePoints(int lifePoints)
+    {
+        LifePoints = Mathf.Max(0, lifePoints);
+    }
+
+    public void ResetForMatch(int initialLifePoints = DefaultLifePoints)
+    {
+        SetLifePoints(initialLifePoints);
+        HandCards.Clear();
+        usedSpecialCards.Clear();
+        HandTrashTurnsUsed = 0;
+        CardSelectionUtility.ClearSelections(SpecialCards);
     }
 
     public bool IsSpecialCardUsed(Card card)
@@ -36,21 +60,11 @@ public class PlayerState
         return usedSpecialCards.Add(card);
     }
 
-    // コンストラクタ
-    public PlayerState(int playerId)
-    {
-        PlayerId = playerId;
-        HandCards = new List<Card>();
-        SpecialCards = new List<Card>();
-    }
-
-    // 手札にカードを追加
     public void AddCardToHand(Card card)
     {
         if (card != null && !HandCards.Contains(card))
         {
             HandCards.Add(card);
-            // 追加後に手札をソート（花鳥風月の順、同じスートは数字の小さい順）
             SortHand();
         }
         else
@@ -59,7 +73,6 @@ public class PlayerState
         }
     }
 
-    // 手札を花鳥風月の順にソート、同じスートなら数字の小さい順
     private void SortHand()
     {
         HandCards.Sort((a, b) =>
@@ -81,15 +94,14 @@ public class PlayerState
     {
         switch (suit)
         {
-            case Suit.Flowers: return 0; // 花
-            case Suit.Birds: return 1;   // 鳥
-            case Suit.Wind: return 2;    // 風
-            case Suit.Moon: return 3;    // 月
-            default: return 4; // Joker等は最後に
+            case Suit.Flowers: return 0;
+            case Suit.Birds: return 1;
+            case Suit.Wind: return 2;
+            case Suit.Moon: return 3;
+            default: return 4;
         }
     }
 
-    // 手札からカードを削除
     public void RemoveCardFromHand(Card card)
     {
         if (card != null && HandCards.Contains(card))
@@ -102,10 +114,8 @@ public class PlayerState
         }
     }
 
-    // ライフポイントを減らす
     public void decreaseLifePoints(int amount)
     {
-        LifePoints -= amount;
-        if (LifePoints < 0) LifePoints = 0; // マイナスにならないよう制御
+        SetLifePoints(LifePoints - amount);
     }
 }
