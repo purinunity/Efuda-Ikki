@@ -10,6 +10,18 @@ using UnityEngine.UI;
 /// </summary>
 public class PopupPreviewCardArea : CardArea
 {
+    private static readonly Vector2 DiscardPopupReferenceSize = new Vector2(768f, 656f);
+    private static readonly Rect[] DiscardRowSlots =
+    {
+        new Rect(160f, 16f, 592f, 144f),
+        new Rect(160f, 176f, 592f, 144f),
+        new Rect(160f, 336f, 592f, 144f),
+        new Rect(160f, 496f, 592f, 144f)
+    };
+    private const float DiscardSlotHorizontalPadding = 18f;
+    private const float DiscardSlotVerticalPadding = 14f;
+    private const float MaxPreviewCardScale = 0.25f;
+
     private static readonly Suit[] PreviewSuitOrder =
     {
         Suit.Flowers,
@@ -70,7 +82,13 @@ public class PopupPreviewCardArea : CardArea
             return;
         }
 
+        if (focusedCard != null && !focusedCard.MoveComplete)
+        {
+            return;
+        }
+
         popupRoot.SetActive(true);
+        FitPopupCardAreaToBackground();
         if (closeButton != null)
         {
             closeButton.transform.SetAsLastSibling();
@@ -208,6 +226,11 @@ public class PopupPreviewCardArea : CardArea
             return;
         }
 
+        if (TryLayoutPreviewCardsInDiscardSlots(rows))
+        {
+            return;
+        }
+
         float contentHeight = Mathf.Max(
             0f,
             popupCardArea.areaRect.rect.height - Mathf.Max(0f, closeButtonReservedHeight) - Mathf.Max(0f, popupBottomPadding));
@@ -224,7 +247,7 @@ public class PopupPreviewCardArea : CardArea
                 continue;
             }
 
-            var rowWidths = rowCards.Select(GetCardWidth).ToList();
+            var rowWidths = rowCards.Select(card => GetCardWidth(card)).ToList();
             var rowCentersX = ComputeCenters(popupCardArea.areaRect.rect.width, rowWidths, false);
 
             for (int cardIndex = 0; cardIndex < rowCards.Count; cardIndex++)
@@ -245,6 +268,135 @@ public class PopupPreviewCardArea : CardArea
                 }
             }
         }
+    }
+
+    private bool TryLayoutPreviewCardsInDiscardSlots(List<List<Card>> rows)
+    {
+        RectTransform targetArea = popupCardArea.areaRect;
+        if (targetArea == null || rows == null || rows.Count == 0)
+        {
+            return false;
+        }
+
+        Rect areaRect = targetArea.rect;
+        if (areaRect.width <= 0f || areaRect.height <= 0f)
+        {
+            return false;
+        }
+
+        int siblingIndex = 0;
+        int rowCount = Mathf.Min(rows.Count, DiscardRowSlots.Length);
+
+        for (int rowIndex = 0; rowIndex < rowCount; rowIndex++)
+        {
+            var rowCards = rows[rowIndex];
+            if (rowCards == null || rowCards.Count == 0)
+            {
+                continue;
+            }
+
+            Rect slot = GetScaledDiscardSlot(DiscardRowSlots[rowIndex], areaRect.size);
+            Vector2 slotPadding = GetScaledDiscardPadding(areaRect.size);
+            Vector2 usableSize = new Vector2(
+                Mathf.Max(1f, slot.width - slotPadding.x * 2f),
+                Mathf.Max(1f, slot.height - slotPadding.y * 2f));
+            float cardScale = GetCardScaleToFit(rowCards, usableSize);
+            var rowWidths = rowCards.Select(card => GetCardWidth(card, cardScale)).ToList();
+            var rowCentersX = ComputeCenters(usableSize.x, rowWidths, false);
+
+            for (int cardIndex = 0; cardIndex < rowCards.Count; cardIndex++)
+            {
+                var card = rowCards[cardIndex];
+                if (card == null)
+                {
+                    continue;
+                }
+
+                RectTransform cardRect = card.GetCardRect();
+                if (cardRect != null)
+                {
+                    cardRect.localScale = new Vector3(cardScale, cardScale, cardScale);
+                }
+
+                card.UseSelectedYOffset = false;
+                card.transform.SetParent(targetArea);
+                card.transform.SetSiblingIndex(siblingIndex++);
+                float centerX = rowCentersX.Count > cardIndex ? rowCentersX[cardIndex] : 0f;
+                card.TargetPosition = new Vector2(slot.center.x + centerX, slot.center.y);
+
+                if (card.MoveComplete)
+                {
+                    card.WaitAndMoveBySpeed(0f, previewMoveSpeed, previewTurnSpeed);
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private void FitPopupCardAreaToBackground()
+    {
+        if (popupRoot == null || popupCardArea == null || popupCardArea.areaRect == null)
+        {
+            return;
+        }
+
+        RectTransform popupRootRect = popupRoot.GetComponent<RectTransform>();
+        RectTransform targetArea = popupCardArea.areaRect;
+        if (popupRootRect == null || targetArea.parent != popupRootRect)
+        {
+            return;
+        }
+
+        targetArea.anchorMin = Vector2.zero;
+        targetArea.anchorMax = Vector2.one;
+        targetArea.pivot = new Vector2(0.5f, 0.5f);
+        targetArea.anchoredPosition = Vector2.zero;
+        targetArea.sizeDelta = Vector2.zero;
+        targetArea.localScale = Vector3.one;
+    }
+
+    private Rect GetScaledDiscardSlot(Rect referenceSlot, Vector2 areaSize)
+    {
+        float scaleX = areaSize.x / DiscardPopupReferenceSize.x;
+        float scaleY = areaSize.y / DiscardPopupReferenceSize.y;
+        float x = (referenceSlot.x - DiscardPopupReferenceSize.x * 0.5f) * scaleX;
+        float y = (DiscardPopupReferenceSize.y * 0.5f - referenceSlot.y - referenceSlot.height) * scaleY;
+        return new Rect(x, y, referenceSlot.width * scaleX, referenceSlot.height * scaleY);
+    }
+
+    private Vector2 GetScaledDiscardPadding(Vector2 areaSize)
+    {
+        return new Vector2(
+            DiscardSlotHorizontalPadding * areaSize.x / DiscardPopupReferenceSize.x,
+            DiscardSlotVerticalPadding * areaSize.y / DiscardPopupReferenceSize.y);
+    }
+
+    private float GetCardScaleToFit(List<Card> rowCards, Vector2 usableSize)
+    {
+        float maxWidth = 0f;
+        float maxHeight = 0f;
+
+        foreach (var card in rowCards)
+        {
+            if (card == null)
+            {
+                continue;
+            }
+
+            RectTransform rect = card.GetCardRect();
+            maxWidth = Mathf.Max(maxWidth, rect != null && rect.rect.width > 0f ? rect.rect.width : 100f);
+            maxHeight = Mathf.Max(maxHeight, rect != null && rect.rect.height > 0f ? rect.rect.height : 150f);
+        }
+
+        if (maxWidth <= 0f || maxHeight <= 0f)
+        {
+            return MaxPreviewCardScale;
+        }
+
+        float widthScale = usableSize.x / maxWidth;
+        float heightScale = usableSize.y / maxHeight;
+        return Mathf.Max(0.01f, Mathf.Min(MaxPreviewCardScale, widthScale, heightScale));
     }
 
     private List<List<Card>> BuildSuitRows(List<Card> cards)
@@ -289,6 +441,22 @@ public class PopupPreviewCardArea : CardArea
         }
 
         return rect.rect.width * rect.localScale.x;
+    }
+
+    private float GetCardWidth(Card card, float scale)
+    {
+        if (card == null)
+        {
+            return 100f * scale;
+        }
+
+        RectTransform rect = card.GetCardRect();
+        if (rect == null || rect.rect.width <= 0f)
+        {
+            return 100f * scale;
+        }
+
+        return rect.rect.width * scale;
     }
 
     private float GetMaxCardHeight(List<Card> cards)

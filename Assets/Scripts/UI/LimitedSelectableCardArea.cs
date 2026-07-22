@@ -67,6 +67,12 @@ public class LimitedSelectableCardArea : CardArea
             return false;
         }
 
+        if (!card.MoveComplete)
+        {
+            RefreshSelectionState();
+            return false;
+        }
+
         if (!card.IsSelectable)
         {
             RefreshSelectionState();

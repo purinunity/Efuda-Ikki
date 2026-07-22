@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f21b763ed1541cf8f94bb4ee9f955cb, type: 3}
+  m_Name: ShowdownCutInAssets
+  m_EditorClassIdentifier: 
+  cutInBackground: {fileID: 21300000, guid: c77149a29b7ac7949ae902e2a9b58992, type: 3}
+  characterBase: {fileID: 21300000, guid: a4edca6d2bfb8c24580bc0c13635a60d, type: 3}
+  roleFrame: {fileID: 21300000, guid: fe2a869f8ddd80541a3279ff6b5cb8b8, type: 3}
+  winResult: {fileID: 21300000, guid: 98e38505e6eaca34591c9472f562cf1f, type: 3}
+  loseResult: {fileID: 21300000, guid: ef1376ecc7873b149a4635886a0ee0ac, type: 3}
+  textFont: {fileID: 11400000, guid: 2a7b3e5085dcef945861217a568646fa, type: 2}
+  cpuRoleSpriteRect: {x: 304, y: 176, z: 416, w: 82}
+  playerRoleSpriteRect: {x: 304, y: 318, z: 416, w: 82}
+  playerMiezu: {fileID: 21300000, guid: bf46f5b3261fe164b81349c31adc8140, type: 3}
+  playerIsso: {fileID: 21300000, guid: 82a3f6636e36d9d45b2b6f9e7668d066, type: 3}
+  playerNiso: {fileID: 21300000, guid: b1c5e62a39ca3ea47b0c2b121b42d693, type: 3}
+  playerSanju: {fileID: 21300000, guid: 85738a7273740174ab85be2fed6073e4, type: 3}
+  playerYonju: {fileID: 21300000, guid: 5b86464398812d646add59b5ce54f685, type: 3}
+  playerTenshu: {fileID: 21300000, guid: 36108996a2f95d74ba785faa7fdd25b2, type: 3}
+  playerSuzi: {fileID: 21300000, guid: 9132fae69de75834f91e7f7b833f0c0e, type: 3}
+  playerHikari: {fileID: 21300000, guid: 9a9a2b23e912dc24a8c1f7e4982eb514, type: 3}
+  playerNanasuzi: {fileID: 21300000, guid: ab3b33279fbf1784aa7eb17c88461123, type: 3}
+  playerNanahikari: {fileID: 21300000, guid: a648e5d637636ea44ba5e95c9ec02cee, type: 3}
+  playerTenshukaku: {fileID: 21300000, guid: dd317f27238e1cb4e9bf1567a8e8dfa4, type: 3}
+  cpuMiezu: {fileID: 21300000, guid: 7c8d5d5e91ecf9b4fbe2909c664dd711, type: 3}
+  cpuIsso: {fileID: 21300000, guid: 1549e9fff00b5084087b2b7d9071166e, type: 3}
+  cpuNiso: {fileID: 21300000, guid: 5942a77ecb4563842926489ffd4f413f, type: 3}
+  cpuSanju: {fileID: 21300000, guid: 38d994a5f87249b438239a43dd96db11, type: 3}
+  cpuYonju: {fileID: 21300000, guid: eab971cf418c400488f61394c44dacc3, type: 3}
+  cpuTenshu: {fileID: 21300000, guid: 3e2ef809d34423a4e86f64a3e85e787e, type: 3}
+  cpuSuzi: {fileID: 21300000, guid: 30067b0dad9a4de49b0aa6b1482cafe6, type: 3}
+  cpuHikari: {fileID: 21300000, guid: b723439ee74c5b040957bdf1b46f811f, type: 3}
+  cpuNanasuzi: {fileID: 21300000, guid: b16f50706e01bd648ab343e6787f77ea, type: 3}
+  cpuNanahikari: {fileID: 21300000, guid: cc7fc445bc3449248b6428dd46d8292d, type: 3}
+  cpuTenshukaku: {fileID: 21300000, guid: 2a2505ab7c84bf948bddb2431ecd9b7f, type: 3}

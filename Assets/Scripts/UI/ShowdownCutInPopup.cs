@@ -9,7 +9,27 @@ public class ShowdownCutInPopup : MonoBehaviour
 {
     private const float ReferenceWidth = 1024f;
     private const float ReferenceHeight = 576f;
+    private const int HandCardCount = 5;
+    private const int CommonCardCount = 2;
     private const int ShowdownCardCount = 7;
+    private static readonly Vector4 CpuCharacterBaseRect = new Vector4(848f, 16f, 128f, 128f);
+    private static readonly Vector4 CpuCharacterRect = new Vector4(864f, 32f, 96f, 96f);
+    private static readonly Vector4 PlayerCharacterBaseRect = new Vector4(48f, 432f, 128f, 128f);
+    private static readonly Vector4 PlayerCharacterRect = new Vector4(64f, 448f, 96f, 96f);
+    private static readonly Vector4 CpuHandFrameRect = new Vector4(336f, 16f, 480f, 128f);
+    private static readonly Vector4 PlayerHandFrameRect = new Vector4(208f, 432f, 480f, 128f);
+    private static readonly Vector4 CpuCommonFrameRect = new Vector4(112f, 160f, 192f, 128f);
+    private static readonly Vector4 PlayerCommonFrameRect = new Vector4(720f, 288f, 192f, 128f);
+    private static readonly Vector4 CpuSpecialCardSlotRect = new Vector4(208f, 16f, 96f, 128f);
+    private static readonly Vector4 PlayerSpecialCardSlotRect = new Vector4(720f, 432f, 96f, 128f);
+    private static readonly Vector2 ScoreTextSize = new Vector2(120f, 48f);
+    private static readonly Vector4 SpecialCallBackdropRect = new Vector4(304f, 224f, 416f, 128f);
+    private static readonly Vector4 ResultBackdropRect = new Vector4(304f, 208f, 416f, 160f);
+    private static readonly Vector4 CpuResultStampRect = new Vector4(48f, 16f, 128f, 128f);
+    private static readonly Vector4 PlayerResultStampRect = new Vector4(848f, 432f, 128f, 128f);
+    private static readonly Vector4 SpecialCallTextRect = new Vector4(320f, 240f, 384f, 96f);
+    private static readonly Vector4 ResultTextRect = new Vector4(320f, 224f, 384f, 64f);
+    private static readonly Vector4 DamageTextRect = new Vector4(320f, 296f, 384f, 48f);
 
     public sealed class Data
     {
@@ -135,14 +155,10 @@ public class ShowdownCutInPopup : MonoBehaviour
     [SerializeField] private Color roleCardDimColor = new Color(1f, 1f, 1f, 0.34f);
     [SerializeField] private Color activeSpecialCardTint = new Color(1f, 0.86f, 0.18f, 1f);
     [SerializeField] private Color inactiveSpecialCardTint = new Color(1f, 1f, 1f, 0.42f);
-    [SerializeField] private Vector4 fallbackCpuRoleSpriteRect = new Vector4(208f, 16f, 624f, 96f);
-    [SerializeField] private Vector4 fallbackPlayerRoleSpriteRect = new Vector4(208f, 464f, 624f, 96f);
-    [SerializeField] private Vector4 fallbackCpuCardStartRect = new Vector4(304f, 160f, 54f, 76f);
-    [SerializeField] private Vector4 fallbackPlayerCardStartRect = new Vector4(240f, 340f, 54f, 76f);
-    [SerializeField] private float fallbackCardGap = 8f;
-    [SerializeField] private Vector4 fallbackCpuSpecialCardRect = new Vector4(856f, 184f, 54f, 76f);
-    [SerializeField] private Vector4 fallbackPlayerSpecialCardRect = new Vector4(112f, 316f, 54f, 76f);
+    [SerializeField] private Vector4 fallbackCpuRoleSpriteRect = new Vector4(304f, 176f, 416f, 82f);
+    [SerializeField] private Vector4 fallbackPlayerRoleSpriteRect = new Vector4(304f, 318f, 416f, 82f);
     [SerializeField] private float scoreStepInterval = 0.02f;
+    [SerializeField] private float roleFrameInDuration = 0.28f;
 
     [Header("Hierarchy References")]
     [SerializeField] private CanvasGroup canvasGroup;
@@ -159,6 +175,8 @@ public class ShowdownCutInPopup : MonoBehaviour
     [SerializeField] private TextMeshProUGUI cpuScoreText;
     [SerializeField] private Image specialCallBackdropImage;
     [SerializeField] private Image resultBackdropImage;
+    [SerializeField] private Image resultStampImage;
+    [SerializeField] private Image cpuResultStampImage;
     [SerializeField] private TextMeshProUGUI specialCallText;
     [SerializeField] private TextMeshProUGUI resultText;
     [SerializeField] private TextMeshProUGUI damageText;
@@ -301,6 +319,7 @@ public class ShowdownCutInPopup : MonoBehaviour
         closeRequested = false;
 
         ShowBaseResult(data);
+        yield return AnimateRoleFrameIn();
         yield return WaitForAdvanceInput();
 
         if (HasEffectSteps(data))
@@ -389,6 +408,8 @@ public class ShowdownCutInPopup : MonoBehaviour
                cpuScoreText != null &&
                specialCallBackdropImage != null &&
                resultBackdropImage != null &&
+               resultStampImage != null &&
+               cpuResultStampImage != null &&
                specialCallText != null &&
                resultText != null &&
                damageText != null &&
@@ -401,6 +422,8 @@ public class ShowdownCutInPopup : MonoBehaviour
 
     private void ConfigureUiReferences()
     {
+        ApplyRuntimeLayout();
+
         if (screenFillImage != null)
         {
             screenFillImage.color = Color.black;
@@ -426,10 +449,13 @@ public class ShowdownCutInPopup : MonoBehaviour
         ConfigureImageArray(cpuCardImages, preserveAspect: true);
         ConfigureImage(playerSpecialCardImage, preserveAspect: true);
         ConfigureImage(cpuSpecialCardImage, preserveAspect: true);
+        ConfigureImage(resultStampImage, preserveAspect: true);
+        ConfigureImage(cpuResultStampImage, preserveAspect: true);
         ConfigureTextBackdrop(specialCallBackdropImage);
         ConfigureTextBackdrop(resultBackdropImage);
         PlaceBackdropBehindText(specialCallBackdropImage, specialCallText);
         PlaceBackdropBehindText(resultBackdropImage, resultText);
+        PlaceImageBehindText(resultStampImage, resultText);
         DisableLegacyRoleFallbackTexts();
 
         ApplyTextDefaults(playerScoreText);
@@ -437,9 +463,201 @@ public class ShowdownCutInPopup : MonoBehaviour
         ApplyTextDefaults(specialCallText);
         ApplyTextDefaults(resultText);
         ApplyTextDefaults(damageText);
+        ConfigureScoreText(cpuScoreText);
+        ConfigureScoreText(playerScoreText);
         ApplyReadableOverlayText(specialCallText, new Color(1f, 0.9f, 0.35f, 1f));
         ApplyReadableOverlayText(resultText, Color.white);
         ApplyReadableOverlayText(damageText, new Color(1f, 0.92f, 0.72f, 1f));
+        ApplyStageSiblingOrder();
+    }
+
+    private void ApplyRuntimeLayout()
+    {
+        if (stage == null)
+        {
+            return;
+        }
+
+        Stretch(stage);
+        EnsureDirectStageChild(screenFillImage);
+        EnsureDirectStageChild(backgroundImage);
+        EnsureDirectStageChild(cpuCharacterBaseImage);
+        EnsureDirectStageChild(playerCharacterBaseImage);
+        EnsureDirectStageChild(cpuCharacterImage);
+        EnsureDirectStageChild(playerCharacterImage);
+        EnsureDirectStageChild(cpuRoleImage);
+        EnsureDirectStageChild(playerRoleImage);
+        EnsureDirectStageChild(cpuScoreText);
+        EnsureDirectStageChild(playerScoreText);
+        EnsureDirectStageChild(cpuCardImages);
+        EnsureDirectStageChild(playerCardImages);
+        EnsureDirectStageChild(cpuSpecialCardImage);
+        EnsureDirectStageChild(playerSpecialCardImage);
+        EnsureDirectStageChild(specialCallBackdropImage);
+        EnsureDirectStageChild(resultBackdropImage);
+        EnsureDirectStageChild(specialCallText);
+        EnsureDirectStageChild(resultText);
+        EnsureDirectStageChild(damageText);
+        EnsureDirectStageChild(resultStampImage);
+        EnsureDirectStageChild(cpuResultStampImage);
+        EnsureDirectStageChild(closeButton);
+
+        if (screenFillImage != null)
+        {
+            Stretch(screenFillImage.rectTransform);
+        }
+
+        if (backgroundImage != null)
+        {
+            Stretch(backgroundImage.rectTransform);
+        }
+
+        SetReferencePixelRect(cpuCharacterBaseImage, CpuCharacterBaseRect);
+        SetReferencePixelRect(playerCharacterBaseImage, PlayerCharacterBaseRect);
+        SetReferencePixelRect(cpuCharacterImage, CpuCharacterRect);
+        SetReferencePixelRect(playerCharacterImage, PlayerCharacterRect);
+
+        if (cpuRoleImage != null)
+        {
+            SetReferencePixelRect(cpuRoleImage.rectTransform, GetCpuRoleSpriteRect());
+        }
+
+        if (playerRoleImage != null)
+        {
+            SetReferencePixelRect(playerRoleImage.rectTransform, GetPlayerRoleSpriteRect());
+        }
+
+        ApplyShowdownCardLayout(cpuCardImages, CpuHandFrameRect, CpuCommonFrameRect);
+        ApplyShowdownCardLayout(playerCardImages, PlayerHandFrameRect, PlayerCommonFrameRect);
+
+        if (cpuSpecialCardImage != null)
+        {
+            SetReferencePixelRect(cpuSpecialCardImage.rectTransform, CpuSpecialCardSlotRect);
+        }
+
+        if (playerSpecialCardImage != null)
+        {
+            SetReferencePixelRect(playerSpecialCardImage.rectTransform, PlayerSpecialCardSlotRect);
+        }
+
+        PlaceScoreAtRoleSwordTip(cpuScoreText, cpuRoleImage, false);
+        PlaceScoreAtRoleSwordTip(playerScoreText, playerRoleImage, true);
+
+        SetReferencePixelRect(specialCallBackdropImage, SpecialCallBackdropRect);
+        SetReferencePixelRect(resultBackdropImage, ResultBackdropRect);
+        if (resultStampImage != null)
+        {
+            SetReferencePixelRect(resultStampImage.rectTransform, PlayerResultStampRect);
+        }
+
+        if (cpuResultStampImage != null)
+        {
+            SetReferencePixelRect(cpuResultStampImage.rectTransform, CpuResultStampRect);
+        }
+
+        SetReferencePixelRect(specialCallText, SpecialCallTextRect);
+        SetReferencePixelRect(resultText, ResultTextRect);
+        SetReferencePixelRect(damageText, DamageTextRect);
+
+        if (closeButton != null)
+        {
+            SetNormalizedRect(closeButton.GetComponent<RectTransform>(), 0.82f, 0.82f, 0.95f, 0.92f);
+        }
+    }
+
+    private void ApplyShowdownCardLayout(Image[] images, Vector4 handFrameRect, Vector4 commonFrameRect)
+    {
+        if (images == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < images.Length; i++)
+        {
+            if (images[i] == null)
+            {
+                continue;
+            }
+
+            SetReferencePixelRect(images[i].rectTransform, GetShowdownCardSlotRect(handFrameRect, commonFrameRect, i));
+        }
+    }
+
+    private static Vector4 GetShowdownCardSlotRect(Vector4 handFrameRect, Vector4 commonFrameRect, int index)
+    {
+        if (index < HandCardCount)
+        {
+            const float handCardWidth = 72f;
+            const float handCardHeight = 96f;
+            float step = HandCardCount > 1
+                ? (handFrameRect.z - handCardWidth) / (HandCardCount - 1)
+                : 0f;
+            float x = handFrameRect.x + index * step;
+            float y = handFrameRect.y + (handFrameRect.w - handCardHeight) * 0.5f;
+            return new Vector4(x, y, handCardWidth, handCardHeight);
+        }
+
+        const float commonCardWidth = 72f;
+        const float commonCardHeight = 96f;
+        const float commonCardGap = 16f;
+        int commonIndex = index - HandCardCount;
+        float totalWidth = CommonCardCount * commonCardWidth + (CommonCardCount - 1) * commonCardGap;
+        float startX = commonFrameRect.x + (commonFrameRect.z - totalWidth) * 0.5f;
+        return new Vector4(
+            startX + commonIndex * (commonCardWidth + commonCardGap),
+            commonFrameRect.y + (commonFrameRect.w - commonCardHeight) * 0.5f,
+            commonCardWidth,
+            commonCardHeight);
+    }
+
+    private void EnsureDirectStageChild(Component component)
+    {
+        if (component == null || stage == null || component.transform.parent == stage)
+        {
+            return;
+        }
+
+        component.transform.SetParent(stage, false);
+    }
+
+    private void EnsureDirectStageChild(Image[] images)
+    {
+        if (images == null)
+        {
+            return;
+        }
+
+        foreach (Image image in images)
+        {
+            EnsureDirectStageChild(image);
+        }
+    }
+
+    private void PlaceScoreAtRoleSwordTip(TextMeshProUGUI scoreText, Image roleImage, bool isPlayer)
+    {
+        if (scoreText == null || roleImage == null)
+        {
+            return;
+        }
+
+        RectTransform scoreRect = scoreText.rectTransform;
+        RectTransform roleRect = roleImage.rectTransform;
+        if (scoreRect == null || roleRect == null)
+        {
+            return;
+        }
+
+        if (scoreRect.parent != roleRect)
+        {
+            scoreRect.SetParent(roleRect, false);
+        }
+
+        Vector2 anchor = isPlayer ? new Vector2(1f, 0.5f) : new Vector2(0f, 0.5f);
+        scoreRect.anchorMin = anchor;
+        scoreRect.anchorMax = anchor;
+        scoreRect.pivot = isPlayer ? new Vector2(1f, 0.5f) : new Vector2(0f, 0.5f);
+        scoreRect.sizeDelta = ScoreTextSize;
+        scoreRect.anchoredPosition = isPlayer ? new Vector2(-44f, 0f) : new Vector2(44f, 0f);
     }
 
     private void ConfigureImage(Image image, bool preserveAspect)
@@ -488,6 +706,16 @@ public class ShowdownCutInPopup : MonoBehaviour
         backdrop.transform.SetSiblingIndex(text.transform.GetSiblingIndex());
     }
 
+    private static void PlaceImageBehindText(Image image, TextMeshProUGUI text)
+    {
+        if (image == null || text == null || image.transform.parent != text.transform.parent)
+        {
+            return;
+        }
+
+        image.transform.SetSiblingIndex(text.transform.GetSiblingIndex());
+    }
+
     private static bool HasImageSlots(Image[] images, int requiredCount)
     {
         if (images == null || images.Length < requiredCount)
@@ -532,6 +760,69 @@ public class ShowdownCutInPopup : MonoBehaviour
         text.fontStyle = FontStyles.Bold;
         text.outlineColor = Color.black;
         text.outlineWidth = 0.28f;
+    }
+
+    private static void ConfigureScoreText(TextMeshProUGUI text)
+    {
+        if (text == null)
+        {
+            return;
+        }
+
+        text.alignment = TextAlignmentOptions.Center;
+        text.enableAutoSizing = true;
+        text.fontSizeMin = 18f;
+        text.fontSizeMax = 48f;
+        text.color = Color.black;
+        text.fontStyle = FontStyles.Bold;
+        text.outlineWidth = 0f;
+    }
+
+    private void ApplyStageSiblingOrder()
+    {
+        SetAsLastSibling(screenFillImage);
+        SetAsLastSibling(backgroundImage);
+        SetAsLastSibling(cpuCharacterBaseImage);
+        SetAsLastSibling(playerCharacterBaseImage);
+        SetAsLastSibling(cpuCharacterImage);
+        SetAsLastSibling(playerCharacterImage);
+        SetAsLastSibling(cpuRoleImage);
+        SetAsLastSibling(playerRoleImage);
+        SetAsLastSibling(cpuCardImages);
+        SetAsLastSibling(playerCardImages);
+        SetAsLastSibling(cpuSpecialCardImage);
+        SetAsLastSibling(playerSpecialCardImage);
+        SetAsLastSibling(cpuScoreText);
+        SetAsLastSibling(playerScoreText);
+        SetAsLastSibling(specialCallBackdropImage);
+        SetAsLastSibling(resultBackdropImage);
+        SetAsLastSibling(cpuResultStampImage);
+        SetAsLastSibling(resultStampImage);
+        SetAsLastSibling(specialCallText);
+        SetAsLastSibling(resultText);
+        SetAsLastSibling(damageText);
+        SetAsLastSibling(closeButton);
+    }
+
+    private static void SetAsLastSibling(Component component)
+    {
+        if (component != null)
+        {
+            component.transform.SetAsLastSibling();
+        }
+    }
+
+    private static void SetAsLastSibling(Image[] images)
+    {
+        if (images == null)
+        {
+            return;
+        }
+
+        foreach (Image image in images)
+        {
+            SetAsLastSibling(image);
+        }
     }
 
     private void DisableLegacyRoleFallbackTexts()
@@ -630,25 +921,25 @@ public class ShowdownCutInPopup : MonoBehaviour
         if (cpuCharacterBaseImage == null)
         {
             cpuCharacterBaseImage = CreateImage("CpuCharacterBase", stage, assetSet != null ? assetSet.characterBase : null, false);
-            SetNormalizedRect(cpuCharacterBaseImage.rectTransform, 0.047f, 0.75f, 0.172f, 0.972f);
+            SetReferencePixelRect(cpuCharacterBaseImage.rectTransform, CpuCharacterBaseRect);
         }
 
         if (playerCharacterBaseImage == null)
         {
             playerCharacterBaseImage = CreateImage("PlayerCharacterBase", stage, assetSet != null ? assetSet.characterBase : null, false);
-            SetNormalizedRect(playerCharacterBaseImage.rectTransform, 0.828f, 0.028f, 0.953f, 0.25f);
+            SetReferencePixelRect(playerCharacterBaseImage.rectTransform, PlayerCharacterBaseRect);
         }
 
         if (cpuCharacterImage == null)
         {
             cpuCharacterImage = CreateImage("CpuCharacter", stage, null, true);
-            SetNormalizedRect(cpuCharacterImage.rectTransform, 0.052f, 0.755f, 0.167f, 0.967f);
+            SetReferencePixelRect(cpuCharacterImage.rectTransform, CpuCharacterRect);
         }
 
         if (playerCharacterImage == null)
         {
             playerCharacterImage = CreateImage("PlayerCharacter", stage, null, true);
-            SetNormalizedRect(playerCharacterImage.rectTransform, 0.833f, 0.033f, 0.948f, 0.245f);
+            SetReferencePixelRect(playerCharacterImage.rectTransform, PlayerCharacterRect);
         }
 
         if (cpuRoleImage == null)
@@ -668,40 +959,52 @@ public class ShowdownCutInPopup : MonoBehaviour
         if (cpuScoreText == null)
         {
             cpuScoreText = CreateText("CpuScore", stage, 48, Color.black);
-            SetNormalizedRect(cpuScoreText.rectTransform, 0.203f, 0.75f, 0.297f, 0.972f);
+            PlaceScoreAtRoleSwordTip(cpuScoreText, cpuRoleImage, false);
         }
 
         if (playerScoreText == null)
         {
             playerScoreText = CreateText("PlayerScore", stage, 48, Color.black);
-            SetNormalizedRect(playerScoreText.rectTransform, 0.703f, 0.028f, 0.797f, 0.25f);
+            PlaceScoreAtRoleSwordTip(playerScoreText, playerRoleImage, true);
         }
 
-        BuildCardImageSlots(ref cpuCardImages, "CpuShowdownCard", fallbackCpuCardStartRect);
-        BuildCardImageSlots(ref playerCardImages, "PlayerShowdownCard", fallbackPlayerCardStartRect);
+        BuildCardImageSlots(ref cpuCardImages, "CpuShowdownCard", CpuHandFrameRect, CpuCommonFrameRect);
+        BuildCardImageSlots(ref playerCardImages, "PlayerShowdownCard", PlayerHandFrameRect, PlayerCommonFrameRect);
 
         if (cpuSpecialCardImage == null)
         {
             cpuSpecialCardImage = CreateImage("CpuSpecialCard", stage, null, true);
-            SetReferencePixelRect(cpuSpecialCardImage.rectTransform, fallbackCpuSpecialCardRect);
+            SetReferencePixelRect(cpuSpecialCardImage.rectTransform, CpuSpecialCardSlotRect);
         }
 
         if (playerSpecialCardImage == null)
         {
             playerSpecialCardImage = CreateImage("PlayerSpecialCard", stage, null, true);
-            SetReferencePixelRect(playerSpecialCardImage.rectTransform, fallbackPlayerSpecialCardRect);
+            SetReferencePixelRect(playerSpecialCardImage.rectTransform, PlayerSpecialCardSlotRect);
         }
 
         if (specialCallBackdropImage == null)
         {
             specialCallBackdropImage = CreateImage("SpecialCallBackdrop", stage, null, false);
-            SetNormalizedRect(specialCallBackdropImage.rectTransform, 0.16f, 0.39f, 0.84f, 0.6f);
+            SetReferencePixelRect(specialCallBackdropImage.rectTransform, SpecialCallBackdropRect);
         }
 
         if (resultBackdropImage == null)
         {
             resultBackdropImage = CreateImage("ResultBackdrop", stage, null, false);
-            SetNormalizedRect(resultBackdropImage.rectTransform, 0.14f, 0.27f, 0.86f, 0.56f);
+            SetReferencePixelRect(resultBackdropImage.rectTransform, ResultBackdropRect);
+        }
+
+        if (resultStampImage == null)
+        {
+            resultStampImage = CreateImage("PlayerResultStamp", stage, null, true);
+            SetReferencePixelRect(resultStampImage.rectTransform, PlayerResultStampRect);
+        }
+
+        if (cpuResultStampImage == null)
+        {
+            cpuResultStampImage = CreateImage("CpuResultStamp", stage, null, true);
+            SetReferencePixelRect(cpuResultStampImage.rectTransform, CpuResultStampRect);
         }
 
         if (specialCallText == null)
@@ -710,20 +1013,20 @@ public class ShowdownCutInPopup : MonoBehaviour
             specialCallText.fontStyle = FontStyles.Bold;
             specialCallText.outlineColor = Color.black;
             specialCallText.outlineWidth = 0.25f;
-            SetNormalizedRect(specialCallText.rectTransform, 0.2f, 0.41f, 0.8f, 0.58f);
+            SetReferencePixelRect(specialCallText.rectTransform, SpecialCallTextRect);
         }
 
         if (resultText == null)
         {
             resultText = CreateText("Result", stage, 56, Color.black);
             resultText.fontStyle = FontStyles.Bold;
-            SetNormalizedRect(resultText.rectTransform, 0.18f, 0.39f, 0.82f, 0.55f);
+            SetReferencePixelRect(resultText.rectTransform, ResultTextRect);
         }
 
         if (damageText == null)
         {
             damageText = CreateText("Damage", stage, 42, Color.black);
-            SetNormalizedRect(damageText.rectTransform, 0.18f, 0.29f, 0.82f, 0.4f);
+            SetReferencePixelRect(damageText.rectTransform, DamageTextRect);
         }
 
         if (closeButton == null)
@@ -735,7 +1038,11 @@ public class ShowdownCutInPopup : MonoBehaviour
         closeButton.gameObject.SetActive(false);
     }
 
-    private void BuildCardImageSlots(ref Image[] images, string namePrefix, Vector4 startRect)
+    private void BuildCardImageSlots(
+        ref Image[] images,
+        string namePrefix,
+        Vector4 handFrameRect,
+        Vector4 commonFrameRect)
     {
         EnsureImageArraySize(ref images, ShowdownCardCount);
         for (int i = 0; i < ShowdownCardCount; i++)
@@ -743,9 +1050,9 @@ public class ShowdownCutInPopup : MonoBehaviour
             if (images[i] == null)
             {
                 images[i] = CreateImage($"{namePrefix}{i + 1}", stage, null, true);
-                Vector4 rect = startRect;
-                rect.x += i * (startRect.z + fallbackCardGap);
-                SetReferencePixelRect(images[i].rectTransform, rect);
+                SetReferencePixelRect(
+                    images[i].rectTransform,
+                    GetShowdownCardSlotRect(handFrameRect, commonFrameRect, i));
             }
         }
     }
@@ -784,6 +1091,8 @@ public class ShowdownCutInPopup : MonoBehaviour
         SetScoresImmediately(data.PlayerBaseScore, data.CpuBaseScore);
         SetActive(specialCallBackdropImage, false);
         SetActive(resultBackdropImage, false);
+        SetActive(resultStampImage, false);
+        SetActive(cpuResultStampImage, false);
         specialCallText.gameObject.SetActive(false);
         resultText.gameObject.SetActive(false);
         damageText.gameObject.SetActive(false);
@@ -795,6 +1104,8 @@ public class ShowdownCutInPopup : MonoBehaviour
         specialCallText.text = "特殊札発動";
         SetActive(specialCallBackdropImage, true);
         SetActive(resultBackdropImage, false);
+        SetActive(resultStampImage, false);
+        SetActive(cpuResultStampImage, false);
         ResetSpecialCardHighlights();
         specialCallText.gameObject.SetActive(true);
         resultText.gameObject.SetActive(false);
@@ -816,6 +1127,8 @@ public class ShowdownCutInPopup : MonoBehaviour
         specialCallText.text = $"{GetOwnerName(step.OwnerPlayerId)}の{step.EffectName}";
         SetActive(specialCallBackdropImage, true);
         SetActive(resultBackdropImage, false);
+        SetActive(resultStampImage, false);
+        SetActive(cpuResultStampImage, false);
         specialCallText.gameObject.SetActive(true);
         resultText.gameObject.SetActive(false);
         damageText.gameObject.SetActive(false);
@@ -830,16 +1143,69 @@ public class ShowdownCutInPopup : MonoBehaviour
         SetRole(cpuRoleImage, null, false, data.CpuFinalRoleName, data.CpuFinalRoleRank);
         ResetSpecialCardHighlights();
         SetActive(specialCallBackdropImage, false);
-        SetActive(resultBackdropImage, true);
+        SetActive(resultBackdropImage, false);
+        SetImage(resultStampImage, GetPlayerResultStampSprite(data));
+        SetImage(cpuResultStampImage, GetCpuResultStampSprite(data));
         specialCallText.gameObject.SetActive(false);
         resultText.text = BuildWinnerText(data);
         damageText.text = BuildDamageText(data);
-        resultText.gameObject.SetActive(true);
-        damageText.gameObject.SetActive(true);
+        resultText.gameObject.SetActive(false);
+        damageText.gameObject.SetActive(false);
         closeButton.gameObject.SetActive(false);
         yield return AnimateScoresTo(data.PlayerFinalScore, data.CpuFinalScore);
         closeButton.gameObject.SetActive(true);
         closeButton.Select();
+    }
+
+    private IEnumerator AnimateRoleFrameIn()
+    {
+        RectTransform cpuRect = GetActiveRect(cpuRoleImage);
+        RectTransform playerRect = GetActiveRect(playerRoleImage);
+        if (cpuRect == null && playerRect == null)
+        {
+            yield break;
+        }
+
+        Vector2 cpuEnd = cpuRect != null ? cpuRect.anchoredPosition : Vector2.zero;
+        Vector2 playerEnd = playerRect != null ? playerRect.anchoredPosition : Vector2.zero;
+        float slideDistance = GetStageSlideDistance();
+        Vector2 cpuStart = cpuEnd + Vector2.right * slideDistance;
+        Vector2 playerStart = playerEnd + Vector2.left * slideDistance;
+
+        if (roleFrameInDuration <= 0f)
+        {
+            SetAnchoredPosition(cpuRect, cpuEnd);
+            SetAnchoredPosition(playerRect, playerEnd);
+            yield break;
+        }
+
+        SetAnchoredPosition(cpuRect, cpuStart);
+        SetAnchoredPosition(playerRect, playerStart);
+
+        float elapsed = 0f;
+        while (elapsed < roleFrameInDuration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(elapsed / roleFrameInDuration);
+            t = Mathf.SmoothStep(0f, 1f, t);
+
+            SetAnchoredPosition(cpuRect, Vector2.LerpUnclamped(cpuStart, cpuEnd, t));
+            SetAnchoredPosition(playerRect, Vector2.LerpUnclamped(playerStart, playerEnd, t));
+            yield return null;
+        }
+
+        SetAnchoredPosition(cpuRect, cpuEnd);
+        SetAnchoredPosition(playerRect, playerEnd);
+    }
+
+    private float GetStageSlideDistance()
+    {
+        if (stage != null && stage.rect.width > 0f)
+        {
+            return stage.rect.width;
+        }
+
+        return ReferenceWidth;
     }
 
     private void SetScoresImmediately(int playerScore, int cpuScore)
@@ -916,6 +1282,26 @@ public class ShowdownCutInPopup : MonoBehaviour
 
         string damagedPlayer = data.WinnerIndex == 0 ? "CPU" : "プレイヤー";
         return $"{damagedPlayer} {data.Damage}ダメージ";
+    }
+
+    private Sprite GetPlayerResultStampSprite(Data data)
+    {
+        if (assetSet == null || data == null || data.IsDraw)
+        {
+            return null;
+        }
+
+        return data.WinnerIndex == 0 ? assetSet.winResult : assetSet.loseResult;
+    }
+
+    private Sprite GetCpuResultStampSprite(Data data)
+    {
+        if (assetSet == null || data == null || data.IsDraw)
+        {
+            return null;
+        }
+
+        return data.WinnerIndex == 1 ? assetSet.winResult : assetSet.loseResult;
     }
 
     private void SetActive(Image image, bool isActive)
@@ -1029,6 +1415,24 @@ public class ShowdownCutInPopup : MonoBehaviour
         image.gameObject.SetActive(sprite != null);
     }
 
+    private static RectTransform GetActiveRect(Image image)
+    {
+        if (image == null || !image.gameObject.activeSelf)
+        {
+            return null;
+        }
+
+        return image.rectTransform;
+    }
+
+    private static void SetAnchoredPosition(RectTransform rectTransform, Vector2 position)
+    {
+        if (rectTransform != null)
+        {
+            rectTransform.anchoredPosition = position;
+        }
+    }
+
     private static string BuildWinnerText(Data data)
     {
         if (data.IsDraw)
@@ -1055,6 +1459,8 @@ public class ShowdownCutInPopup : MonoBehaviour
 
         SetActive(specialCallBackdropImage, false);
         SetActive(resultBackdropImage, false);
+        SetActive(resultStampImage, false);
+        SetActive(cpuResultStampImage, false);
 
         gameObject.SetActive(false);
     }
@@ -1150,26 +1556,71 @@ public class ShowdownCutInPopup : MonoBehaviour
 
     private static void SetNormalizedRect(RectTransform rectTransform, float xMin, float yMin, float xMax, float yMax)
     {
+        if (rectTransform == null)
+        {
+            return;
+        }
+
         rectTransform.anchorMin = new Vector2(xMin, yMin);
         rectTransform.anchorMax = new Vector2(xMax, yMax);
         rectTransform.offsetMin = Vector2.zero;
         rectTransform.offsetMax = Vector2.zero;
     }
 
+    private static void SetNormalizedRect(Image image, float xMin, float yMin, float xMax, float yMax)
+    {
+        if (image != null)
+        {
+            SetNormalizedRect(image.rectTransform, xMin, yMin, xMax, yMax);
+        }
+    }
+
+    private static void SetNormalizedRect(TextMeshProUGUI text, float xMin, float yMin, float xMax, float yMax)
+    {
+        if (text != null)
+        {
+            SetNormalizedRect(text.rectTransform, xMin, yMin, xMax, yMax);
+        }
+    }
+
+    private static void SetReferencePixelRect(Image image, Vector4 rect)
+    {
+        if (image != null)
+        {
+            SetReferencePixelRect(image.rectTransform, rect);
+        }
+    }
+
+    private static void SetReferencePixelRect(TextMeshProUGUI text, Vector4 rect)
+    {
+        if (text != null)
+        {
+            SetReferencePixelRect(text.rectTransform, rect);
+        }
+    }
+
     private static void SetReferencePixelRect(RectTransform rectTransform, Vector4 rect)
     {
+        if (rectTransform == null)
+        {
+            return;
+        }
+
         float x = rect.x;
         float yFromTop = rect.y;
         float width = Mathf.Max(0f, rect.z);
         float height = Mathf.Max(0f, rect.w);
 
-        rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-        rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+        rectTransform.anchorMin = new Vector2(
+            x / ReferenceWidth,
+            1f - (yFromTop + height) / ReferenceHeight);
+        rectTransform.anchorMax = new Vector2(
+            (x + width) / ReferenceWidth,
+            1f - yFromTop / ReferenceHeight);
         rectTransform.pivot = new Vector2(0.5f, 0.5f);
-        rectTransform.sizeDelta = new Vector2(width, height);
-        rectTransform.anchoredPosition = new Vector2(
-            x + width * 0.5f - ReferenceWidth * 0.5f,
-            ReferenceHeight * 0.5f - yFromTop - height * 0.5f);
+        rectTransform.offsetMin = Vector2.zero;
+        rectTransform.offsetMax = Vector2.zero;
+        rectTransform.anchoredPosition = Vector2.zero;
     }
 
     private Vector4 GetCpuRoleSpriteRect()

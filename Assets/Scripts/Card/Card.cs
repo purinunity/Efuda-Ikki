@@ -71,6 +71,11 @@ public class Card : MonoBehaviour // カードの表示・状態管理
     // クリックイベントで選択フラグをトグル
     private void ToggleSelect()
     {
+        if (!MoveComplete)
+        {
+            return;
+        }
+
         var selectionLimiter = GetComponentInParent<LimitedSelectableCardArea>();
         if (selectionLimiter != null)
         {
@@ -283,35 +288,26 @@ public class Card : MonoBehaviour // カードの表示・状態管理
     {
         var WorldPosition = GetTargetWorldPosition();
         bool worldPositionChanged = HasWorldPositionChanged(WorldPosition);
-        if (IsFaceUp != LastFaceUp && (worldPositionChanged || IsSelected != LastSelected))
+        bool selectionChanged = IsSelected != LastSelected;
+        bool faceChanged = IsFaceUp != LastFaceUp;
+        bool needsMove = worldPositionChanged || selectionChanged;
+
+        if (needsMove)
         {
-            LastFaceUp = IsFaceUp;
-            LastWorldPosition = WorldPosition;
-            LastSelected = IsSelected;
             // Moveカードを動かす処理（速度指定）
             yield return MoveToPositionBySpeed(cardRect, moveSpeed);
+            LastWorldPosition = GetTargetWorldPosition();
+            LastSelected = IsSelected;
+        }
+
+        if (faceChanged)
+        {
             // Turnカードを裏表替える処理（速度指定）
             yield return TurnToPositionBySpeed(cardRect, turnSpeed);
-        }
-        else if (IsSelected != LastSelected)
-        {
-            LastSelected = IsSelected;
-            // Moveカードを動かす処理（速度指定）
-            yield return MoveToPositionBySpeed(cardRect, moveSpeed);
-        }
-        else if (IsFaceUp != LastFaceUp)
-        {
             LastFaceUp = IsFaceUp;
-            // Turnカードを裏表替える処理（速度指定）
-            yield return TurnToPositionBySpeed(cardRect, turnSpeed);
         }
-        else if (worldPositionChanged)
-        {
-            LastWorldPosition = WorldPosition;
-            // Moveカードを動かす処理（速度指定）
-            yield return MoveToPositionBySpeed(cardRect, moveSpeed);
-        }
-        else
+
+        if (!needsMove && !faceChanged)
         {
             yield return new WaitForSeconds(0f);
         }
@@ -355,35 +351,27 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         // カード移動のデバッグ用ログ（必要なら有効化）
         var WorldPosition = GetTargetWorldPosition();
         bool worldPositionChanged = HasWorldPositionChanged(WorldPosition);
-        if (IsFaceUp != LastFaceUp && (worldPositionChanged || IsSelected != LastSelected))
+        bool selectionChanged = IsSelected != LastSelected;
+        bool faceChanged = IsFaceUp != LastFaceUp;
+        bool needsMove = worldPositionChanged || selectionChanged;
+        float stepDuration = needsMove && faceChanged ? moveDuration / 2f : moveDuration;
+
+        if (needsMove)
         {
-            LastFaceUp = IsFaceUp;
-            LastWorldPosition = WorldPosition;
+            // Moveカードを動かす処理
+            yield return MoveToPosition(cardRect, stepDuration);
+            LastWorldPosition = GetTargetWorldPosition();
             LastSelected = IsSelected;
-            // Moveカードを動かす処理
-            yield return MoveToPosition(cardRect, moveDuration / 2);
+        }
+
+        if (faceChanged)
+        {
             // Turnカードを裏表替える処理
-            yield return TurnToPosition(cardRect, moveDuration / 2);
-        }
-        else if (IsSelected != LastSelected)
-        {
-            LastSelected = IsSelected;
-            // Moveカードを動かす処理
-            yield return MoveToPosition(cardRect, moveDuration);
-        }
-        else if (IsFaceUp != LastFaceUp)
-        {
+            yield return TurnToPosition(cardRect, stepDuration);
             LastFaceUp = IsFaceUp;
-            // Turnカードを裏表替える処理
-            yield return TurnToPosition(cardRect, moveDuration);
         }
-        else if (worldPositionChanged)
-        {
-            LastWorldPosition = WorldPosition;
-            // Moveカードを動かす処理
-            yield return MoveToPosition(cardRect, moveDuration);
-        }
-        else
+
+        if (!needsMove && !faceChanged)
         {
             yield return new WaitForSeconds(0f);
         }

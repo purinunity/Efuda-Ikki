@@ -203,6 +203,7 @@ public class SpecialCardArea : CardArea
     private void SwitchTopCard(Card selectedCard)
     {
         if (selectedCard == null || !cardsInArea.Contains(selectedCard)) return;
+        if (topSwitchCoroutine != null || !AreStackCardsMoveComplete()) return;
         if (!IsCardAvailable(selectedCard)) return;
 
         int topIndex = cardsInArea.Count - 1;
