@@ -56,5 +56,5 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "Efuda-Ikki.sln"
+    "dotnet.defaultSolution": "絵札一騎.sln"
 }
