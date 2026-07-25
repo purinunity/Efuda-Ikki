@@ -160,10 +160,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1168892756}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 180, y: 0}
+  m_SizeDelta: {x: 280, y: 280}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &3902793
 MonoBehaviour:
@@ -231,7 +231,7 @@ MonoBehaviour:
       m_Calls: []
   m_Sprite: {fileID: 21300000, guid: ef18ffb278305414d9cb45860e056cc7, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -280,10 +280,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1168892756}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -180, y: -360}
+  m_SizeDelta: {x: 280, y: 280}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &32926316
 MonoBehaviour:
@@ -351,7 +351,7 @@ MonoBehaviour:
       m_Calls: []
   m_Sprite: {fileID: 21300000, guid: 049b95b9d43eee745bcf865ce19d135b, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -735,10 +735,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1168892756}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 540, y: -360}
+  m_SizeDelta: {x: 280, y: 280}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &96953559
 MonoBehaviour:
@@ -806,7 +806,7 @@ MonoBehaviour:
       m_Calls: []
   m_Sprite: {fileID: 21300000, guid: 04e0e787ece760e4d97b9d82102b4181, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -1760,6 +1760,10 @@ MonoBehaviour:
   IsInputReceived: 0
   trash: []
   playerHands: {fileID: 980594686}
+  decisionButton: {fileID: 0}
+  decisionButtonImage: {fileID: 0}
+  decisionButtonNormalColor: {r: 1, g: 1, b: 1, a: 1}
+  decisionButtonPressedColor: {r: 0.45, g: 0.45, b: 0.45, a: 1}
 --- !u!4 &265672680
 Transform:
   m_ObjectHideFlags: 0
@@ -4241,6 +4245,8 @@ MonoBehaviour:
   maxSelectableSpecialCards: 4
   startGameButton: {fileID: 1129633264}
   backButton: {fileID: 1351357803}
+  unlockedCardColor: {r: 1, g: 1, b: 1, a: 1}
+  lockedCardColor: {r: 0.2, g: 0.2, b: 0.2, a: 1}
   titleUIManager: {fileID: 2069531787}
 --- !u!225 &737560834
 CanvasGroup:
@@ -4400,10 +4406,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1168892756}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -540, y: -360}
+  m_SizeDelta: {x: 280, y: 280}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &821278781
 MonoBehaviour:
@@ -4471,7 +4477,7 @@ MonoBehaviour:
       m_Calls: []
   m_Sprite: {fileID: 21300000, guid: 3587c748d91fc39489f5e8ffd7173432, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -4550,6 +4556,7 @@ MonoBehaviour:
   kachinukiModeButtonSprite: {fileID: 21300000, guid: 0d5cc7ca294d199419e25e6ada733737, type: 3}
   settingsButtonSprite: {fileID: 21300000, guid: cf5172ad99fff2848a41d3d702b471d5, type: 3}
   hideButtonTextLabels: 1
+  lockedBattleGroundColor: {r: 0.18, g: 0.18, b: 0.18, a: 1}
 --- !u!225 &824531613
 CanvasGroup:
   m_ObjectHideFlags: 0
@@ -4734,10 +4741,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1168892756}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 540, y: 0}
+  m_SizeDelta: {x: 280, y: 280}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &854160002
 MonoBehaviour:
@@ -4805,7 +4812,7 @@ MonoBehaviour:
       m_Calls: []
   m_Sprite: {fileID: 21300000, guid: 2b314c230b85d7644a8d46fb1d1a8685, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -5142,10 +5149,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1168892756}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 360}
+  m_SizeDelta: {x: 280, y: 280}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &905500958
 MonoBehaviour:
@@ -5213,7 +5220,7 @@ MonoBehaviour:
       m_Calls: []
   m_Sprite: {fileID: 21300000, guid: bf8134ace7daa3d489a19e0a9783518c, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -5396,10 +5403,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1168892756}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 180, y: -360}
+  m_SizeDelta: {x: 280, y: 280}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &920526076
 MonoBehaviour:
@@ -5467,7 +5474,7 @@ MonoBehaviour:
       m_Calls: []
   m_Sprite: {fileID: 21300000, guid: e8b7bc502cc3fd24296d19caadd51fc5, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -5637,10 +5644,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1168892756}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -180, y: 0}
+  m_SizeDelta: {x: 280, y: 280}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &934892456
 MonoBehaviour:
@@ -5708,7 +5715,7 @@ MonoBehaviour:
       m_Calls: []
   m_Sprite: {fileID: 21300000, guid: f5d17e07728f9d24bb2ae16ca2cfda61, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -7324,7 +7331,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1168892755}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8a8695521f0d02e499659fee002a26c2, type: 3}
   m_Name: 
@@ -7728,6 +7735,7 @@ MonoBehaviour:
   fallbackPlayerRoleSpriteRect: {x: 104, y: 416, z: 816, w: 160}
   scoreStepInterval: 0.02
   roleFrameInDuration: 0.28
+  matchDecisionInDuration: 0.42
   canvasGroup: {fileID: 1237827061}
   stage: {fileID: 1264107228}
   screenFillImage: {fileID: 825147058}
@@ -9242,10 +9250,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1168892756}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -540, y: 0}
+  m_SizeDelta: {x: 280, y: 280}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1546382298
 MonoBehaviour:
@@ -9313,7 +9321,7 @@ MonoBehaviour:
       m_Calls: []
   m_Sprite: {fileID: 21300000, guid: 471196d0219e1a54992ea1fc16c6b6ff, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -11816,6 +11824,12 @@ MonoBehaviour:
   stageInfoText: {fileID: 219997629}
   backButton: {fileID: 1887375874}
   titleUIManager: {fileID: 2069531787}
+  fitButtonsToCharacterFrames: 1
+  characterButtonSize: {x: 280, y: 280}
+  preserveCharacterSpriteAspect: 1
+  hideLegacyTextLabels: 1
+  unlockedCharacterColor: {r: 1, g: 1, b: 1, a: 1}
+  lockedCharacterSilhouetteColor: {r: 0, g: 0, b: 0, a: 1}
 --- !u!225 &2000450745
 CanvasGroup:
   m_ObjectHideFlags: 0
