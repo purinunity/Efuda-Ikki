@@ -1367,9 +1367,14 @@ public class ShowdownCutInPopup : MonoBehaviour
 
     private Sprite GetPlayerResultStampSprite(Data data)
     {
-        if (assetSet == null || data == null || data.IsDraw)
+        if (assetSet == null || data == null)
         {
             return null;
+        }
+
+        if (data.IsDraw)
+        {
+            return assetSet.drawResult;
         }
 
         return data.WinnerIndex == 0 ? assetSet.winResult : assetSet.loseResult;
@@ -1377,9 +1382,14 @@ public class ShowdownCutInPopup : MonoBehaviour
 
     private Sprite GetCpuResultStampSprite(Data data)
     {
-        if (assetSet == null || data == null || data.IsDraw)
+        if (assetSet == null || data == null)
         {
             return null;
+        }
+
+        if (data.IsDraw)
+        {
+            return assetSet.drawResult;
         }
 
         return data.WinnerIndex == 1 ? assetSet.winResult : assetSet.loseResult;

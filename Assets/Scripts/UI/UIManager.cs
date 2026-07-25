@@ -122,12 +122,19 @@ public class UIManager : MonoBehaviour
         var cards = ResolveSpecialCardsForPlayer(state, playerId);
         if (cards != null && cards.Count > 0)
         {
+            bool showCardFaces = playerId == 0;
             foreach (var card in cards)
             {
-                if (card != null && !card.IsFaceUp) card.ForceSetFaceUp(true);
+                if (card != null && card.IsFaceUp != showCardFaces)
+                {
+                    card.ForceSetFaceUp(showCardFaces);
+                }
             }
 
-            List<Card> displayCards = BuildSpecialCardDisplayCards(cards, sourceDeck);
+            List<Card> displayCards = BuildSpecialCardDisplayCards(
+                cards,
+                sourceDeck,
+                includeNoUseCard: playerId == 0);
             targetArea.SetCardsBySpeed(displayCards, cardMoveSpeed, cardTurnSpeed);
         }
         else
@@ -136,7 +143,10 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    private List<Card> BuildSpecialCardDisplayCards(List<Card> specialCards, Cards sourceDeck)
+    private List<Card> BuildSpecialCardDisplayCards(
+        List<Card> specialCards,
+        Cards sourceDeck,
+        bool includeNoUseCard)
     {
         List<Card> displayCards = new List<Card>();
         if (specialCards == null || specialCards.Count == 0)
@@ -152,6 +162,11 @@ public class UIManager : MonoBehaviour
             }
 
             displayCards.Add(card);
+        }
+
+        if (!includeNoUseCard)
+        {
+            return displayCards;
         }
 
         Card noUseCard = FindNoUseSpecialCard(sourceDeck);

@@ -1,61 +1,40 @@
-using System.Collections.Generic;
 using static SpecialCardResolver;
 
-public enum CpuSpecialCardUsageMode
+public enum CpuFixedCardCondition
 {
-    Random,
-    Judgment,
-    Strategy
-}
-
-public enum CpuSpecialCardSlot
-{
-    Buff = 0,
-    Attack = 1,
-    Defense = 2,
-    Flex = 3
+    Always,
+    AtLeastIsso,
+    AtLeastNiso,
+    AtMostIsso,
+    AtMostNiso,
+    AtMostSanju,
+    NisoThroughSuzi
 }
 
 public sealed class CpuLevelDefinition
 {
-    private readonly SpecialCardId[] specialCardIds;
-
     public int Level { get; }
     public int CharacterIndex => Level - 1;
     public int InitialLifePoints { get; }
-    public CpuSpecialCardUsageMode UsageMode { get; }
-    public IReadOnlyList<SpecialCardId> SpecialCardIds => specialCardIds;
+    public SpecialCardId FixedCard1 { get; }
+    public CpuFixedCardCondition FixedCard1Condition { get; }
+    public SpecialCardId FixedCard2 { get; }
+    public CpuFixedCardCondition FixedCard2Condition { get; }
 
     public CpuLevelDefinition(
         int level,
-        CpuSpecialCardUsageMode usageMode,
         int initialLifePoints,
-        SpecialCardId buffCard,
-        SpecialCardId attackCard,
-        SpecialCardId defenseCard,
-        SpecialCardId flexCard)
+        SpecialCardId fixedCard1,
+        CpuFixedCardCondition fixedCard1Condition,
+        SpecialCardId fixedCard2,
+        CpuFixedCardCondition fixedCard2Condition)
     {
         Level = level;
-        UsageMode = usageMode;
         InitialLifePoints = initialLifePoints;
-        specialCardIds = new[]
-        {
-            buffCard,
-            attackCard,
-            defenseCard,
-            flexCard
-        };
-    }
-
-    public SpecialCardId GetCardId(CpuSpecialCardSlot slot)
-    {
-        int index = (int)slot;
-        if (index < 0 || index >= specialCardIds.Length)
-        {
-            return specialCardIds[(int)CpuSpecialCardSlot.Flex];
-        }
-
-        return specialCardIds[index];
+        FixedCard1 = fixedCard1;
+        FixedCard1Condition = fixedCard1Condition;
+        FixedCard2 = fixedCard2;
+        FixedCard2Condition = fixedCard2Condition;
     }
 }
 
@@ -66,15 +45,15 @@ public static class CpuLevelCatalog
 
     private static readonly CpuLevelDefinition[] Levels =
     {
-        new CpuLevelDefinition(1, CpuSpecialCardUsageMode.Random, 70, SpecialCardId.Bonus15, SpecialCardId.Seal, SpecialCardId.Aiko, SpecialCardId.Bonus10),
-        new CpuLevelDefinition(2, CpuSpecialCardUsageMode.Random, 80, SpecialCardId.Bonus15, SpecialCardId.Rain, SpecialCardId.Aiko, SpecialCardId.Bonus10),
-        new CpuLevelDefinition(3, CpuSpecialCardUsageMode.Random, 90, SpecialCardId.Festival, SpecialCardId.Rain, SpecialCardId.Aiko, SpecialCardId.Bonus15),
-        new CpuLevelDefinition(4, CpuSpecialCardUsageMode.Judgment, 100, SpecialCardId.Sunny, SpecialCardId.Rain, SpecialCardId.Aiko, SpecialCardId.Festival),
-        new CpuLevelDefinition(5, CpuSpecialCardUsageMode.Judgment, 100, SpecialCardId.Sunny, SpecialCardId.Curse, SpecialCardId.Aiko, SpecialCardId.Rain),
-        new CpuLevelDefinition(6, CpuSpecialCardUsageMode.Judgment, 100, SpecialCardId.Sunny, SpecialCardId.Curse, SpecialCardId.Aiko, SpecialCardId.Bet),
-        new CpuLevelDefinition(7, CpuSpecialCardUsageMode.Strategy, 110, SpecialCardId.DoubleScore, SpecialCardId.Curse, SpecialCardId.Bet, SpecialCardId.Sunny),
-        new CpuLevelDefinition(8, CpuSpecialCardUsageMode.Strategy, 120, SpecialCardId.DoubleScore, SpecialCardId.Seal, SpecialCardId.Bet, SpecialCardId.Swap),
-        new CpuLevelDefinition(9, CpuSpecialCardUsageMode.Strategy, 140, SpecialCardId.DoubleScore, SpecialCardId.Curse, SpecialCardId.Bet, SpecialCardId.Swap)
+        new CpuLevelDefinition(1, 40, SpecialCardId.Sunny, CpuFixedCardCondition.AtLeastNiso, SpecialCardId.Seal, CpuFixedCardCondition.AtLeastNiso),
+        new CpuLevelDefinition(2, 45, SpecialCardId.Rain, CpuFixedCardCondition.AtMostNiso, SpecialCardId.Seal, CpuFixedCardCondition.AtLeastNiso),
+        new CpuLevelDefinition(3, 55, SpecialCardId.Bonus15, CpuFixedCardCondition.AtLeastIsso, SpecialCardId.Seal, CpuFixedCardCondition.AtLeastNiso),
+        new CpuLevelDefinition(4, 70, SpecialCardId.Festival, CpuFixedCardCondition.AtMostSanju, SpecialCardId.Seal, CpuFixedCardCondition.AtLeastNiso),
+        new CpuLevelDefinition(5, 90, SpecialCardId.Swap, CpuFixedCardCondition.AtMostIsso, SpecialCardId.Aiko, CpuFixedCardCondition.AtMostIsso),
+        new CpuLevelDefinition(6, 115, SpecialCardId.Curse, CpuFixedCardCondition.AtLeastNiso, SpecialCardId.Aiko, CpuFixedCardCondition.AtMostIsso),
+        new CpuLevelDefinition(7, 145, SpecialCardId.Bet, CpuFixedCardCondition.NisoThroughSuzi, SpecialCardId.Aiko, CpuFixedCardCondition.AtMostIsso),
+        new CpuLevelDefinition(8, 180, SpecialCardId.DoubleScore, CpuFixedCardCondition.AtLeastNiso, SpecialCardId.Aiko, CpuFixedCardCondition.AtMostIsso),
+        new CpuLevelDefinition(9, 220, SpecialCardId.Oni, CpuFixedCardCondition.Always, SpecialCardId.Curse, CpuFixedCardCondition.AtLeastNiso)
     };
 
     public static CpuLevelDefinition GetLevel(int level)

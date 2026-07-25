@@ -99,107 +99,39 @@ public class CPUController : Controller
         List<Card> usableCpuSpecialCards)
     {
         CpuLevelDefinition levelDefinition = currentLevelDefinition ?? CpuLevelCatalog.GetLevel(CpuLevelCatalog.MinLevel);
-        switch (levelDefinition.UsageMode)
-        {
-            case CpuSpecialCardUsageMode.Random:
-                return ChooseRandomSpecialCard(usableCpuSpecialCards);
-            case CpuSpecialCardUsageMode.Judgment:
-                return ChooseJudgmentSpecialCard(gameState, cpuState, usableCpuSpecialCards, levelDefinition);
-            case CpuSpecialCardUsageMode.Strategy:
-                return ChooseStrategySpecialCard(gameState, cpuState, usableCpuSpecialCards, levelDefinition);
-            default:
-                return null;
-        }
-    }
+        HandEvaluator.HandRank cpuRank = EvaluateCpuHandRank(gameState, cpuState);
 
-    private Card ChooseRandomSpecialCard(List<Card> usableCpuSpecialCards)
-    {
-        if (usableCpuSpecialCards == null || usableCpuSpecialCards.Count == 0 || Random.value >= 0.5f)
+        Card fixedCard1 = FindUsableCard(
+            levelDefinition.FixedCard1,
+            levelDefinition.FixedCard1Condition,
+            cpuRank,
+            usableCpuSpecialCards);
+        if (fixedCard1 != null)
+        {
+            return fixedCard1;
+        }
+
+        Card fixedCard2 = FindUsableCard(
+            levelDefinition.FixedCard2,
+            levelDefinition.FixedCard2Condition,
+            cpuRank,
+            usableCpuSpecialCards);
+        if (fixedCard2 != null)
+        {
+            return fixedCard2;
+        }
+
+        if (Random.value >= 0.5f)
         {
             return null;
         }
 
-        return usableCpuSpecialCards[Random.Range(0, usableCpuSpecialCards.Count)];
-    }
-
-    private Card ChooseJudgmentSpecialCard(
-        GameState gameState,
-        PlayerState cpuState,
-        List<Card> usableCpuSpecialCards,
-        CpuLevelDefinition levelDefinition)
-    {
-        PlayerState playerState = GetPlayerState(gameState);
-        HandEvaluator.HandRank cpuRank = EvaluateCpuHandRank(gameState, cpuState);
-
-        if (IsRoleAtOrBelow(cpuRank, HandEvaluator.HandRank.Niso))
-        {
-            Card card = FindUsableSlotCard(levelDefinition, CpuSpecialCardSlot.Buff, usableCpuSpecialCards);
-            if (card != null) return card;
-        }
-
-        if (cpuState != null && cpuState.LifePoints <= 30)
-        {
-            Card card = FindUsableSlotCard(levelDefinition, CpuSpecialCardSlot.Defense, usableCpuSpecialCards);
-            if (card != null) return card;
-        }
-
-        if (playerState != null && playerState.LifePoints >= 50)
-        {
-            Card card = FindUsableSlotCard(levelDefinition, CpuSpecialCardSlot.Attack, usableCpuSpecialCards);
-            if (card != null) return card;
-        }
-
-        if (Random.value < 0.5f)
-        {
-            return FindUsableSlotCard(levelDefinition, CpuSpecialCardSlot.Flex, usableCpuSpecialCards);
-        }
-
-        return null;
-    }
-
-    private Card ChooseStrategySpecialCard(
-        GameState gameState,
-        PlayerState cpuState,
-        List<Card> usableCpuSpecialCards,
-        CpuLevelDefinition levelDefinition)
-    {
-        PlayerState playerState = GetPlayerState(gameState);
-        HandEvaluator.HandRank cpuRank = EvaluateCpuHandRank(gameState, cpuState);
-
-        if (IsRoleAtOrAbove(cpuRank, HandEvaluator.HandRank.Sanju))
-        {
-            Card card = FindUsableSlotCard(levelDefinition, CpuSpecialCardSlot.Buff, usableCpuSpecialCards);
-            if (card != null) return card;
-        }
-
-        if (cpuState != null && cpuState.LifePoints <= 30)
-        {
-            Card card = FindUsableSlotCard(levelDefinition, CpuSpecialCardSlot.Defense, usableCpuSpecialCards);
-            if (card != null) return card;
-        }
-
-        if (playerState != null && cpuState != null && playerState.LifePoints >= cpuState.LifePoints + 20)
-        {
-            Card card = FindUsableSlotCard(levelDefinition, CpuSpecialCardSlot.Attack, usableCpuSpecialCards);
-            if (card != null) return card;
-        }
-
-        if (Random.value < 0.5f)
-        {
-            return FindUsableSlotCard(levelDefinition, CpuSpecialCardSlot.Flex, usableCpuSpecialCards);
-        }
-
-        return null;
-    }
-
-    private PlayerState GetPlayerState(GameState gameState)
-    {
-        if (gameState == null || gameState.PlayerStates == null || gameState.PlayerStates.Count == 0)
-        {
-            return null;
-        }
-
-        return gameState.PlayerStates[0];
+        List<Card> freeCards = usableCpuSpecialCards
+            .Where(card =>
+                !SpecialCardResolver.IsSpecialCard(card.CardData, levelDefinition.FixedCard1) &&
+                !SpecialCardResolver.IsSpecialCard(card.CardData, levelDefinition.FixedCard2))
+            .ToList();
+        return freeCards.Count > 0 ? freeCards[Random.Range(0, freeCards.Count)] : null;
     }
 
     private HandEvaluator.HandRank EvaluateCpuHandRank(GameState gameState, PlayerState cpuState)
@@ -213,17 +145,17 @@ public class CPUController : Controller
         return handInfo != null ? handInfo.Rank : HandEvaluator.HandRank.Miezu;
     }
 
-    private Card FindUsableSlotCard(
-        CpuLevelDefinition levelDefinition,
-        CpuSpecialCardSlot slot,
+    private Card FindUsableCard(
+        SpecialCardResolver.SpecialCardId cardId,
+        CpuFixedCardCondition condition,
+        HandEvaluator.HandRank cpuRank,
         List<Card> usableCpuSpecialCards)
     {
-        if (levelDefinition == null || usableCpuSpecialCards == null)
+        if (!MatchesCondition(cpuRank, condition) || usableCpuSpecialCards == null)
         {
             return null;
         }
 
-        SpecialCardResolver.SpecialCardId cardId = levelDefinition.GetCardId(slot);
         foreach (Card card in usableCpuSpecialCards)
         {
             if (card != null && SpecialCardResolver.IsSpecialCard(card.CardData, cardId))
@@ -235,14 +167,31 @@ public class CPUController : Controller
         return null;
     }
 
-    private bool IsRoleAtOrBelow(HandEvaluator.HandRank rank, HandEvaluator.HandRank threshold)
+    private static bool MatchesCondition(
+        HandEvaluator.HandRank rank,
+        CpuFixedCardCondition condition)
     {
-        return HandRoleCatalog.GetIndex(rank) <= HandRoleCatalog.GetIndex(threshold);
-    }
-
-    private bool IsRoleAtOrAbove(HandEvaluator.HandRank rank, HandEvaluator.HandRank threshold)
-    {
-        return HandRoleCatalog.GetIndex(rank) >= HandRoleCatalog.GetIndex(threshold);
+        int rankIndex = HandRoleCatalog.GetIndex(rank);
+        switch (condition)
+        {
+            case CpuFixedCardCondition.Always:
+                return true;
+            case CpuFixedCardCondition.AtLeastIsso:
+                return rankIndex >= HandRoleCatalog.GetIndex(HandEvaluator.HandRank.Isso);
+            case CpuFixedCardCondition.AtLeastNiso:
+                return rankIndex >= HandRoleCatalog.GetIndex(HandEvaluator.HandRank.Niso);
+            case CpuFixedCardCondition.AtMostIsso:
+                return rankIndex <= HandRoleCatalog.GetIndex(HandEvaluator.HandRank.Isso);
+            case CpuFixedCardCondition.AtMostNiso:
+                return rankIndex <= HandRoleCatalog.GetIndex(HandEvaluator.HandRank.Niso);
+            case CpuFixedCardCondition.AtMostSanju:
+                return rankIndex <= HandRoleCatalog.GetIndex(HandEvaluator.HandRank.Sanju);
+            case CpuFixedCardCondition.NisoThroughSuzi:
+                return rankIndex >= HandRoleCatalog.GetIndex(HandEvaluator.HandRank.Niso) &&
+                       rankIndex <= HandRoleCatalog.GetIndex(HandEvaluator.HandRank.Suzi);
+            default:
+                return false;
+        }
     }
 
     // CPUの行動ロジック

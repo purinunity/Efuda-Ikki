@@ -47,6 +47,7 @@ public class SpecialCardSelectPanel : MonoBehaviour
             Card card = specialCardsDeck.cardList[i];
             if (card == null) continue;
             if (SpecialCardResolver.IsNoUseSpecialCard(card.CardData)) continue;
+            if (SpecialCardResolver.IsCpuOnlySpecialCard(card.CardData)) continue;
 
             card.ForceSetFaceUp(true);
             SetupCardSelection(card);

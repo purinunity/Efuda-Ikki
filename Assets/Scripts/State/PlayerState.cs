@@ -8,7 +8,7 @@ public class PlayerState
     public int PlayerId { get; private set; }
     public int LifePoints { get; private set; } = DefaultLifePoints;
     public List<Card> HandCards { get; private set; }
-    public List<Card> SpecialCards { get; set; }
+    public List<Card> SpecialCards { get; private set; }
     private readonly HashSet<Card> usedSpecialCards = new HashSet<Card>();
     public IReadOnlyCollection<Card> UsedSpecialCards => usedSpecialCards;
     public int HandTrashTurnsUsed { get; private set; } = 0;
@@ -39,8 +39,20 @@ public class PlayerState
     {
         SetLifePoints(initialLifePoints);
         HandCards.Clear();
-        usedSpecialCards.Clear();
         HandTrashTurnsUsed = 0;
+        ResetSpecialCardUsage();
+    }
+
+    public void SetSpecialCardsForMatch(IEnumerable<Card> cards)
+    {
+        CardSelectionUtility.ClearSelections(SpecialCards);
+        SpecialCards = cards != null ? new List<Card>(cards) : new List<Card>();
+        ResetSpecialCardUsage();
+    }
+
+    public void ResetSpecialCardUsage()
+    {
+        usedSpecialCards.Clear();
         CardSelectionUtility.ClearSelections(SpecialCards);
     }
 

@@ -22,7 +22,8 @@ public static class SpecialCardResolver
         Rain,
         Festival,
         Sunny,
-        Swap
+        Swap,
+        Oni
     }
 
     public sealed class ResolvedHand
@@ -303,6 +304,7 @@ public static class SpecialCardResolver
         new SpecialCardDefinition(SpecialCardId.Bonus5, "副札5", "自分の得点を5点上げる。", 500, "sp 3", "sp_bonus5"),
         new SpecialCardDefinition(SpecialCardId.Bonus10, "副札10", "自分の得点を10点上げる。", 600, "sp 5", "sp_bonus10"),
         new SpecialCardDefinition(SpecialCardId.Bonus15, "副札15", "自分の得点を15点上げる。", 700, "sp 6", "sp_bonus15"),
+        new SpecialCardDefinition(SpecialCardId.Oni, "鬼札", "自分の得点を30点上げる。", 750, "sp_oni"),
         new SpecialCardDefinition(SpecialCardId.Festival, "祭札", "自分の得点がランダムで20点上がるか、20点下がる。", 800, "sp 10", "sp_festival"),
         new SpecialCardDefinition(SpecialCardId.Curse, "呪い札", "相手の得点を10点下げる。", 900, "sp 4", "sp_curse"),
         new SpecialCardDefinition(SpecialCardId.DoubleScore, "倍札", "自分の得点を2倍にする。", 1000, "sp 7", "sp_double_score"),
@@ -349,6 +351,11 @@ public static class SpecialCardResolver
     public static bool IsSpecialCard(CardData cardData, SpecialCardId id)
     {
         return TryGetSpecialCardId(cardData, out SpecialCardId resolvedId) && resolvedId == id;
+    }
+
+    public static bool IsCpuOnlySpecialCard(CardData cardData)
+    {
+        return IsSpecialCard(cardData, SpecialCardId.Oni);
     }
 
     public static bool TryGetUnlockOrder(CardData cardData, out int order)
@@ -490,6 +497,12 @@ public static class SpecialCardResolver
             {
                 ownerHand.AddScore(15);
                 context.Logs.Add($"Player {effect.OwnerPlayerId}: Bonus+15 applied.");
+                break;
+            }
+            case SpecialCardId.Oni:
+            {
+                ownerHand.AddScore(30);
+                context.Logs.Add($"Player {effect.OwnerPlayerId}: Oni+30 applied.");
                 break;
             }
             case SpecialCardId.DoubleScore:

@@ -58,7 +58,7 @@ public sealed class CpuSetupService
 
         Debug.Log(
             $"CPU level {currentLevelDefinition.Level}: HP {currentLevelDefinition.InitialLifePoints}, " +
-            $"special logic {currentLevelDefinition.UsageMode}.");
+            $"fixed cards {currentLevelDefinition.FixedCard1}/{currentLevelDefinition.FixedCard2}.");
     }
 
     public void ApplySpecialCards(GameModeData modeData, int stageNumber)
@@ -82,7 +82,7 @@ public sealed class CpuSetupService
                 ? currentLevelDefinition
                 : CpuLevelCatalog.GetLevel(level);
 
-            gameState.PlayerStates[1].SpecialCards = BuildCpuSpecialCards(levelDefinition);
+            gameState.PlayerStates[1].SetSpecialCardsForMatch(BuildCpuSpecialCards(levelDefinition));
         }
     }
 
@@ -106,6 +106,14 @@ public sealed class CpuSetupService
 
     private void ApplyPlayerSpecialCards(GameModeData modeData)
     {
+        if (gameState?.PlayerStates == null || gameState.PlayerStates.Count == 0)
+        {
+            return;
+        }
+
+        PlayerState playerState = gameState.PlayerStates[0];
+        playerState.SetSpecialCardsForMatch(null);
+
         if (modeData?.SelectedSpecialCardDatas != null && modeData.SelectedSpecialCardDatas.Count > 0)
         {
             if (playerSpecialCardsDeck == null)
@@ -114,8 +122,8 @@ public sealed class CpuSetupService
                 return;
             }
 
-            gameState.PlayerStates[0].SpecialCards =
-                playerSpecialCardsDeck.GetCards(modeData.SelectedSpecialCardDatas);
+            playerState.SetSpecialCardsForMatch(
+                playerSpecialCardsDeck.GetCards(modeData.SelectedSpecialCardDatas));
             return;
         }
 
@@ -138,21 +146,64 @@ public sealed class CpuSetupService
 
         ClearCpuSpecialCardSelections();
 
-        foreach (SpecialCardResolver.SpecialCardId cardId in levelDefinition.SpecialCardIds)
+        AddCpuSpecialCard(selectedCards, levelDefinition.FixedCard1, levelDefinition.Level);
+        AddCpuSpecialCard(selectedCards, levelDefinition.FixedCard2, levelDefinition.Level);
+
+        List<Card> freeCardCandidates = BuildFreeCardCandidates(levelDefinition);
+        for (int i = 0; i < 2 && freeCardCandidates.Count > 0; i++)
         {
-            Card card = FindCpuSpecialCard(cardId);
-            if (card != null && !selectedCards.Contains(card))
-            {
-                selectedCards.Add(card);
-            }
-            else if (card == null)
-            {
-                Debug.LogWarning($"CPU level {levelDefinition.Level}: special card {cardId} was not found.");
-            }
+            int randomIndex = Random.Range(0, freeCardCandidates.Count);
+            selectedCards.Add(freeCardCandidates[randomIndex]);
+            freeCardCandidates.RemoveAt(randomIndex);
         }
 
-        Debug.Log($"CPU level {levelDefinition.Level}: configured special cards selected: {selectedCards.Count}");
+        Debug.Log($"CPU level {levelDefinition.Level}: selected {selectedCards.Count} special cards.");
         return selectedCards;
+    }
+
+    private void AddCpuSpecialCard(
+        List<Card> selectedCards,
+        SpecialCardResolver.SpecialCardId cardId,
+        int level)
+    {
+        Card card = FindCpuSpecialCard(cardId);
+        if (card != null && !selectedCards.Contains(card))
+        {
+            selectedCards.Add(card);
+            return;
+        }
+
+        Debug.LogWarning($"CPU level {level}: fixed special card {cardId} was not found.");
+    }
+
+    private List<Card> BuildFreeCardCandidates(CpuLevelDefinition levelDefinition)
+    {
+        List<Card> candidates = new List<Card>();
+        foreach (Card card in cpuSpecialCardsDeck.cardList)
+        {
+            if (card == null ||
+                card.CardData == null ||
+                !GameProgressStore.IsSpecialCardUnlocked(card.CardData) ||
+                !SpecialCardResolver.TryGetSpecialCardId(
+                    card.CardData,
+                    out SpecialCardResolver.SpecialCardId cardId) ||
+                cardId == levelDefinition.FixedCard1 ||
+                cardId == levelDefinition.FixedCard2 ||
+                cardId == SpecialCardResolver.SpecialCardId.Oni)
+            {
+                continue;
+            }
+
+            candidates.Add(card);
+        }
+
+        if (candidates.Count < 2)
+        {
+            Debug.LogWarning(
+                $"CPU level {levelDefinition.Level}: only {candidates.Count} unlocked free special cards are available.");
+        }
+
+        return candidates;
     }
 
     private Card FindCpuSpecialCard(SpecialCardResolver.SpecialCardId cardId)

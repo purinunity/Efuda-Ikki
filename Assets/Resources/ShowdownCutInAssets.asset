@@ -17,6 +17,7 @@ MonoBehaviour:
   roleFrame: {fileID: 21300000, guid: fe2a869f8ddd80541a3279ff6b5cb8b8, type: 3}
   winResult: {fileID: 21300000, guid: 98e38505e6eaca34591c9472f562cf1f, type: 3}
   loseResult: {fileID: 21300000, guid: ef1376ecc7873b149a4635886a0ee0ac, type: 3}
+  drawResult: {fileID: 21300000, guid: 85cfd8ef5c7ea4f4e9751a2eaecabfbc, type: 3}
   textFont: {fileID: 11400000, guid: 2a7b3e5085dcef945861217a568646fa, type: 2}
   cpuRoleSpriteRect: {x: 304, y: 176, z: 416, w: 82}
   playerRoleSpriteRect: {x: 304, y: 318, z: 416, w: 82}
