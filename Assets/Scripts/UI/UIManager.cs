@@ -91,6 +91,14 @@ public class UIManager : MonoBehaviour
         StartCoroutine(CheckUIUpdateComplete());
     }
 
+    public void SetPlayerSpecialCardInputEnabled(bool enabled)
+    {
+        if (player1Special is SpecialCardArea specialCardArea)
+        {
+            specialCardArea.SetInputEnabled(enabled);
+        }
+    }
+
     private void UpdateSpecialCardArea(GameState state, int playerId, CardArea targetArea, Cards sourceDeck)
     {
         if (targetArea == null) return;
@@ -104,6 +112,10 @@ public class UIManager : MonoBehaviour
 
         if (targetArea is SpecialCardArea specialCardArea)
         {
+            bool canSelectSpecialCard = playerId == 0 &&
+                                        playerState != null &&
+                                        playerState.HandTrashTurnsUsed < Mathf.Max(0, state.maxHandTrashTurn);
+            specialCardArea.SetInputEnabled(canSelectSpecialCard);
             specialCardArea.SetUsedCards(playerState != null ? playerState.UsedSpecialCards : null);
         }
 
@@ -126,28 +138,35 @@ public class UIManager : MonoBehaviour
 
     private List<Card> BuildSpecialCardDisplayCards(List<Card> specialCards, Cards sourceDeck)
     {
-        List<Card> displayCards = new List<Card>(specialCards);
+        List<Card> displayCards = new List<Card>();
         if (specialCards == null || specialCards.Count == 0)
         {
             return displayCards;
         }
 
-        Card noUseCard = FindNoUseSpecialCard(specialCards, sourceDeck);
+        foreach (Card card in specialCards)
+        {
+            if (card == null || SpecialCardResolver.IsNoUseSpecialCard(card.CardData))
+            {
+                continue;
+            }
+
+            displayCards.Add(card);
+        }
+
+        Card noUseCard = FindNoUseSpecialCard(sourceDeck);
         if (noUseCard == null)
         {
             return displayCards;
         }
 
         noUseCard.IsSelectable = false;
-        if (noUseCard.IsFaceUp)
-        {
-            noUseCard.ForceSetFaceUp(false);
-        }
+        noUseCard.ForceSetFaceUp(true);
         displayCards.Add(noUseCard);
         return displayCards;
     }
 
-    private Card FindNoUseSpecialCard(List<Card> specialCards, Cards sourceDeck)
+    private Card FindNoUseSpecialCard(Cards sourceDeck)
     {
         if (sourceDeck == null || sourceDeck.cardList == null)
         {
@@ -157,8 +176,7 @@ public class UIManager : MonoBehaviour
         foreach (var card in sourceDeck.cardList)
         {
             if (card == null) continue;
-            if (specialCards.Contains(card)) continue;
-            return card;
+            if (SpecialCardResolver.IsNoUseSpecialCard(card.CardData)) return card;
         }
 
         return null;

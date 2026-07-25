@@ -67,6 +67,11 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         {
             button.onClick.AddListener(ToggleSelect);
         }
+
+        if (GetComponent<SpecialCardTooltipTarget>() == null)
+        {
+            gameObject.AddComponent<SpecialCardTooltipTarget>();
+        }
     }
     // クリックイベントで選択フラグをトグル
     private void ToggleSelect()

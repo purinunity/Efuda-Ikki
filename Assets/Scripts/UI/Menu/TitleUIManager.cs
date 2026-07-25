@@ -125,7 +125,7 @@ public class TitleUIManager : MonoBehaviour
         currentGameModeData = new GameModeData(GameModeData.GameMode.IkkiMode);
         currentGameModeData.SetCurrentLevel(CpuLevelCatalog.MinLevel);
         GameModeManager.SetGameModeData(currentGameModeData);
-        ShowSpecialCardSelect();
+        ShowStageSelect();
     }
 
     public void SelectKachinukiMode()

@@ -22,11 +22,11 @@ public class ShowdownCutInPopup : MonoBehaviour
     private static readonly Vector4 PlayerCommonFrameRect = new Vector4(720f, 288f, 192f, 128f);
     private static readonly Vector4 CpuSpecialCardSlotRect = new Vector4(208f, 16f, 96f, 128f);
     private static readonly Vector4 PlayerSpecialCardSlotRect = new Vector4(720f, 432f, 96f, 128f);
-    private static readonly Vector2 ScoreTextSize = new Vector2(120f, 48f);
+    private static readonly Vector2 ScoreTextSize = new Vector2(176f, 72f);
     private static readonly Vector4 SpecialCallBackdropRect = new Vector4(304f, 224f, 416f, 128f);
     private static readonly Vector4 ResultBackdropRect = new Vector4(304f, 208f, 416f, 160f);
-    private static readonly Vector4 CpuResultStampRect = new Vector4(48f, 16f, 128f, 128f);
-    private static readonly Vector4 PlayerResultStampRect = new Vector4(848f, 432f, 128f, 128f);
+    private static readonly Vector4 CpuResultStampRect = new Vector4(64f, 32f, 96f, 96f);
+    private static readonly Vector4 PlayerResultStampRect = new Vector4(864f, 448f, 96f, 96f);
     private static readonly Vector4 SpecialCallTextRect = new Vector4(320f, 240f, 384f, 96f);
     private static readonly Vector4 ResultTextRect = new Vector4(320f, 224f, 384f, 64f);
     private static readonly Vector4 DamageTextRect = new Vector4(320f, 296f, 384f, 48f);
@@ -771,8 +771,8 @@ public class ShowdownCutInPopup : MonoBehaviour
 
         text.alignment = TextAlignmentOptions.Center;
         text.enableAutoSizing = true;
-        text.fontSizeMin = 18f;
-        text.fontSizeMax = 48f;
+        text.fontSizeMin = 30f;
+        text.fontSizeMax = 68f;
         text.color = Color.black;
         text.fontStyle = FontStyles.Bold;
         text.outlineWidth = 0f;

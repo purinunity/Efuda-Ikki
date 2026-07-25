@@ -21,6 +21,7 @@ public class SpecialCardArea : CardArea
     private readonly HashSet<Card> usedCards = new HashSet<Card>();
     private Card selectedTopCard;
     private Coroutine topSwitchCoroutine;
+    private bool inputEnabled = true;
 
     public void SetUsedCards(IEnumerable<Card> cards)
     {
@@ -38,6 +39,17 @@ public class SpecialCardArea : CardArea
 
         EnsureSelectedTopCard();
         ApplyTopSelection();
+        ApplyUsedVisualState();
+    }
+
+    public void SetInputEnabled(bool enabled)
+    {
+        if (inputEnabled == enabled)
+        {
+            return;
+        }
+
+        inputEnabled = enabled;
         ApplyUsedVisualState();
     }
 
@@ -203,11 +215,17 @@ public class SpecialCardArea : CardArea
     private void SwitchTopCard(Card selectedCard)
     {
         if (selectedCard == null || !cardsInArea.Contains(selectedCard)) return;
+        if (!inputEnabled) return;
         if (topSwitchCoroutine != null || !AreStackCardsMoveComplete()) return;
-        if (!IsCardAvailable(selectedCard)) return;
 
         int topIndex = cardsInArea.Count - 1;
         int selectedIndex = cardsInArea.IndexOf(selectedCard);
+        bool selectedCardUsed = !IsCardAvailable(selectedCard);
+
+        if (selectedCardUsed && selectedIndex != topIndex)
+        {
+            return;
+        }
 
         if (selectedIndex == topIndex && cardsInArea.Count > 1)
         {
@@ -217,6 +235,11 @@ public class SpecialCardArea : CardArea
         }
         else
         {
+            if (selectedCardUsed)
+            {
+                return;
+            }
+
             // トップ以外を押したらそのカードをトップへ
             cardsInArea.RemoveAt(selectedIndex);
             cardsInArea.Add(selectedCard);
@@ -402,7 +425,9 @@ public class SpecialCardArea : CardArea
         Button cardButton = card.GetComponent<Button>();
         if (cardButton != null)
         {
-            cardButton.interactable = !used;
+            // 見た目と入力可否は SwitchTopCard 側で管理する。
+            // 使用済み札が山の一番上でも、クリックで次の札へ送れるようにする。
+            cardButton.interactable = true;
         }
     }
 

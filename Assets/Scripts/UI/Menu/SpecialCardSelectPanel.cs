@@ -45,6 +45,7 @@ public class SpecialCardSelectPanel : MonoBehaviour
         {
             Card card = specialCardsDeck.cardList[i];
             if (card == null) continue;
+            if (SpecialCardResolver.IsNoUseSpecialCard(card.CardData)) continue;
 
             card.ForceSetFaceUp(true);
             SetupCardSelection(card);
@@ -106,6 +107,7 @@ public class SpecialCardSelectPanel : MonoBehaviour
         foreach (var card in selectionCardArea.cardsInArea)
         {
             if (card == null || card.CardData == null) continue;
+            if (SpecialCardResolver.IsNoUseSpecialCard(card.CardData)) continue;
             card.IsSelected = selectedCards.Contains(card.CardData);
             card.IsSelectable = true;
         }
@@ -131,6 +133,7 @@ public class SpecialCardSelectPanel : MonoBehaviour
         foreach (var card in selectionCardArea.cardsInArea)
         {
             if (card == null || card.CardData == null) continue;
+            if (SpecialCardResolver.IsNoUseSpecialCard(card.CardData)) continue;
             if (!card.IsSelected) continue;
             currentGameModeData.AddSpecialCard(card.CardData, maxSelectableSpecialCards);
         }

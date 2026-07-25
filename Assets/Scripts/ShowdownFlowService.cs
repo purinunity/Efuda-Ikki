@@ -127,7 +127,8 @@ public sealed class ShowdownFlowService
 
             selectedCards.AddRange(CardSelectionUtility.GetSelectedCards(
                 playerState.SpecialCards,
-                card => !playerState.IsSpecialCardUsed(card)));
+                card => !playerState.IsSpecialCardUsed(card) &&
+                        !SpecialCardResolver.IsNoUseSpecialCard(card.CardData)));
         }
 
         return selectedCards;

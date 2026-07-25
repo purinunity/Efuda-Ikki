@@ -6,6 +6,8 @@ using static HandEvaluator;
 
 public static class SpecialCardResolver
 {
+    public const string NoUseSpecialCardAssetName = "sp_no_use";
+
     public enum SpecialCardId
     {
         Aiko,
@@ -176,13 +178,20 @@ public static class SpecialCardResolver
     {
         public SpecialCardId Id { get; }
         public string DisplayName { get; }
+        public string Description { get; }
         public int Priority { get; }
         public string[] AssetNames { get; }
 
-        public SpecialCardDefinition(SpecialCardId id, string displayName, int priority, params string[] assetNames)
+        public SpecialCardDefinition(
+            SpecialCardId id,
+            string displayName,
+            string description,
+            int priority,
+            params string[] assetNames)
         {
             Id = id;
             DisplayName = displayName;
+            Description = description;
             Priority = priority;
             AssetNames = assetNames ?? Array.Empty<string>();
         }
@@ -286,18 +295,18 @@ public static class SpecialCardResolver
     // changing the showdown flow code.
     private static readonly SpecialCardDefinition[] Definitions =
     {
-        new SpecialCardDefinition(SpecialCardId.Seal, "封札", 100, "sp 2", "sp_seal"),
-        new SpecialCardDefinition(SpecialCardId.Rain, "雨札", 200, "sp 9", "sp_rain"),
-        new SpecialCardDefinition(SpecialCardId.Sunny, "晴札", 300, "sp 11", "sp_sunny"),
-        new SpecialCardDefinition(SpecialCardId.Swap, "換札", 400, "sp 12", "sp_swap"),
-        new SpecialCardDefinition(SpecialCardId.Bonus5, "副札5", 500, "sp 3", "sp_bonus5"),
-        new SpecialCardDefinition(SpecialCardId.Bonus10, "副札10", 600, "sp 5", "sp_bonus10"),
-        new SpecialCardDefinition(SpecialCardId.Bonus15, "副札15", 700, "sp 6", "sp_bonus15"),
-        new SpecialCardDefinition(SpecialCardId.Festival, "祭札", 800, "sp 10", "sp_festival"),
-        new SpecialCardDefinition(SpecialCardId.Curse, "呪い札", 900, "sp 4", "sp_curse"),
-        new SpecialCardDefinition(SpecialCardId.DoubleScore, "倍札", 1000, "sp 7", "sp_double_score"),
-        new SpecialCardDefinition(SpecialCardId.Bet, "賭札", 1100, "sp 8", "sp_bet"),
-        new SpecialCardDefinition(SpecialCardId.Aiko, "相子札", 1200, "sp 1", "sp_aiko")
+        new SpecialCardDefinition(SpecialCardId.Seal, "封札", "この札より後に発動する特殊札をすべて無効にする。", 100, "sp 2", "sp_seal"),
+        new SpecialCardDefinition(SpecialCardId.Rain, "雨札", "相手の役を1段階下げる。", 200, "sp 9", "sp_rain"),
+        new SpecialCardDefinition(SpecialCardId.Sunny, "晴札", "自分の役を1段階上げる。", 300, "sp 11", "sp_sunny"),
+        new SpecialCardDefinition(SpecialCardId.Swap, "換札", "自分と相手の役・得点を入れ替える。", 400, "sp 12", "sp_swap"),
+        new SpecialCardDefinition(SpecialCardId.Bonus5, "副札5", "自分の得点を5点上げる。", 500, "sp 3", "sp_bonus5"),
+        new SpecialCardDefinition(SpecialCardId.Bonus10, "副札10", "自分の得点を10点上げる。", 600, "sp 5", "sp_bonus10"),
+        new SpecialCardDefinition(SpecialCardId.Bonus15, "副札15", "自分の得点を15点上げる。", 700, "sp 6", "sp_bonus15"),
+        new SpecialCardDefinition(SpecialCardId.Festival, "祭札", "自分の得点がランダムで20点上がるか、20点下がる。", 800, "sp 10", "sp_festival"),
+        new SpecialCardDefinition(SpecialCardId.Curse, "呪い札", "相手の得点を10点下げる。", 900, "sp 4", "sp_curse"),
+        new SpecialCardDefinition(SpecialCardId.DoubleScore, "倍札", "自分の得点を2倍にする。", 1000, "sp 7", "sp_double_score"),
+        new SpecialCardDefinition(SpecialCardId.Bet, "賭札", "自分の得点がランダムで0倍または2倍になる。", 1100, "sp 8", "sp_bet"),
+        new SpecialCardDefinition(SpecialCardId.Aiko, "相子札", "この勝負を引き分けにする。ダメージは発生しない。", 1200, "sp 1", "sp_aiko")
     };
 
     private static readonly Dictionary<string, SpecialCardDefinition> DefinitionByAssetName = BuildDefinitionMap();
@@ -322,6 +331,39 @@ public static class SpecialCardResolver
     public static bool IsSpecialCard(CardData cardData, SpecialCardId id)
     {
         return TryGetSpecialCardId(cardData, out SpecialCardId resolvedId) && resolvedId == id;
+    }
+
+    public static bool IsNoUseSpecialCard(CardData cardData)
+    {
+        return cardData != null &&
+               string.Equals(cardData.name, NoUseSpecialCardAssetName, StringComparison.Ordinal);
+    }
+
+    public static bool TryGetSpecialCardTooltip(CardData cardData, out string displayName, out string description)
+    {
+        displayName = string.Empty;
+        description = string.Empty;
+
+        if (cardData == null)
+        {
+            return false;
+        }
+
+        if (IsNoUseSpecialCard(cardData))
+        {
+            displayName = "使用しない";
+            description = "このターンは特殊札を使用しない。";
+            return true;
+        }
+
+        if (!DefinitionByAssetName.TryGetValue(cardData.name, out SpecialCardDefinition definition))
+        {
+            return false;
+        }
+
+        displayName = definition.DisplayName;
+        description = definition.Description;
+        return true;
     }
 
     public static ShowdownResult Resolve(
@@ -541,6 +583,11 @@ public static class SpecialCardResolver
                 card => !playerState.IsSpecialCardUsed(card)))
             {
                 if (card?.CardData == null)
+                {
+                    continue;
+                }
+
+                if (IsNoUseSpecialCard(card.CardData))
                 {
                     continue;
                 }
