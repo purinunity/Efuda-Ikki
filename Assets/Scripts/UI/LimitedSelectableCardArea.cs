@@ -11,6 +11,7 @@ public class LimitedSelectableCardArea : CardArea
     [SerializeField] private int maxSelectableCount = 1;
     [SerializeField] private float selectMoveDuration = 0.3f;
     private readonly HashSet<Card> managedCards = new HashSet<Card>();
+    private readonly HashSet<Card> unavailableCards = new HashSet<Card>();
 
     private void Start()
     {
@@ -43,6 +44,26 @@ public class LimitedSelectableCardArea : CardArea
     {
         selectionCountText = text;
         RefreshSelectionState();
+    }
+
+    public void SetCardAvailability(Card card, bool isAvailable)
+    {
+        if (card == null)
+        {
+            return;
+        }
+
+        if (isAvailable)
+        {
+            unavailableCards.Remove(card);
+        }
+        else
+        {
+            unavailableCards.Add(card);
+            card.IsSelected = false;
+        }
+
+        card.IsSelectable = isAvailable;
     }
 
     public bool CanSelect(Card card)
@@ -101,7 +122,7 @@ public class LimitedSelectableCardArea : CardArea
             if (card == null) continue;
             areaCards.Add(card);
             managedCards.Add(card);
-            card.IsSelectable = true;
+            card.IsSelectable = !unavailableCards.Contains(card);
         }
 
         foreach (var card in managedCards)

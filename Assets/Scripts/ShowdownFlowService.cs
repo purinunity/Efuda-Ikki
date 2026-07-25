@@ -125,10 +125,14 @@ public sealed class ShowdownFlowService
                 continue;
             }
 
-            selectedCards.AddRange(CardSelectionUtility.GetSelectedCards(
+            foreach (Card card in CardSelectionUtility.GetSelectedCards(
                 playerState.SpecialCards,
                 card => !playerState.IsSpecialCardUsed(card) &&
-                        !SpecialCardResolver.IsNoUseSpecialCard(card.CardData)));
+                        !SpecialCardResolver.IsNoUseSpecialCard(card.CardData)))
+            {
+                selectedCards.Add(card);
+                break;
+            }
         }
 
         return selectedCards;

@@ -97,6 +97,11 @@ public class ShowdownCutInPopup : MonoBehaviour
         public IReadOnlyList<EffectStepData> EffectSteps { get; }
         public int WinnerIndex { get; }
         public int Damage { get; }
+        public int PlayerLifeBefore { get; }
+        public int CpuLifeBefore { get; }
+        public int PlayerLifeAfter { get; }
+        public int CpuLifeAfter { get; }
+        public bool IsMatchDecided => PlayerLifeAfter <= 0 || CpuLifeAfter <= 0;
         public bool IsDraw => WinnerIndex < 0;
 
         public Data(
@@ -122,7 +127,11 @@ public class ShowdownCutInPopup : MonoBehaviour
             Sprite cpuSpecialCardSprite,
             IReadOnlyList<EffectStepData> effectSteps,
             int winnerIndex,
-            int damage)
+            int damage,
+            int playerLifeBefore,
+            int cpuLifeBefore,
+            int playerLifeAfter,
+            int cpuLifeAfter)
         {
             PlayerCharacterSprite = playerCharacterSprite;
             CpuCharacterSprite = cpuCharacterSprite;
@@ -147,6 +156,10 @@ public class ShowdownCutInPopup : MonoBehaviour
             EffectSteps = effectSteps;
             WinnerIndex = winnerIndex;
             Damage = damage;
+            PlayerLifeBefore = playerLifeBefore;
+            CpuLifeBefore = cpuLifeBefore;
+            PlayerLifeAfter = playerLifeAfter;
+            CpuLifeAfter = cpuLifeAfter;
         }
     }
 
@@ -159,6 +172,7 @@ public class ShowdownCutInPopup : MonoBehaviour
     [SerializeField] private Vector4 fallbackPlayerRoleSpriteRect = new Vector4(304f, 318f, 416f, 82f);
     [SerializeField] private float scoreStepInterval = 0.02f;
     [SerializeField] private float roleFrameInDuration = 0.28f;
+    [SerializeField] private float matchDecisionInDuration = 0.42f;
 
     [Header("Hierarchy References")]
     [SerializeField] private CanvasGroup canvasGroup;
@@ -1143,18 +1157,68 @@ public class ShowdownCutInPopup : MonoBehaviour
         SetRole(cpuRoleImage, null, false, data.CpuFinalRoleName, data.CpuFinalRoleRank);
         ResetSpecialCardHighlights();
         SetActive(specialCallBackdropImage, false);
-        SetActive(resultBackdropImage, false);
+        SetActive(resultBackdropImage, data.IsMatchDecided);
         SetImage(resultStampImage, GetPlayerResultStampSprite(data));
         SetImage(cpuResultStampImage, GetCpuResultStampSprite(data));
         specialCallText.gameObject.SetActive(false);
-        resultText.text = BuildWinnerText(data);
-        damageText.text = BuildDamageText(data);
-        resultText.gameObject.SetActive(false);
-        damageText.gameObject.SetActive(false);
+        resultText.text = data.IsMatchDecided ? BuildMatchResultText(data) : BuildWinnerText(data);
+        damageText.text = data.IsMatchDecided ? BuildMatchLifeText(data) : BuildDamageText(data);
+        resultText.gameObject.SetActive(data.IsMatchDecided);
+        damageText.gameObject.SetActive(data.IsMatchDecided);
         closeButton.gameObject.SetActive(false);
         yield return AnimateScoresTo(data.PlayerFinalScore, data.CpuFinalScore);
+        if (data.IsMatchDecided)
+        {
+            yield return AnimateMatchDecisionIn();
+        }
+
+        SetCloseButtonLabel(data.IsMatchDecided ? "次へ" : "閉じる");
         closeButton.gameObject.SetActive(true);
         closeButton.Select();
+    }
+
+    private IEnumerator AnimateMatchDecisionIn()
+    {
+        RectTransform backdropRect = resultBackdropImage != null ? resultBackdropImage.rectTransform : null;
+        RectTransform resultRect = resultText != null ? resultText.rectTransform : null;
+        RectTransform damageRect = damageText != null ? damageText.rectTransform : null;
+
+        Vector3 startScale = Vector3.one * 0.72f;
+        SetLocalScale(backdropRect, startScale);
+        SetLocalScale(resultRect, startScale);
+        SetLocalScale(damageRect, startScale);
+
+        Color backdropColor = resultBackdropImage != null ? resultBackdropImage.color : Color.white;
+        Color resultColor = resultText != null ? resultText.color : Color.white;
+        Color damageColor = damageText != null ? damageText.color : Color.white;
+        SetAlpha(resultBackdropImage, 0f);
+        SetAlpha(resultText, 0f);
+        SetAlpha(damageText, 0f);
+
+        if (matchDecisionInDuration > 0f)
+        {
+            float elapsed = 0f;
+            while (elapsed < matchDecisionInDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / matchDecisionInDuration));
+                Vector3 scale = Vector3.LerpUnclamped(startScale, Vector3.one, t);
+                SetLocalScale(backdropRect, scale);
+                SetLocalScale(resultRect, scale);
+                SetLocalScale(damageRect, scale);
+                SetAlpha(resultBackdropImage, backdropColor.a * t);
+                SetAlpha(resultText, resultColor.a * t);
+                SetAlpha(damageText, damageColor.a * t);
+                yield return null;
+            }
+        }
+
+        SetLocalScale(backdropRect, Vector3.one);
+        SetLocalScale(resultRect, Vector3.one);
+        SetLocalScale(damageRect, Vector3.one);
+        if (resultBackdropImage != null) resultBackdropImage.color = backdropColor;
+        if (resultText != null) resultText.color = resultColor;
+        if (damageText != null) damageText.color = damageColor;
     }
 
     private IEnumerator AnimateRoleFrameIn()
@@ -1282,6 +1346,23 @@ public class ShowdownCutInPopup : MonoBehaviour
 
         string damagedPlayer = data.WinnerIndex == 0 ? "CPU" : "プレイヤー";
         return $"{damagedPlayer} {data.Damage}ダメージ";
+    }
+
+    private static string BuildMatchResultText(Data data)
+    {
+        return data != null && data.WinnerIndex == 0 ? "対戦勝利" : "対戦敗北";
+    }
+
+    private static string BuildMatchLifeText(Data data)
+    {
+        if (data == null)
+        {
+            return string.Empty;
+        }
+
+        return data.WinnerIndex == 0
+            ? $"CPU HP {data.CpuLifeBefore} → {data.CpuLifeAfter}"
+            : $"プレイヤー HP {data.PlayerLifeBefore} → {data.PlayerLifeAfter}";
     }
 
     private Sprite GetPlayerResultStampSprite(Data data)
@@ -1430,6 +1511,40 @@ public class ShowdownCutInPopup : MonoBehaviour
         if (rectTransform != null)
         {
             rectTransform.anchoredPosition = position;
+        }
+    }
+
+    private static void SetLocalScale(RectTransform rectTransform, Vector3 scale)
+    {
+        if (rectTransform != null)
+        {
+            rectTransform.localScale = scale;
+        }
+    }
+
+    private static void SetAlpha(Graphic graphic, float alpha)
+    {
+        if (graphic == null)
+        {
+            return;
+        }
+
+        Color color = graphic.color;
+        color.a = Mathf.Clamp01(alpha);
+        graphic.color = color;
+    }
+
+    private void SetCloseButtonLabel(string label)
+    {
+        if (closeButton == null)
+        {
+            return;
+        }
+
+        TextMeshProUGUI labelText = closeButton.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (labelText != null)
+        {
+            labelText.text = label;
         }
     }
 

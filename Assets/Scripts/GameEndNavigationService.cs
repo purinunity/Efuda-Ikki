@@ -22,4 +22,18 @@ public sealed class GameEndNavigationService
         UnityEditor.EditorApplication.isPlaying = false;
 #endif
     }
+
+    public void ReturnToStageSelectOrStopEditor()
+    {
+        if (titleUIManager != null)
+        {
+            titleUIManager.ShowStageSelect();
+            GameModeManager.ResetGameModeData();
+            return;
+        }
+
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#endif
+    }
 }

@@ -14,6 +14,9 @@ public class MainMenuPanel : MonoBehaviour
     [SerializeField] private Sprite kachinukiModeButtonSprite;
     [SerializeField] private Sprite settingsButtonSprite;
     [SerializeField] private bool hideButtonTextLabels = true;
+    [SerializeField] private Color lockedBattleGroundColor = new Color(0.18f, 0.18f, 0.18f, 1f);
+
+    private TextMeshProUGUI battleGroundStatusLabel;
 
     private void Awake()
     {
@@ -28,7 +31,7 @@ public class MainMenuPanel : MonoBehaviour
         }
         if (battleGroundButton != null)
         {
-            battleGroundButton.onClick.AddListener(() => titleUIManager.SelectKachinukiMode());
+            battleGroundButton.onClick.AddListener(() => titleUIManager.SelectBattleGroundMode());
         }
         if (settingsButton != null)
         {
@@ -46,9 +49,37 @@ public class MainMenuPanel : MonoBehaviour
 
     public void RefreshModeAvailability()
     {
-        if (battleGroundButton != null)
+        if (battleGroundButton == null)
         {
-            battleGroundButton.interactable = GameProgressStore.IsKachinukiUnlocked;
+            return;
+        }
+
+        bool unlocked = GameProgressStore.IsBattleGroundUnlocked;
+        battleGroundButton.interactable = unlocked;
+
+        Image image = battleGroundButton.targetGraphic as Image;
+        if (image == null)
+        {
+            image = battleGroundButton.GetComponent<Image>();
+        }
+
+        if (image != null)
+        {
+            image.color = unlocked ? Color.white : lockedBattleGroundColor;
+        }
+
+        ColorBlock colors = battleGroundButton.colors;
+        colors.disabledColor = Color.white;
+        battleGroundButton.colors = colors;
+
+        TextMeshProUGUI statusLabel = EnsureBattleGroundStatusLabel();
+        if (statusLabel != null)
+        {
+            statusLabel.text = unlocked
+                ? $"最高連勝 {GameProgressStore.BestBattleGroundStreak}"
+                : "未解放\n最終ボス撃破で解放";
+            ConfigureStatusLabelRect(statusLabel.rectTransform, unlocked);
+            statusLabel.gameObject.SetActive(true);
         }
     }
 
@@ -100,5 +131,60 @@ public class MainMenuPanel : MonoBehaviour
         {
             label.gameObject.SetActive(isActive);
         }
+    }
+
+    private TextMeshProUGUI EnsureBattleGroundStatusLabel()
+    {
+        if (battleGroundStatusLabel != null)
+        {
+            return battleGroundStatusLabel;
+        }
+
+        Transform existing = battleGroundButton.transform.Find("BattleGroundStatus");
+        if (existing != null)
+        {
+            battleGroundStatusLabel = existing.GetComponent<TextMeshProUGUI>();
+            if (battleGroundStatusLabel != null)
+            {
+                return battleGroundStatusLabel;
+            }
+        }
+
+        TextMeshProUGUI template = battleGroundButton.GetComponentInChildren<TextMeshProUGUI>(true);
+        GameObject labelObject = new GameObject(
+            "BattleGroundStatus",
+            typeof(RectTransform),
+            typeof(TextMeshProUGUI));
+        labelObject.transform.SetParent(battleGroundButton.transform, false);
+
+        battleGroundStatusLabel = labelObject.GetComponent<TextMeshProUGUI>();
+        if (template != null)
+        {
+            battleGroundStatusLabel.font = template.font;
+        }
+
+        battleGroundStatusLabel.alignment = TextAlignmentOptions.Center;
+        battleGroundStatusLabel.enableAutoSizing = true;
+        battleGroundStatusLabel.fontSizeMin = 16f;
+        battleGroundStatusLabel.fontSizeMax = 32f;
+        battleGroundStatusLabel.fontStyle = FontStyles.Bold;
+        battleGroundStatusLabel.color = Color.white;
+        battleGroundStatusLabel.outlineColor = Color.black;
+        battleGroundStatusLabel.outlineWidth = 0.2f;
+        battleGroundStatusLabel.raycastTarget = false;
+        return battleGroundStatusLabel;
+    }
+
+    private static void ConfigureStatusLabelRect(RectTransform rectTransform, bool unlocked)
+    {
+        if (rectTransform == null)
+        {
+            return;
+        }
+
+        rectTransform.anchorMin = unlocked ? new Vector2(0.08f, 0.04f) : new Vector2(0.08f, 0.18f);
+        rectTransform.anchorMax = unlocked ? new Vector2(0.92f, 0.3f) : new Vector2(0.92f, 0.82f);
+        rectTransform.offsetMin = Vector2.zero;
+        rectTransform.offsetMax = Vector2.zero;
     }
 }

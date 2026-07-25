@@ -27,11 +27,14 @@ public class StageSelectPanel : MonoBehaviour
     [SerializeField] private Vector2 characterButtonSize = new Vector2(280f, 280f);
     [SerializeField] private bool preserveCharacterSpriteAspect = true;
     [SerializeField] private bool hideLegacyTextLabels = true;
+    [SerializeField] private Color unlockedCharacterColor = Color.white;
+    [SerializeField] private Color lockedCharacterSilhouetteColor = Color.black;
 
     private void Start()
     {
         ApplyCharacterFrameLayout();
         HideLegacyTextLabels();
+        RefreshProgression();
 
         // 9つのステージボタンをセットアップ
         for (int i = 0; i < 9; i++)
@@ -52,7 +55,54 @@ public class StageSelectPanel : MonoBehaviour
 
     private void SelectStage(int stageNumber)
     {
+        int level = stageNumber + 1;
+        if (!GameProgressStore.IsIkkiLevelUnlocked(level))
+        {
+            return;
+        }
+
         titleUIManager.SelectStage(stageNumber);
+    }
+
+    public void RefreshProgression()
+    {
+        if (stageButtons == null)
+        {
+            return;
+        }
+
+        int highestUnlockedLevel = GameProgressStore.HighestUnlockedIkkiLevel;
+        for (int i = 0; i < stageButtons.Length; i++)
+        {
+            Button button = stageButtons[i];
+            if (button == null)
+            {
+                continue;
+            }
+
+            int level = i + 1;
+            bool unlocked = level >= CpuLevelCatalog.MinLevel &&
+                            level <= CpuLevelCatalog.MaxLevel &&
+                            level <= highestUnlockedLevel;
+            button.interactable = unlocked;
+
+            Image image = button.targetGraphic as Image;
+            if (image == null)
+            {
+                image = button.GetComponent<Image>();
+            }
+
+            if (image != null)
+            {
+                image.color = unlocked
+                    ? unlockedCharacterColor
+                    : lockedCharacterSilhouetteColor;
+            }
+
+            ColorBlock colors = button.colors;
+            colors.disabledColor = Color.white;
+            button.colors = colors;
+        }
     }
 
     private void OnValidate()

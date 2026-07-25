@@ -55,6 +55,11 @@ public class TitleUIManager : MonoBehaviour
     {
         HideAllPanels();
         SetPanelActive(stageSelectPanel, true);
+
+        var characterSelectPanel = stageSelectPanel != null
+            ? stageSelectPanel.GetComponent<StageSelectPanel>()
+            : null;
+        characterSelectPanel?.RefreshProgression();
     }
 
     public void ShowSpecialCardSelect()
@@ -65,7 +70,7 @@ public class TitleUIManager : MonoBehaviour
         var specialCardPanel = specialCardSelectPanel != null
             ? specialCardSelectPanel.GetComponent<SpecialCardSelectPanel>()
             : null;
-        specialCardPanel?.RefreshSelectionFromModeData();
+        specialCardPanel?.ResetSelectionForOpen();
     }
 
     public void ShowSettings()
@@ -128,20 +133,25 @@ public class TitleUIManager : MonoBehaviour
         ShowStageSelect();
     }
 
-    public void SelectKachinukiMode()
+    public void SelectBattleGroundMode()
     {
-        if (!GameProgressStore.IsKachinukiUnlocked)
+        if (!GameProgressStore.IsBattleGroundUnlocked)
         {
-            Debug.LogWarning("Kachinuki mode is locked until Ikki mode is cleared.");
+            Debug.LogWarning("Battle Ground mode is locked until the final Ikki boss is defeated.");
             RefreshMainMenuState();
             return;
         }
 
-        currentGameModeData = new GameModeData(GameModeData.GameMode.KachinukiMode);
+        currentGameModeData = new GameModeData(GameModeData.GameMode.BattleGroundMode);
         currentGameModeData.SetCurrentLevel(CpuLevelCatalog.MinLevel);
         currentGameModeData.ResetWinStreak();
         GameModeManager.SetGameModeData(currentGameModeData);
         ShowSpecialCardSelect();
+    }
+
+    public void SelectKachinukiMode()
+    {
+        SelectBattleGroundMode();
     }
 
     public void SelectKatinukiMode()
@@ -149,15 +159,17 @@ public class TitleUIManager : MonoBehaviour
         SelectIkkiMode();
     }
 
-    public void SelectBattleGroundMode()
-    {
-        SelectKachinukiMode();
-    }
-
     public void SelectStage(int stageNumber)
     {
+        int level = stageNumber + 1;
+        if (!GameProgressStore.IsIkkiLevelUnlocked(level))
+        {
+            Debug.LogWarning($"CPU level {level} is not unlocked.");
+            return;
+        }
+
         currentGameModeData = new GameModeData(GameModeData.GameMode.IkkiMode);
-        currentGameModeData.SetCurrentLevel(stageNumber + 1);
+        currentGameModeData.SetCurrentLevel(level);
         GameModeManager.SetGameModeData(currentGameModeData);
         ShowSpecialCardSelect();
     }

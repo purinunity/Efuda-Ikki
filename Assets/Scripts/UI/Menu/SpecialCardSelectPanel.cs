@@ -13,6 +13,8 @@ public class SpecialCardSelectPanel : MonoBehaviour
     [SerializeField] private int maxSelectableSpecialCards = 4;
     [SerializeField] private Button startGameButton;
     [SerializeField] private Button backButton;
+    [SerializeField] private Color unlockedCardColor = Color.white;
+    [SerializeField] private Color lockedCardColor = new Color(0.2f, 0.2f, 0.2f, 1f);
     public TitleUIManager titleUIManager;
 
     private GameModeData currentGameModeData;
@@ -32,8 +34,7 @@ public class SpecialCardSelectPanel : MonoBehaviour
 
         CreateSpecialCardUI();
         ConfigureSelectionLimiter();
-        RefreshSelectionFromModeData();
-        SyncSelectedCardsToModeData();
+        ResetSelectionForOpen();
     }
 
     private void CreateSpecialCardUI()
@@ -52,6 +53,7 @@ public class SpecialCardSelectPanel : MonoBehaviour
             cardsToDisplay.Add(card);
         }
 
+        cardsToDisplay.Sort(CompareByUnlockOrder);
         selectionCardArea.SetCards(cardsToDisplay, 0.5f);
         foreach (var card in cardsToDisplay)
         {
@@ -104,15 +106,51 @@ public class SpecialCardSelectPanel : MonoBehaviour
             }
         }
 
+        int unlockedSpecialCardCount = GameProgressStore.UnlockedSpecialCardCount;
         foreach (var card in selectionCardArea.cardsInArea)
         {
             if (card == null || card.CardData == null) continue;
             if (SpecialCardResolver.IsNoUseSpecialCard(card.CardData)) continue;
-            card.IsSelected = selectedCards.Contains(card.CardData);
-            card.IsSelectable = true;
+
+            bool unlocked = SpecialCardResolver.TryGetUnlockOrder(card.CardData, out int order) &&
+                            order <= unlockedSpecialCardCount;
+            card.IsSelected = unlocked && selectedCards.Contains(card.CardData);
+            selectionCardArea.SetCardAvailability(card, unlocked);
+            SetCardLockVisual(card, unlocked);
         }
 
         selectionCardArea.RefreshSelectionState();
+    }
+
+    public void ResetSelectionForOpen()
+    {
+        currentGameModeData = GameModeManager.GetGameModeData();
+        currentGameModeData?.ClearSpecialCards();
+
+        if (selectionCardArea?.cardsInArea != null)
+        {
+            foreach (Card card in selectionCardArea.cardsInArea)
+            {
+                if (card == null)
+                {
+                    continue;
+                }
+
+                card.IsSelected = false;
+            }
+        }
+
+        RefreshSelectionFromModeData();
+
+        if (selectionCardArea?.cardsInArea == null)
+        {
+            return;
+        }
+
+        foreach (Card card in selectionCardArea.cardsInArea)
+        {
+            card?.SnapToTargetPosition();
+        }
     }
 
     private void SyncSelectedCardsToModeData()
@@ -134,8 +172,45 @@ public class SpecialCardSelectPanel : MonoBehaviour
         {
             if (card == null || card.CardData == null) continue;
             if (SpecialCardResolver.IsNoUseSpecialCard(card.CardData)) continue;
+            if (!GameProgressStore.IsSpecialCardUnlocked(card.CardData)) continue;
             if (!card.IsSelected) continue;
             currentGameModeData.AddSpecialCard(card.CardData, maxSelectableSpecialCards);
+        }
+    }
+
+    private static int CompareByUnlockOrder(Card left, Card right)
+    {
+        int leftOrder = GetUnlockOrderOrLast(left);
+        int rightOrder = GetUnlockOrderOrLast(right);
+        return leftOrder.CompareTo(rightOrder);
+    }
+
+    private static int GetUnlockOrderOrLast(Card card)
+    {
+        return card != null &&
+               SpecialCardResolver.TryGetUnlockOrder(card.CardData, out int order)
+            ? order
+            : int.MaxValue;
+    }
+
+    private void SetCardLockVisual(Card card, bool unlocked)
+    {
+        if (card == null)
+        {
+            return;
+        }
+
+        Image image = card.GetComponent<Image>();
+        if (image != null)
+        {
+            image.color = unlocked ? unlockedCardColor : lockedCardColor;
+        }
+
+        Button button = card.GetComponent<Button>();
+        if (button != null)
+        {
+            // Keep pointer events active for tooltips; selection is blocked by IsSelectable.
+            button.interactable = true;
         }
     }
 }

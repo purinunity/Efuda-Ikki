@@ -6,9 +6,9 @@ public class GameModeData
     public enum GameMode
     {
         IkkiMode = 0,
-        KachinukiMode = 1,
+        BattleGroundMode = 1,
         KatinukiMode = IkkiMode,
-        BattleGroundMode = KachinukiMode
+        KachinukiMode = BattleGroundMode
     }
 
     public GameMode Mode { get; set; }

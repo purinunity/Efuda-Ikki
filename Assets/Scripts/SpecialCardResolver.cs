@@ -7,6 +7,7 @@ using static HandEvaluator;
 public static class SpecialCardResolver
 {
     public const string NoUseSpecialCardAssetName = "sp_no_use";
+    public const int InitialUnlockedSpecialCardCount = 4;
 
     public enum SpecialCardId
     {
@@ -310,6 +311,23 @@ public static class SpecialCardResolver
     };
 
     private static readonly Dictionary<string, SpecialCardDefinition> DefinitionByAssetName = BuildDefinitionMap();
+    private static readonly SpecialCardId[] UnlockOrder =
+    {
+        SpecialCardId.Bonus5,
+        SpecialCardId.Bonus10,
+        SpecialCardId.Aiko,
+        SpecialCardId.Seal,
+        SpecialCardId.Sunny,
+        SpecialCardId.Rain,
+        SpecialCardId.Bonus15,
+        SpecialCardId.Festival,
+        SpecialCardId.Swap,
+        SpecialCardId.Curse,
+        SpecialCardId.Bet,
+        SpecialCardId.DoubleScore
+    };
+
+    public static int SpecialCardCount => UnlockOrder.Length;
 
     public static bool TryGetSpecialCardId(CardData cardData, out SpecialCardId id)
     {
@@ -331,6 +349,30 @@ public static class SpecialCardResolver
     public static bool IsSpecialCard(CardData cardData, SpecialCardId id)
     {
         return TryGetSpecialCardId(cardData, out SpecialCardId resolvedId) && resolvedId == id;
+    }
+
+    public static bool TryGetUnlockOrder(CardData cardData, out int order)
+    {
+        order = 0;
+        if (!TryGetSpecialCardId(cardData, out SpecialCardId id))
+        {
+            return false;
+        }
+
+        int index = Array.IndexOf(UnlockOrder, id);
+        if (index < 0)
+        {
+            return false;
+        }
+
+        order = index + 1;
+        return true;
+    }
+
+    public static int GetUnlockedCardCountAfterIkkiVictory(int defeatedLevel)
+    {
+        int unlockWins = Mathf.Clamp(defeatedLevel, 0, SpecialCardCount - InitialUnlockedSpecialCardCount);
+        return InitialUnlockedSpecialCardCount + unlockWins;
     }
 
     public static bool IsNoUseSpecialCard(CardData cardData)
@@ -599,6 +641,7 @@ public static class SpecialCardResolver
                 }
 
                 effects.Add(new PendingEffect(playerId, card, definition));
+                break;
             }
         }
 

@@ -51,10 +51,17 @@ public class GameManager : MonoBehaviour
             modeData = new GameModeData();
         }
 
-        if (modeData.Mode == GameModeData.GameMode.KachinukiMode &&
-            !GameProgressStore.IsKachinukiUnlocked)
+        if (modeData.Mode == GameModeData.GameMode.BattleGroundMode &&
+            !GameProgressStore.IsBattleGroundUnlocked)
         {
-            Debug.LogWarning("Kachinuki mode is locked until Ikki mode is cleared.");
+            Debug.LogWarning("Battle Ground mode is locked until the final Ikki boss is defeated.");
+            return;
+        }
+
+        if (modeData.Mode == GameModeData.GameMode.IkkiMode &&
+            !GameProgressStore.IsIkkiLevelUnlocked(modeData.CurrentLevel))
+        {
+            Debug.LogWarning($"CPU level {modeData.CurrentLevel} is not unlocked.");
             return;
         }
 
@@ -92,7 +99,10 @@ public class GameManager : MonoBehaviour
             yield return StartCoroutine(RunSingleMatch(modeData));
             int winnerIndex = currentMatchWinnerIndex;
 
-            yield return uiUpdateService.WaitForUpdate(5f);
+            if (modeData.Mode != GameModeData.GameMode.IkkiMode)
+            {
+                yield return uiUpdateService.WaitForUpdate(5f);
+            }
 
             if (winnerIndex != 0)
             {
@@ -102,38 +112,69 @@ public class GameManager : MonoBehaviour
 
             if (modeData.Mode == GameModeData.GameMode.IkkiMode)
             {
+                int highestUnlockedLevel = GameProgressStore.RecordIkkiVictory(modeData.CurrentLevel);
+                Debug.Log($"Ikki progress saved. Highest unlocked CPU level: {highestUnlockedLevel}.");
+
                 if (modeData.CurrentLevel >= CpuLevelCatalog.MaxLevel)
                 {
-                    GameProgressStore.MarkIkkiCleared();
-                    Debug.Log("Ikki mode cleared. Kachinuki mode unlocked.");
-                    break;
+                    Debug.Log("Ikki mode cleared. Battle Ground mode unlocked.");
+                }
+                else
+                {
+                    Debug.Log($"CPU level {highestUnlockedLevel} unlocked.");
                 }
 
-                modeData.AdvanceLevel(wrap: false);
-                Debug.Log($"Ikki mode advanced to CPU level {modeData.CurrentLevel}.");
-                continue;
+                break;
             }
 
             modeData.IncrementWinStreak();
-            int bestStreak = GameProgressStore.RecordKachinukiStreak(modeData.CurrentWinStreak);
-            Debug.Log($"Kachinuki streak: {modeData.CurrentWinStreak}. Best: {bestStreak}.");
-            modeData.AdvanceLevel(wrap: true);
-            Debug.Log($"Kachinuki mode advanced to CPU level {modeData.CurrentLevel}.");
+            int bestStreak = GameProgressStore.RecordBattleGroundStreak(modeData.CurrentWinStreak);
+            Debug.Log($"Battle Ground streak: {modeData.CurrentWinStreak}. Best: {bestStreak}.");
+            SelectRandomBattleGroundOpponent(modeData, avoidCurrentLevel: true);
+            Debug.Log($"Battle Ground selected random CPU level {modeData.CurrentLevel}.");
         }
 
-        FinishModeAndReturnToTitle();
+        FinishMode(modeData.Mode);
     }
 
     private void InitializeModeProgress(GameModeData modeData)
     {
-        if (modeData.Mode == GameModeData.GameMode.KachinukiMode)
+        if (modeData.Mode == GameModeData.GameMode.BattleGroundMode)
         {
-            modeData.SetCurrentLevel(CpuLevelCatalog.MinLevel);
+            SelectRandomBattleGroundOpponent(modeData, avoidCurrentLevel: false);
             modeData.ResetWinStreak();
             return;
         }
 
         modeData.SetCurrentLevel(modeData.CurrentLevel);
+    }
+
+    private static void SelectRandomBattleGroundOpponent(
+        GameModeData modeData,
+        bool avoidCurrentLevel)
+    {
+        if (modeData == null)
+        {
+            return;
+        }
+
+        int minLevel = CpuLevelCatalog.MinLevel;
+        int maxLevel = CpuLevelCatalog.MaxLevel;
+        int levelCount = maxLevel - minLevel + 1;
+
+        if (!avoidCurrentLevel ||
+            levelCount <= 1 ||
+            modeData.CurrentLevel < minLevel ||
+            modeData.CurrentLevel > maxLevel)
+        {
+            modeData.SetCurrentLevel(Random.Range(minLevel, maxLevel + 1));
+            return;
+        }
+
+        int currentIndex = modeData.CurrentLevel - minLevel;
+        int randomOffset = Random.Range(1, levelCount);
+        int nextLevel = minLevel + (currentIndex + randomOffset) % levelCount;
+        modeData.SetCurrentLevel(nextLevel);
     }
 
     private IEnumerator RunSingleMatch(GameModeData modeData)
@@ -276,10 +317,16 @@ public class GameManager : MonoBehaviour
         return -1;
     }
 
-    private void FinishModeAndReturnToTitle()
+    private void FinishMode(GameModeData.GameMode mode)
     {
         isGameRunning = false;
         gameOver = false;
+
+        if (mode == GameModeData.GameMode.IkkiMode)
+        {
+            gameEndNavigationService.ReturnToStageSelectOrStopEditor();
+            return;
+        }
 
         gameEndNavigationService.ReturnToTitleOrStopEditor();
     }

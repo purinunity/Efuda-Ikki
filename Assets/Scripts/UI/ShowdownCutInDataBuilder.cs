@@ -17,6 +17,22 @@ public sealed class ShowdownCutInDataBuilder
     {
         SpecialCardResolver.ResolvedHand playerHand = FindResolvedHand(showdownResult, 0);
         SpecialCardResolver.ResolvedHand cpuHand = FindResolvedHand(showdownResult, 1);
+        int playerLifeBefore = GetLifePoints(0);
+        int cpuLifeBefore = GetLifePoints(1);
+        int playerLifeAfter = playerLifeBefore;
+        int cpuLifeAfter = cpuLifeBefore;
+
+        if (showdownResult != null && !showdownResult.IsDraw)
+        {
+            if (showdownResult.WinnerIndex == 0)
+            {
+                cpuLifeAfter = Mathf.Max(0, cpuLifeBefore - showdownResult.Damage);
+            }
+            else if (showdownResult.WinnerIndex == 1)
+            {
+                playerLifeAfter = Mathf.Max(0, playerLifeBefore - showdownResult.Damage);
+            }
+        }
 
         return new ShowdownCutInPopup.Data(
             characterManager != null ? characterManager.GetPlayerSprite() : null,
@@ -41,7 +57,24 @@ public sealed class ShowdownCutInDataBuilder
             GetSelectedSpecialCardSprite(1),
             BuildEffectStepData(showdownResult),
             showdownResult.WinnerIndex,
-            showdownResult.Damage);
+            showdownResult.Damage,
+            playerLifeBefore,
+            cpuLifeBefore,
+            playerLifeAfter,
+            cpuLifeAfter);
+    }
+
+    private int GetLifePoints(int playerId)
+    {
+        if (gameState?.PlayerStates == null ||
+            playerId < 0 ||
+            playerId >= gameState.PlayerStates.Count ||
+            gameState.PlayerStates[playerId] == null)
+        {
+            return 0;
+        }
+
+        return gameState.PlayerStates[playerId].LifePoints;
     }
 
     private List<Sprite> BuildShowdownCardSprites(int playerId)
