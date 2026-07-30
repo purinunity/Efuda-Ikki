@@ -12,10 +12,11 @@ public class PlayerController : Controller
     [SerializeField] private Button decisionButton;
     [SerializeField] private Image decisionButtonImage;
     [SerializeField] private Color decisionButtonNormalColor = Color.white;
-    [SerializeField] private Color decisionButtonPressedColor = new Color(0.45f, 0.45f, 0.45f, 1f);
+    [SerializeField] private Sprite decisionButtonPressedSprite;
     public bool IsInputReceivable { get; set; } = false; // 入力受付可能フラグ
     private int maxTrashCountThisTurn = int.MaxValue;
     private bool isFinalTrashTurnThisAct = false;
+    private Sprite decisionButtonNormalSprite;
 
     private void Awake()
     {
@@ -99,6 +100,16 @@ public class PlayerController : Controller
                 decisionButtonImage = decisionButton.GetComponent<Image>();
             }
         }
+
+        if (decisionButtonNormalSprite == null && decisionButtonImage != null)
+        {
+            decisionButtonNormalSprite = decisionButtonImage.sprite;
+        }
+
+        if (decisionButtonPressedSprite == null && decisionButton != null)
+        {
+            decisionButtonPressedSprite = decisionButton.spriteState.pressedSprite;
+        }
     }
 
     private void SetDecisionButtonPressed(bool pressed, bool interactable)
@@ -107,7 +118,15 @@ public class PlayerController : Controller
 
         if (decisionButtonImage != null)
         {
-            decisionButtonImage.color = pressed ? decisionButtonPressedColor : decisionButtonNormalColor;
+            Sprite targetSprite = pressed && decisionButtonPressedSprite != null
+                ? decisionButtonPressedSprite
+                : decisionButtonNormalSprite;
+            if (targetSprite != null)
+            {
+                decisionButtonImage.sprite = targetSprite;
+            }
+
+            decisionButtonImage.color = decisionButtonNormalColor;
         }
 
         if (decisionButton != null)

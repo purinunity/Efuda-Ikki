@@ -6,6 +6,7 @@ public sealed class SpecialCardTooltipTarget : MonoBehaviour, IPointerEnterHandl
 {
     private Card card;
     private bool isPointerOver;
+    private bool tooltipEnabled = true;
 
     private void Awake()
     {
@@ -14,10 +15,15 @@ public sealed class SpecialCardTooltipTarget : MonoBehaviour, IPointerEnterHandl
 
     private void OnDisable()
     {
-        if (isPointerOver)
+        HideTooltip();
+    }
+
+    public void SetTooltipEnabled(bool enabled)
+    {
+        tooltipEnabled = enabled;
+        if (!tooltipEnabled)
         {
-            isPointerOver = false;
-            SpecialCardTooltip.Hide(this);
+            HideTooltip();
         }
     }
 
@@ -58,6 +64,11 @@ public sealed class SpecialCardTooltipTarget : MonoBehaviour, IPointerEnterHandl
         title = string.Empty;
         body = string.Empty;
 
+        if (!tooltipEnabled)
+        {
+            return false;
+        }
+
         if (card == null)
         {
             card = GetComponent<Card>();
@@ -65,5 +76,16 @@ public sealed class SpecialCardTooltipTarget : MonoBehaviour, IPointerEnterHandl
 
         return card != null &&
                SpecialCardResolver.TryGetSpecialCardTooltip(card.CardData, out title, out body);
+    }
+
+    private void HideTooltip()
+    {
+        if (!isPointerOver)
+        {
+            return;
+        }
+
+        isPointerOver = false;
+        SpecialCardTooltip.Hide(this);
     }
 }

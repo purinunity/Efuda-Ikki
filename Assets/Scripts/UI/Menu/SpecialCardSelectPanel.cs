@@ -213,5 +213,11 @@ public class SpecialCardSelectPanel : MonoBehaviour
             // Keep pointer events active for tooltips; selection is blocked by IsSelectable.
             button.interactable = true;
         }
+
+        SpecialCardTooltipTarget tooltipTarget = card.GetComponent<SpecialCardTooltipTarget>();
+        if (tooltipTarget != null)
+        {
+            tooltipTarget.SetTooltipEnabled(unlocked);
+        }
     }
 }

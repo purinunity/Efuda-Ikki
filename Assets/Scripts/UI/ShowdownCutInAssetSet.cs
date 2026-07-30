@@ -11,6 +11,7 @@ public class ShowdownCutInAssetSet : ScriptableObject
     public Sprite winResult;
     public Sprite loseResult;
     public Sprite drawResult;
+    public Sprite specialActivation;
     public TMP_FontAsset textFont;
     public Vector4 cpuRoleSpriteRect = new Vector4(208f, 16f, 624f, 96f);
     public Vector4 playerRoleSpriteRect = new Vector4(208f, 464f, 624f, 96f);

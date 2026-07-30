@@ -18,9 +18,10 @@ MonoBehaviour:
   winResult: {fileID: 21300000, guid: 98e38505e6eaca34591c9472f562cf1f, type: 3}
   loseResult: {fileID: 21300000, guid: ef1376ecc7873b149a4635886a0ee0ac, type: 3}
   drawResult: {fileID: 21300000, guid: 85cfd8ef5c7ea4f4e9751a2eaecabfbc, type: 3}
+  specialActivation: {fileID: 21300000, guid: e48838a77edcf084688c7c58694d675c, type: 3}
   textFont: {fileID: 11400000, guid: 2a7b3e5085dcef945861217a568646fa, type: 2}
-  cpuRoleSpriteRect: {x: 304, y: 176, z: 416, w: 82}
-  playerRoleSpriteRect: {x: 304, y: 318, z: 416, w: 82}
+  cpuRoleSpriteRect: {x: 328, y: 176, z: 416, w: 82}
+  playerRoleSpriteRect: {x: 280, y: 318, z: 416, w: 82}
   playerMiezu: {fileID: 21300000, guid: bf46f5b3261fe164b81349c31adc8140, type: 3}
   playerIsso: {fileID: 21300000, guid: 82a3f6636e36d9d45b2b6f9e7668d066, type: 3}
   playerNiso: {fileID: 21300000, guid: b1c5e62a39ca3ea47b0c2b121b42d693, type: 3}

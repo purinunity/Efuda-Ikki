@@ -24,7 +24,7 @@ public sealed class SpecialCardTooltip : MonoBehaviour
 
     public static void Show(object owner, string title, string body, Vector2 screenPosition)
     {
-        SpecialCardTooltip tooltip = EnsureInstance();
+        SpecialCardTooltip tooltip = EnsureInstance(FindOwnerCanvas(owner));
         if (tooltip == null)
         {
             return;
@@ -64,10 +64,11 @@ public sealed class SpecialCardTooltip : MonoBehaviour
         }
     }
 
-    private static SpecialCardTooltip EnsureInstance()
+    private static SpecialCardTooltip EnsureInstance(Canvas preferredCanvas)
     {
         if (instance != null)
         {
+            instance.AttachToCanvas(preferredCanvas);
             return instance;
         }
 
@@ -75,10 +76,11 @@ public sealed class SpecialCardTooltip : MonoBehaviour
         if (instance != null)
         {
             instance.Initialize();
+            instance.AttachToCanvas(preferredCanvas);
             return instance;
         }
 
-        Canvas canvas = FindRootCanvas();
+        Canvas canvas = preferredCanvas != null ? preferredCanvas : FindRootCanvas();
         if (canvas == null)
         {
             return null;
@@ -91,6 +93,20 @@ public sealed class SpecialCardTooltip : MonoBehaviour
         instance.rootCanvas = canvas;
         instance.Initialize();
         return instance;
+    }
+
+    private static Canvas FindOwnerCanvas(object owner)
+    {
+        Component ownerComponent = owner as Component;
+        if (ownerComponent == null)
+        {
+            return null;
+        }
+
+        Canvas ownerCanvas = ownerComponent.GetComponentInParent<Canvas>();
+        return ownerCanvas != null && ownerCanvas.rootCanvas != null
+            ? ownerCanvas.rootCanvas
+            : ownerCanvas;
     }
 
     private static Canvas FindRootCanvas()
@@ -122,6 +138,18 @@ public sealed class SpecialCardTooltip : MonoBehaviour
     private void Awake()
     {
         Initialize();
+    }
+
+    private void AttachToCanvas(Canvas canvas)
+    {
+        if (canvas == null || rootCanvas == canvas)
+        {
+            return;
+        }
+
+        rootCanvas = canvas;
+        transform.SetParent(rootCanvas.transform, false);
+        gameObject.layer = rootCanvas.gameObject.layer;
     }
 
     private void Initialize()

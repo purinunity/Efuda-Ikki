@@ -24,6 +24,7 @@ public class ShowdownCutInPopup : MonoBehaviour
     private static readonly Vector4 PlayerSpecialCardSlotRect = new Vector4(720f, 432f, 96f, 128f);
     private static readonly Vector2 ScoreTextSize = new Vector2(176f, 72f);
     private static readonly Vector4 SpecialCallBackdropRect = new Vector4(304f, 224f, 416f, 128f);
+    private static readonly Vector4 SpecialActivationRect = new Vector4(116f, 96f, 792f, 384f);
     private static readonly Vector4 ResultBackdropRect = new Vector4(304f, 208f, 416f, 160f);
     private static readonly Vector4 CpuResultStampRect = new Vector4(64f, 32f, 96f, 96f);
     private static readonly Vector4 PlayerResultStampRect = new Vector4(864f, 448f, 96f, 96f);
@@ -172,6 +173,7 @@ public class ShowdownCutInPopup : MonoBehaviour
     [SerializeField] private Vector4 fallbackPlayerRoleSpriteRect = new Vector4(304f, 318f, 416f, 82f);
     [SerializeField] private float scoreStepInterval = 0.02f;
     [SerializeField] private float roleFrameInDuration = 0.28f;
+    [SerializeField] private float specialActivationFadeDuration = 0.45f;
     [SerializeField] private float matchDecisionInDuration = 0.42f;
 
     [Header("Hierarchy References")]
@@ -187,6 +189,7 @@ public class ShowdownCutInPopup : MonoBehaviour
     [SerializeField] private Image cpuRoleImage;
     [SerializeField] private TextMeshProUGUI playerScoreText;
     [SerializeField] private TextMeshProUGUI cpuScoreText;
+    [SerializeField] private Image specialActivationImage;
     [SerializeField] private Image specialCallBackdropImage;
     [SerializeField] private Image resultBackdropImage;
     [SerializeField] private Image resultStampImage;
@@ -338,7 +341,7 @@ public class ShowdownCutInPopup : MonoBehaviour
 
         if (HasEffectSteps(data))
         {
-            ShowSpecialCall();
+            yield return ShowSpecialCall();
             yield return WaitForAdvanceInput();
 
             foreach (Data.EffectStepData step in data.EffectSteps)
@@ -420,6 +423,7 @@ public class ShowdownCutInPopup : MonoBehaviour
                cpuRoleImage != null &&
                playerScoreText != null &&
                cpuScoreText != null &&
+               specialActivationImage != null &&
                specialCallBackdropImage != null &&
                resultBackdropImage != null &&
                resultStampImage != null &&
@@ -463,6 +467,7 @@ public class ShowdownCutInPopup : MonoBehaviour
         ConfigureImageArray(cpuCardImages, preserveAspect: true);
         ConfigureImage(playerSpecialCardImage, preserveAspect: true);
         ConfigureImage(cpuSpecialCardImage, preserveAspect: true);
+        ConfigureImage(specialActivationImage, preserveAspect: true);
         ConfigureImage(resultStampImage, preserveAspect: true);
         ConfigureImage(cpuResultStampImage, preserveAspect: true);
         ConfigureTextBackdrop(specialCallBackdropImage);
@@ -507,6 +512,7 @@ public class ShowdownCutInPopup : MonoBehaviour
         EnsureDirectStageChild(playerCardImages);
         EnsureDirectStageChild(cpuSpecialCardImage);
         EnsureDirectStageChild(playerSpecialCardImage);
+        EnsureDirectStageChild(specialActivationImage);
         EnsureDirectStageChild(specialCallBackdropImage);
         EnsureDirectStageChild(resultBackdropImage);
         EnsureDirectStageChild(specialCallText);
@@ -558,6 +564,7 @@ public class ShowdownCutInPopup : MonoBehaviour
         PlaceScoreAtRoleSwordTip(playerScoreText, playerRoleImage, true);
 
         SetReferencePixelRect(specialCallBackdropImage, SpecialCallBackdropRect);
+        SetReferencePixelRect(specialActivationImage, SpecialActivationRect);
         SetReferencePixelRect(resultBackdropImage, ResultBackdropRect);
         if (resultStampImage != null)
         {
@@ -603,10 +610,14 @@ public class ShowdownCutInPopup : MonoBehaviour
         {
             const float handCardWidth = 72f;
             const float handCardHeight = 96f;
+            const float handSidePadding = 32f;
+            float usableWidth = Mathf.Max(
+                handCardWidth,
+                handFrameRect.z - handSidePadding * 2f);
             float step = HandCardCount > 1
-                ? (handFrameRect.z - handCardWidth) / (HandCardCount - 1)
+                ? (usableWidth - handCardWidth) / (HandCardCount - 1)
                 : 0f;
-            float x = handFrameRect.x + index * step;
+            float x = handFrameRect.x + handSidePadding + index * step;
             float y = handFrameRect.y + (handFrameRect.w - handCardHeight) * 0.5f;
             return new Vector4(x, y, handCardWidth, handCardHeight);
         }
@@ -808,6 +819,7 @@ public class ShowdownCutInPopup : MonoBehaviour
         SetAsLastSibling(playerSpecialCardImage);
         SetAsLastSibling(cpuScoreText);
         SetAsLastSibling(playerScoreText);
+        SetAsLastSibling(specialActivationImage);
         SetAsLastSibling(specialCallBackdropImage);
         SetAsLastSibling(resultBackdropImage);
         SetAsLastSibling(cpuResultStampImage);
@@ -1003,6 +1015,16 @@ public class ShowdownCutInPopup : MonoBehaviour
             SetReferencePixelRect(specialCallBackdropImage.rectTransform, SpecialCallBackdropRect);
         }
 
+        if (specialActivationImage == null)
+        {
+            specialActivationImage = CreateImage(
+                "SpecialActivation",
+                stage,
+                assetSet != null ? assetSet.specialActivation : null,
+                true);
+            SetReferencePixelRect(specialActivationImage.rectTransform, SpecialActivationRect);
+        }
+
         if (resultBackdropImage == null)
         {
             resultBackdropImage = CreateImage("ResultBackdrop", stage, null, false);
@@ -1103,6 +1125,7 @@ public class ShowdownCutInPopup : MonoBehaviour
         SetRole(playerRoleImage, null, true, data.PlayerBaseRoleName, data.PlayerBaseRoleRank);
         SetRole(cpuRoleImage, null, false, data.CpuBaseRoleName, data.CpuBaseRoleRank);
         SetScoresImmediately(data.PlayerBaseScore, data.CpuBaseScore);
+        SetActive(specialActivationImage, false);
         SetActive(specialCallBackdropImage, false);
         SetActive(resultBackdropImage, false);
         SetActive(resultStampImage, false);
@@ -1113,18 +1136,52 @@ public class ShowdownCutInPopup : MonoBehaviour
         closeButton.gameObject.SetActive(false);
     }
 
-    private void ShowSpecialCall()
+    private IEnumerator ShowSpecialCall()
     {
-        specialCallText.text = "特殊札発動";
-        SetActive(specialCallBackdropImage, true);
+        Sprite activationSprite = assetSet != null ? assetSet.specialActivation : null;
+        SetImage(specialActivationImage, activationSprite);
+        SetActive(specialCallBackdropImage, false);
         SetActive(resultBackdropImage, false);
         SetActive(resultStampImage, false);
         SetActive(cpuResultStampImage, false);
         ResetSpecialCardHighlights();
-        specialCallText.gameObject.SetActive(true);
+        specialCallText.gameObject.SetActive(false);
         resultText.gameObject.SetActive(false);
         damageText.gameObject.SetActive(false);
         closeButton.gameObject.SetActive(false);
+
+        if (specialActivationImage == null || activationSprite == null)
+        {
+            yield break;
+        }
+
+        Color visibleColor = Color.white;
+        specialActivationImage.color = new Color(
+            visibleColor.r,
+            visibleColor.g,
+            visibleColor.b,
+            0f);
+
+        if (specialActivationFadeDuration > 0f)
+        {
+            float elapsed = 0f;
+            while (elapsed < specialActivationFadeDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float alpha = Mathf.SmoothStep(
+                    0f,
+                    1f,
+                    Mathf.Clamp01(elapsed / specialActivationFadeDuration));
+                specialActivationImage.color = new Color(
+                    visibleColor.r,
+                    visibleColor.g,
+                    visibleColor.b,
+                    alpha);
+                yield return null;
+            }
+        }
+
+        specialActivationImage.color = visibleColor;
     }
 
     private IEnumerator ShowEffectStep(Data.EffectStepData step)
@@ -1138,6 +1195,7 @@ public class ShowdownCutInPopup : MonoBehaviour
         SetRole(cpuRoleImage, null, false, step.CpuRoleName, step.CpuRoleRank);
         HighlightSpecialCard(step.OwnerPlayerId);
 
+        SetActive(specialActivationImage, false);
         specialCallText.text = $"{GetOwnerName(step.OwnerPlayerId)}の{step.EffectName}";
         SetActive(specialCallBackdropImage, true);
         SetActive(resultBackdropImage, false);
@@ -1156,6 +1214,7 @@ public class ShowdownCutInPopup : MonoBehaviour
         SetRole(playerRoleImage, null, true, data.PlayerFinalRoleName, data.PlayerFinalRoleRank);
         SetRole(cpuRoleImage, null, false, data.CpuFinalRoleName, data.CpuFinalRoleRank);
         ResetSpecialCardHighlights();
+        SetActive(specialActivationImage, false);
         SetActive(specialCallBackdropImage, false);
         SetActive(resultBackdropImage, data.IsMatchDecided);
         SetImage(resultStampImage, GetPlayerResultStampSprite(data));
@@ -1583,6 +1642,7 @@ public class ShowdownCutInPopup : MonoBehaviour
         }
 
         SetActive(specialCallBackdropImage, false);
+        SetActive(specialActivationImage, false);
         SetActive(resultBackdropImage, false);
         SetActive(resultStampImage, false);
         SetActive(cpuResultStampImage, false);
