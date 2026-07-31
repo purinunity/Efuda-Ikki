@@ -7735,6 +7735,7 @@ MonoBehaviour:
   fallbackPlayerRoleSpriteRect: {x: 104, y: 416, z: 816, w: 160}
   scoreStepInterval: 0.02
   roleFrameInDuration: 0.28
+  specialActivationFadeDuration: 0.45
   matchDecisionInDuration: 0.42
   canvasGroup: {fileID: 1237827061}
   stage: {fileID: 1264107228}
@@ -7748,6 +7749,7 @@ MonoBehaviour:
   cpuRoleImage: {fileID: 1423465584}
   playerScoreText: {fileID: 1241225828}
   cpuScoreText: {fileID: 910567260}
+  specialActivationImage: {fileID: 0}
   specialCallBackdropImage: {fileID: 441470218}
   resultBackdropImage: {fileID: 709480774}
   resultStampImage: {fileID: 0}
@@ -10618,7 +10620,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 0901b108812b64749b89674abe3c6c16, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 53cda5494fff321438d84420d6dbd496, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
