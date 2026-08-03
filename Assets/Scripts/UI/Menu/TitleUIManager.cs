@@ -91,6 +91,15 @@ public class TitleUIManager : MonoBehaviour
 
     public void BackFromSpecialCardSelect()
     {
+        GameModeData modeData =
+            currentGameModeData ?? GameModeManager.GetGameModeData();
+        if (modeData != null &&
+            modeData.Mode == GameModeData.GameMode.IkkiMode)
+        {
+            ShowStageSelect();
+            return;
+        }
+
         ShowMainMenu();
     }
 

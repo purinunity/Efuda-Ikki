@@ -135,11 +135,37 @@ public class UIManager : MonoBehaviour
                 cards,
                 sourceDeck,
                 includeNoUseCard: playerId == 0);
+            SetSpecialCardTooltipsEnabled(displayCards, playerId == 0);
             targetArea.SetCardsBySpeed(displayCards, cardMoveSpeed, cardTurnSpeed);
         }
         else
         {
             targetArea.SetCardsBySpeed(new List<Card>(), cardMoveSpeed, cardTurnSpeed);
+        }
+    }
+
+    private static void SetSpecialCardTooltipsEnabled(
+        IEnumerable<Card> cards,
+        bool enabled)
+    {
+        if (cards == null)
+        {
+            return;
+        }
+
+        foreach (Card card in cards)
+        {
+            if (card == null)
+            {
+                continue;
+            }
+
+            SpecialCardTooltipTarget tooltipTarget =
+                card.GetComponent<SpecialCardTooltipTarget>();
+            if (tooltipTarget != null)
+            {
+                tooltipTarget.SetTooltipEnabled(enabled);
+            }
         }
     }
 

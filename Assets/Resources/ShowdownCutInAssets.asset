@@ -19,6 +19,7 @@ MonoBehaviour:
   loseResult: {fileID: 21300000, guid: ef1376ecc7873b149a4635886a0ee0ac, type: 3}
   drawResult: {fileID: 21300000, guid: 85cfd8ef5c7ea4f4e9751a2eaecabfbc, type: 3}
   specialActivation: {fileID: 21300000, guid: e48838a77edcf084688c7c58694d675c, type: 3}
+  closeButton: {fileID: 21300000, guid: b0c7d441f26cbe444ac2f80e925a7462, type: 3}
   textFont: {fileID: 11400000, guid: 2a7b3e5085dcef945861217a568646fa, type: 2}
   cpuRoleSpriteRect: {x: 328, y: 176, z: 416, w: 82}
   playerRoleSpriteRect: {x: 280, y: 318, z: 416, w: 82}

@@ -4109,7 +4109,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u9589\u3058\u308B"
+  m_text: X
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 2a7b3e5085dcef945861217a568646fa, type: 2}
   m_sharedMaterial: {fileID: -2073831919155699170, guid: 2a7b3e5085dcef945861217a568646fa, type: 2}
@@ -7063,9 +7063,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
-  m_PreserveAspect: 0
+  m_Sprite: {fileID: 21300000, guid: b0c7d441f26cbe444ac2f80e925a7462, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -7319,10 +7319,10 @@ RectTransform:
   - {fileID: 905500957}
   m_Father: {fileID: 2000450743}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0}
-  m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: 0, y: 50}
-  m_SizeDelta: {x: 1920, y: -100}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1168892757
 MonoBehaviour:
@@ -7504,7 +7504,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1198272645
 RectTransform:
   m_ObjectHideFlags: 0
@@ -11876,7 +11876,26 @@ MonoBehaviour:
   preserveCharacterSpriteAspect: 1
   hideLegacyTextLabels: 1
   unlockedCharacterColor: {r: 1, g: 1, b: 1, a: 1}
-  lockedCharacterSilhouetteColor: {r: 0, g: 0, b: 0, a: 1}
+  lockedCharacterSprites:
+  - {fileID: 21300000, guid: 5a427b2794f796c46af28e356fe25e08, type: 3}
+  - {fileID: 21300000, guid: c3355f90c3be3c745807a18ce1843337, type: 3}
+  - {fileID: 21300000, guid: c7a03b3b94eb8584ab2ee47ffaef28b6, type: 3}
+  - {fileID: 21300000, guid: e91cc4c3045f1754e9c4dc4000fdcc27, type: 3}
+  - {fileID: 21300000, guid: 8bfa66b63dcfc824daf82bcf157a2c63, type: 3}
+  - {fileID: 21300000, guid: 3e4805daff0b20c4fa401d04d5d594d1, type: 3}
+  - {fileID: 21300000, guid: aa0d6396d408301409f7e1e774162288, type: 3}
+  - {fileID: 21300000, guid: 0aa52346a149586418820b8efd76f320, type: 3}
+  - {fileID: 21300000, guid: 799ad9887a01684498ee11098eb05cbc, type: 3}
+  hoverCharacterSprites:
+  - {fileID: 21300000, guid: cf37977c63c2e8e42830f81a38bb9164, type: 3}
+  - {fileID: 21300000, guid: ff1060f1f8cb8d446aa844f3f5e47b38, type: 3}
+  - {fileID: 21300000, guid: c67dc9a2b7369d144b44f9906c1db0ae, type: 3}
+  - {fileID: 21300000, guid: 2f9db5ba770507b4889fd63cea2fe1b3, type: 3}
+  - {fileID: 21300000, guid: 3acdf8241f6717a47b04a801f322845a, type: 3}
+  - {fileID: 21300000, guid: eaca16b5fa715fe4fa225441b7ce3db1, type: 3}
+  - {fileID: 21300000, guid: b764a40b9d9227e4ca731b420e017fef, type: 3}
+  - {fileID: 21300000, guid: 5d08b2490b735164caa9d1690307a6d5, type: 3}
+  - {fileID: 21300000, guid: ee2cf18e73da9e04aabe51940ebf8b5a, type: 3}
 --- !u!225 &2000450745
 CanvasGroup:
   m_ObjectHideFlags: 0

@@ -28,11 +28,22 @@ public class StageSelectPanel : MonoBehaviour
     [SerializeField] private bool preserveCharacterSpriteAspect = true;
     [SerializeField] private bool hideLegacyTextLabels = true;
     [SerializeField] private Color unlockedCharacterColor = Color.white;
-    [SerializeField] private Color lockedCharacterSilhouetteColor = Color.black;
+    [SerializeField] private Sprite[] lockedCharacterSprites = new Sprite[9];
+    [SerializeField] private Sprite[] hoverCharacterSprites = new Sprite[9];
+    [SerializeField] private Vector2 backButtonTopLeftOffset = new Vector2(48f, -40f);
+    [SerializeField] private Vector2 backButtonSize = new Vector2(200f, 80f);
+
+    private Sprite[] unlockedCharacterSprites;
+
+    private void Awake()
+    {
+        CacheUnlockedCharacterSprites();
+    }
 
     private void Start()
     {
         ApplyCharacterFrameLayout();
+        ApplyBackButtonLayout();
         HideLegacyTextLabels();
         RefreshProgression();
 
@@ -94,9 +105,21 @@ public class StageSelectPanel : MonoBehaviour
 
             if (image != null)
             {
-                image.color = unlocked
+                Sprite lockedSprite =
+                    lockedCharacterSprites != null && i < lockedCharacterSprites.Length
+                        ? lockedCharacterSprites[i]
+                        : null;
+                Sprite unlockedSprite =
+                    unlockedCharacterSprites != null && i < unlockedCharacterSprites.Length
+                        ? unlockedCharacterSprites[i]
+                        : image.sprite;
+
+                image.sprite = unlocked || lockedSprite == null
+                    ? unlockedSprite
+                    : lockedSprite;
+                image.color = unlocked || lockedSprite != null
                     ? unlockedCharacterColor
-                    : lockedCharacterSilhouetteColor;
+                    : Color.black;
             }
 
             ColorBlock colors = button.colors;
@@ -108,7 +131,34 @@ public class StageSelectPanel : MonoBehaviour
     private void OnValidate()
     {
         ApplyCharacterFrameLayout();
+        ApplyBackButtonLayout();
         HideLegacyTextLabels();
+    }
+
+    private void ApplyBackButtonLayout()
+    {
+        if (backButton == null)
+        {
+            return;
+        }
+
+        RectTransform rectTransform = backButton.GetComponent<RectTransform>();
+        if (rectTransform == null)
+        {
+            return;
+        }
+
+        if (rectTransform.parent != transform)
+        {
+            rectTransform.SetParent(transform, false);
+        }
+
+        rectTransform.anchorMin = new Vector2(0f, 1f);
+        rectTransform.anchorMax = new Vector2(0f, 1f);
+        rectTransform.pivot = new Vector2(0f, 1f);
+        rectTransform.anchoredPosition = backButtonTopLeftOffset;
+        rectTransform.sizeDelta = backButtonSize;
+        rectTransform.SetAsLastSibling();
     }
 
     private void ApplyCharacterFrameLayout()
@@ -153,7 +203,57 @@ public class StageSelectPanel : MonoBehaviour
                 button.targetGraphic = image;
             }
 
+            ConfigureHoverSprite(button, i);
             SetTextLabelsActive(button.transform, !hideLegacyTextLabels);
+        }
+    }
+
+    private void ConfigureHoverSprite(Button button, int index)
+    {
+        if (button == null)
+        {
+            return;
+        }
+
+        Sprite hoverSprite =
+            hoverCharacterSprites != null && index < hoverCharacterSprites.Length
+                ? hoverCharacterSprites[index]
+                : null;
+        if (hoverSprite == null)
+        {
+            return;
+        }
+
+        SpriteState spriteState = button.spriteState;
+        spriteState.highlightedSprite = hoverSprite;
+        button.spriteState = spriteState;
+        button.transition = Selectable.Transition.SpriteSwap;
+    }
+
+    private void CacheUnlockedCharacterSprites()
+    {
+        if (stageButtons == null)
+        {
+            unlockedCharacterSprites = new Sprite[0];
+            return;
+        }
+
+        unlockedCharacterSprites = new Sprite[stageButtons.Length];
+        for (int i = 0; i < stageButtons.Length; i++)
+        {
+            Button button = stageButtons[i];
+            if (button == null)
+            {
+                continue;
+            }
+
+            Image image = button.targetGraphic as Image;
+            if (image == null)
+            {
+                image = button.GetComponent<Image>();
+            }
+
+            unlockedCharacterSprites[i] = image != null ? image.sprite : null;
         }
     }
 
@@ -200,6 +300,16 @@ public class StageSelectPanel : MonoBehaviour
         if (layoutGroup != null)
         {
             layoutGroup.enabled = false;
+        }
+
+        RectTransform layoutRect = layoutRoot as RectTransform;
+        if (layoutRect != null)
+        {
+            layoutRect.anchorMin = Vector2.zero;
+            layoutRect.anchorMax = Vector2.one;
+            layoutRect.pivot = new Vector2(0.5f, 0.5f);
+            layoutRect.anchoredPosition = Vector2.zero;
+            layoutRect.sizeDelta = Vector2.zero;
         }
     }
 

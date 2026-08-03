@@ -16,6 +16,7 @@ public class GameManager : MonoBehaviour
     [Header("UI")]
     [SerializeField] private UIManager uiManager;
     [SerializeField] private ShowdownCutInPopup showdownCutInPopup;
+    [SerializeField] private MatchResultPanel matchResultPanel;
     [SerializeField] private TitleUIManager titleUIManager;
     [SerializeField] private CharacterManager characterManager;
 
@@ -33,6 +34,7 @@ public class GameManager : MonoBehaviour
     private bool gameOver = false;
     private bool isGameRunning = false;
     private int currentMatchWinnerIndex = -1;
+    private readonly List<MatchRoundResult> currentMatchResults = new List<MatchRoundResult>();
     private GameUiUpdateService uiUpdateService;
     private ShowdownPresentationService showdownPresentationService;
     private GameEndNavigationService gameEndNavigationService;
@@ -99,14 +101,15 @@ public class GameManager : MonoBehaviour
             yield return StartCoroutine(RunSingleMatch(modeData));
             int winnerIndex = currentMatchWinnerIndex;
 
-            if (modeData.Mode != GameModeData.GameMode.IkkiMode)
-            {
-                yield return uiUpdateService.WaitForUpdate(5f);
-            }
-
             if (winnerIndex != 0)
             {
                 Debug.Log($"Mode ended. Winner: Player {winnerIndex}.");
+                yield return ShowMatchResult(
+                    modeData.CurrentLevel,
+                    false,
+                    modeData.Mode == GameModeData.GameMode.IkkiMode
+                        ? "キャラクター選択へ"
+                        : "タイトルへ");
                 break;
             }
 
@@ -124,12 +127,20 @@ public class GameManager : MonoBehaviour
                     Debug.Log($"CPU level {highestUnlockedLevel} unlocked.");
                 }
 
+                yield return ShowMatchResult(
+                    modeData.CurrentLevel,
+                    true,
+                    "キャラクター選択へ");
                 break;
             }
 
             modeData.IncrementWinStreak();
             int bestStreak = GameProgressStore.RecordBattleGroundStreak(modeData.CurrentWinStreak);
             Debug.Log($"Battle Ground streak: {modeData.CurrentWinStreak}. Best: {bestStreak}.");
+            yield return ShowMatchResult(
+                modeData.CurrentLevel,
+                true,
+                "次の対戦へ");
             SelectRandomBattleGroundOpponent(modeData, avoidCurrentLevel: true);
             Debug.Log($"Battle Ground selected random CPU level {modeData.CurrentLevel}.");
         }
@@ -181,6 +192,7 @@ public class GameManager : MonoBehaviour
     {
         gameOver = false;
         currentMatchWinnerIndex = -1;
+        currentMatchResults.Clear();
 
         gameState.ResetForNewMatch();
         CpuSetupService cpuSetupService = CreateCpuSetupService();
@@ -240,13 +252,26 @@ public class GameManager : MonoBehaviour
         PreparedShowdown preparedShowdown = showdownService.PrepareShowdown();
         SpecialCardResolver.ShowdownResult showdownResult = preparedShowdown.Result;
         LogShowdownResult(showdownResult);
+        int playerLifeBefore = GetLifePoints(0);
+        int cpuLifeBefore = GetLifePoints(1);
 
         yield return showdownPresentationService.Play(showdownResult);
         showdownCutInPopup = showdownPresentationService.CurrentPopup;
         showdownService.MarkSpecialCardsUsed(preparedShowdown.SpecialCardsToConsume);
 
-        if (showdownResult == null || showdownResult.IsDraw)
+        if (showdownResult == null)
         {
+            yield break;
+        }
+
+        if (showdownResult.IsDraw)
+        {
+            RecordRoundResult(
+                showdownResult,
+                playerLifeBefore,
+                playerLifeBefore,
+                cpuLifeBefore,
+                cpuLifeBefore);
             Debug.Log("Round ended in a draw.");
             yield break;
         }
@@ -257,6 +282,12 @@ public class GameManager : MonoBehaviour
         Debug.Log($"Winner is Player {winner}. Damage: {damage}");
 
         showdownService.ApplyDamage(showdownResult);
+        RecordRoundResult(
+            showdownResult,
+            playerLifeBefore,
+            GetLifePoints(0),
+            cpuLifeBefore,
+            GetLifePoints(1));
         LogLifePoints();
 
         if (showdownService.CheckGameOver())
@@ -315,6 +346,53 @@ public class GameManager : MonoBehaviour
         }
 
         return -1;
+    }
+
+    private int GetLifePoints(int playerIndex)
+    {
+        if (gameState?.PlayerStates == null ||
+            playerIndex < 0 ||
+            playerIndex >= gameState.PlayerStates.Count)
+        {
+            return 0;
+        }
+
+        return gameState.PlayerStates[playerIndex].LifePoints;
+    }
+
+    private void RecordRoundResult(
+        SpecialCardResolver.ShowdownResult showdownResult,
+        int playerLifeBefore,
+        int playerLifeAfter,
+        int cpuLifeBefore,
+        int cpuLifeAfter)
+    {
+        currentMatchResults.Add(new MatchRoundResult(
+            gameState.RoundNumber,
+            showdownResult.WinnerIndex,
+            showdownResult.Damage,
+            playerLifeBefore,
+            playerLifeAfter,
+            cpuLifeBefore,
+            cpuLifeAfter));
+    }
+
+    private IEnumerator ShowMatchResult(
+        int cpuLevel,
+        bool playerWon,
+        string buttonLabel)
+    {
+        matchResultPanel = MatchResultPanel.GetOrCreate(matchResultPanel, uiManager, this);
+        if (matchResultPanel == null)
+        {
+            yield break;
+        }
+
+        yield return matchResultPanel.Show(
+            cpuLevel,
+            currentMatchResults,
+            playerWon,
+            buttonLabel);
     }
 
     private void FinishMode(GameModeData.GameMode mode)

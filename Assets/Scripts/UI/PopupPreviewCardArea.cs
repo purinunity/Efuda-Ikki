@@ -56,9 +56,30 @@ public class PopupPreviewCardArea : CardArea
 
         if (closeButton != null)
         {
+            ConfigureCloseButtonColors(closeButton);
             closeButton.onClick.RemoveListener(ClosePopup);
             closeButton.onClick.AddListener(ClosePopup);
             closeButton.transform.SetAsLastSibling();
+        }
+    }
+
+    private static void ConfigureCloseButtonColors(Button button)
+    {
+        ColorBlock colors = button.colors;
+        colors.normalColor = Color.white;
+        colors.highlightedColor = Color.white;
+        colors.selectedColor = Color.white;
+        colors.pressedColor = new Color(0.72f, 0.72f, 0.72f, 1f);
+        colors.disabledColor = Color.white;
+        colors.colorMultiplier = 1f;
+        button.transition = Selectable.Transition.ColorTint;
+        button.colors = colors;
+
+        Graphic graphic = button.targetGraphic;
+        if (graphic != null)
+        {
+            graphic.color = Color.white;
+            graphic.CrossFadeColor(Color.white, 0f, true, true);
         }
     }
 
