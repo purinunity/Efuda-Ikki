@@ -1,0 +1,9 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "efuda-room-match-dev"
+resolve_s3 = true
+capabilities = "CAPABILITY_IAM"
+region = "ap-northeast-1"
+confirm_changeset = true
+parameter_overrides = "EnvironmentName=dev EnableDevAuth=true SteamAppId=REPLACE_ME SteamTicketIdentity=efuda-room-match MonthlyBudgetUsd=10 BudgetAlertEmail=you@example.com"

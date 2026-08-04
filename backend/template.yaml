@@ -1,0 +1,377 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Efuda Ikki low-cost authoritative room match backend
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+  EnableDevAuth:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Enable key-based development authentication outside production
+  SteamAppId:
+    Type: Number
+    Description: Steamworks App ID
+  SteamTicketIdentity:
+    Type: String
+    Default: efuda-room-match
+    AllowedPattern: "^[A-Za-z0-9._-]{3,64}$"
+  MonthlyBudgetUsd:
+    Type: Number
+    Default: 10
+    MinValue: 1
+  BudgetAlertEmail:
+    Type: String
+    Default: ""
+    Description: Optional email address for AWS Budget alerts
+
+Rules:
+  DisableDevAuthInProduction:
+    RuleCondition: !Equals [!Ref EnvironmentName, prod]
+    Assertions:
+      - Assert: !Equals [!Ref EnableDevAuth, "false"]
+        AssertDescription: EnableDevAuth must be false in production
+
+Conditions:
+  HasBudgetAlertEmail: !Not [!Equals [!Ref BudgetAlertEmail, ""]]
+  DevAuthEnabled: !Equals [!Ref EnableDevAuth, "true"]
+
+Globals:
+  Function:
+    Runtime: python3.13
+    Architectures: [arm64]
+    MemorySize: 128
+    Timeout: 10
+    Tracing: PassThrough
+    Environment:
+      Variables:
+        ROOMS_TABLE: !Ref RoomsTable
+        CONNECTIONS_TABLE: !Ref ConnectionsTable
+        JWT_SECRET_ARN: !Ref JwtSecret
+        JWT_ISSUER: efuda-room-match
+        JWT_AUDIENCE: efuda-unity-client
+        JWT_TTL_SECONDS: "900"
+        ROOM_TTL_SECONDS: "10800"
+        STEAM_APP_ID: !Ref SteamAppId
+        STEAM_TICKET_IDENTITY: !Ref SteamTicketIdentity
+        STEAM_SECRET_ARN: !Ref SteamPublisherSecret
+        ENABLE_DEV_AUTH: !Ref EnableDevAuth
+        DEV_AUTH_SECRET_ARN: !If
+          - DevAuthEnabled
+          - !Ref DevAuthSecret
+          - ""
+
+Resources:
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: v1
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 20
+        ThrottlingRateLimit: 10
+      RouteSettings:
+        "POST /auth/steam":
+          ThrottlingBurstLimit: 5
+          ThrottlingRateLimit: 2
+        "POST /auth/dev":
+          ThrottlingBurstLimit: 5
+          ThrottlingRateLimit: 2
+
+  WebSocketApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub ${AWS::StackName}-websocket
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: "$request.body.action"
+
+  WebSocketStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref WebSocketApi
+      StageName: v1
+      AutoDeploy: true
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 20
+        ThrottlingRateLimit: 10
+
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-auth
+      CodeUri: src/
+      Handler: handlers.auth.handler
+      ReservedConcurrentExecutions: 5
+      Policies:
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref JwtSecret
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref SteamPublisherSecret
+        - Statement:
+            Effect: Allow
+            Action: secretsmanager:GetSecretValue
+            Resource: !If
+              - DevAuthEnabled
+              - !Ref DevAuthSecret
+              - !Ref SteamPublisherSecret
+      Events:
+        SteamLogin:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /auth/steam
+            Method: POST
+        DevLogin:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /auth/dev
+            Method: POST
+
+  RoomsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-rooms
+      CodeUri: src/
+      Handler: handlers.rooms.handler
+      ReservedConcurrentExecutions: 10
+      Policies:
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref JwtSecret
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RoomsTable
+      Events:
+        CreateRoom:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /rooms
+            Method: POST
+        JoinRoom:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /rooms/join
+            Method: POST
+        GetRoom:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /rooms/{roomId}
+            Method: GET
+
+  WebSocketFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-websocket
+      CodeUri: src/
+      Handler: handlers.websocket.handler
+      ReservedConcurrentExecutions: 15
+      Environment:
+        Variables:
+          WEBSOCKET_API_ID: !Ref WebSocketApi
+          WEBSOCKET_STAGE: !Ref WebSocketStage
+      Policies:
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref JwtSecret
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RoomsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ConnectionsTable
+        - Statement:
+            Effect: Allow
+            Action: execute-api:ManageConnections
+            Resource: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*
+
+  WebSocketIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketApi
+      IntegrationType: AWS_PROXY
+      IntegrationMethod: POST
+      IntegrationUri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebSocketFunction.Arn}/invocations
+
+  ConnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: $connect
+      AuthorizationType: NONE
+      Target: !Sub integrations/${WebSocketIntegration}
+
+  DisconnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: $disconnect
+      AuthorizationType: NONE
+      Target: !Sub integrations/${WebSocketIntegration}
+
+  MatchCommandRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: matchCommand
+      AuthorizationType: NONE
+      Target: !Sub integrations/${WebSocketIntegration}
+
+  DefaultRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: $default
+      AuthorizationType: NONE
+      Target: !Sub integrations/${WebSocketIntegration}
+
+  WebSocketInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref WebSocketFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*
+
+  RoomsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      OnDemandThroughput:
+        MaxReadRequestUnits: 100
+        MaxWriteRequestUnits: 50
+      AttributeDefinitions:
+        - AttributeName: roomId
+          AttributeType: S
+        - AttributeName: roomCode
+          AttributeType: S
+      KeySchema:
+        - AttributeName: roomId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: roomCode-index
+          KeySchema:
+            - AttributeName: roomCode
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+
+  ConnectionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      OnDemandThroughput:
+        MaxReadRequestUnits: 100
+        MaxWriteRequestUnits: 50
+      AttributeDefinitions:
+        - AttributeName: connectionId
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: connectionId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: userId-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+          Projection:
+            ProjectionType: KEYS_ONLY
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+
+  JwtSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: HMAC key for short-lived Efuda room-match JWTs
+      GenerateSecretString:
+        PasswordLength: 64
+        ExcludePunctuation: true
+
+  SteamPublisherSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Replace publisherApiKey after deployment; never expose it to Unity
+      GenerateSecretString:
+        SecretStringTemplate: '{"publisherApiKey":"REPLACE_ME"}'
+        GenerateStringKey: deploymentNonce
+        PasswordLength: 24
+        ExcludePunctuation: true
+
+  DevAuthSecret:
+    Type: AWS::SecretsManager::Secret
+    Condition: DevAuthEnabled
+    Properties:
+      Description: Development authentication key; never bundle in a release build
+      GenerateSecretString:
+        PasswordLength: 48
+        ExcludePunctuation: true
+
+  AuthLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-auth
+      RetentionInDays: 7
+
+  RoomsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-rooms
+      RetentionInDays: 7
+
+  WebSocketLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-websocket
+      RetentionInDays: 7
+
+  MonthlyBudget:
+    Type: AWS::Budgets::Budget
+    Condition: HasBudgetAlertEmail
+    Properties:
+      Budget:
+        BudgetName: !Sub ${AWS::StackName}-monthly-cost
+        BudgetLimit:
+          Amount: !Ref MonthlyBudgetUsd
+          Unit: USD
+        BudgetType: COST
+        TimeUnit: MONTHLY
+      NotificationsWithSubscribers:
+        - Notification:
+            ComparisonOperator: GREATER_THAN
+            NotificationType: ACTUAL
+            Threshold: 80
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - Address: !Ref BudgetAlertEmail
+              SubscriptionType: EMAIL
+        - Notification:
+            ComparisonOperator: GREATER_THAN
+            NotificationType: FORECASTED
+            Threshold: 100
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - Address: !Ref BudgetAlertEmail
+              SubscriptionType: EMAIL
+
+Outputs:
+  HttpApiUrl:
+    Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/v1
+  WebSocketUrl:
+    Value: !Sub wss://${WebSocketApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/v1
+  SteamPublisherSecretArn:
+    Value: !Ref SteamPublisherSecret
+  DevAuthSecretArn:
+    Condition: DevAuthEnabled
+    Value: !Ref DevAuthSecret
