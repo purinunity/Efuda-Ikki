@@ -13,7 +13,21 @@ public class ShowdownCutInAssetSet : ScriptableObject
     public Sprite drawResult;
     public Sprite specialActivation;
     public Sprite closeButton;
+    public Sprite closeButtonHighlighted;
+    public Sprite[] clearedCharacterSprites = new Sprite[9];
+    public Sprite[] clearedHoverCharacterSprites = new Sprite[9];
+    public Sprite[] specialCardTooltipSprites = new Sprite[13];
     public TMP_FontAsset textFont;
+
+    public Sprite GetSpecialCardTooltipSprite(SpecialCardResolver.SpecialCardId id)
+    {
+        int index = (int)id;
+        return specialCardTooltipSprites != null &&
+               index >= 0 &&
+               index < specialCardTooltipSprites.Length
+            ? specialCardTooltipSprites[index]
+            : null;
+    }
     public Vector4 cpuRoleSpriteRect = new Vector4(208f, 16f, 624f, 96f);
     public Vector4 playerRoleSpriteRect = new Vector4(208f, 464f, 624f, 96f);
 

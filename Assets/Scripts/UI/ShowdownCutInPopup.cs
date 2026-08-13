@@ -12,12 +12,13 @@ public class ShowdownCutInPopup : MonoBehaviour
     private const int HandCardCount = 5;
     private const int CommonCardCount = 2;
     private const int ShowdownCardCount = 7;
+    private static readonly Color LifeDeductionColor = new Color32(0xB4, 0x24, 0x34, 0xFF);
     private static readonly Vector4 CpuCharacterBaseRect = new Vector4(848f, 16f, 128f, 128f);
     private static readonly Vector4 CpuCharacterRect = new Vector4(852f, 20f, 120f, 120f);
-    private static readonly Vector4 CpuLifeDeductionRect = new Vector4(824f, 144f, 176f, 56f);
+    private static readonly Vector4 CpuLifeDeductionRect = new Vector4(824f, 128f, 176f, 56f);
     private static readonly Vector4 PlayerCharacterBaseRect = new Vector4(48f, 432f, 128f, 128f);
     private static readonly Vector4 PlayerCharacterRect = new Vector4(52f, 436f, 120f, 120f);
-    private static readonly Vector4 PlayerLifeDeductionRect = new Vector4(24f, 376f, 176f, 56f);
+    private static readonly Vector4 PlayerLifeDeductionRect = new Vector4(24f, 392f, 176f, 56f);
     private static readonly Vector4 CpuHandFrameRect = new Vector4(336f, 16f, 480f, 128f);
     private static readonly Vector4 PlayerHandFrameRect = new Vector4(208f, 432f, 480f, 128f);
     private static readonly Vector4 CpuCommonFrameRect = new Vector4(112f, 160f, 192f, 128f);
@@ -33,6 +34,7 @@ public class ShowdownCutInPopup : MonoBehaviour
     private static readonly Vector4 SpecialCallTextRect = new Vector4(320f, 240f, 384f, 96f);
     private static readonly Vector4 ResultTextRect = new Vector4(320f, 224f, 384f, 64f);
     private static readonly Vector4 DamageTextRect = new Vector4(320f, 296f, 384f, 48f);
+    private static readonly Vector4 CloseButtonRect = new Vector4(976f, 16f, 40f, 40f);
 
     public sealed class Data
     {
@@ -364,6 +366,12 @@ public class ShowdownCutInPopup : MonoBehaviour
         }
 
         yield return ShowFinalResult(data);
+        if (data != null && data.IsMatchDecided)
+        {
+            HideImmediately();
+            yield break;
+        }
+
         yield return new WaitUntil(() => closeRequested);
 
         HideImmediately();
@@ -604,7 +612,7 @@ public class ShowdownCutInPopup : MonoBehaviour
 
         if (closeButton != null)
         {
-            SetNormalizedRect(closeButton.GetComponent<RectTransform>(), 0.82f, 0.82f, 0.95f, 0.92f);
+            SetReferencePixelRect(closeButton.GetComponent<RectTransform>(), CloseButtonRect);
         }
     }
 
@@ -835,7 +843,7 @@ public class ShowdownCutInPopup : MonoBehaviour
         text.enableAutoSizing = true;
         text.fontSizeMin = 30f;
         text.fontSizeMax = 52f;
-        text.color = new Color(0.92f, 0.08f, 0.08f, 1f);
+        text.color = LifeDeductionColor;
         text.fontStyle = FontStyles.Bold;
         text.outlineColor = Color.black;
         text.outlineWidth = 0.24f;
@@ -1036,13 +1044,13 @@ public class ShowdownCutInPopup : MonoBehaviour
 
         if (cpuLifeDeductionText == null)
         {
-            cpuLifeDeductionText = CreateText("CpuLifeDeduction", stage, 44, Color.red);
+            cpuLifeDeductionText = CreateText("CpuLifeDeduction", stage, 44, LifeDeductionColor);
             SetReferencePixelRect(cpuLifeDeductionText.rectTransform, CpuLifeDeductionRect);
         }
 
         if (playerLifeDeductionText == null)
         {
-            playerLifeDeductionText = CreateText("PlayerLifeDeduction", stage, 44, Color.red);
+            playerLifeDeductionText = CreateText("PlayerLifeDeduction", stage, 44, LifeDeductionColor);
             SetReferencePixelRect(playerLifeDeductionText.rectTransform, PlayerLifeDeductionRect);
         }
 
@@ -1120,7 +1128,7 @@ public class ShowdownCutInPopup : MonoBehaviour
         if (closeButton == null)
         {
             closeButton = CreateButton("CloseButton", stage, "X");
-            SetNormalizedRect(closeButton.GetComponent<RectTransform>(), 0.82f, 0.82f, 0.95f, 0.92f);
+            SetReferencePixelRect(closeButton.GetComponent<RectTransform>(), CloseButtonRect);
         }
 
         closeButton.gameObject.SetActive(false);
@@ -1274,14 +1282,12 @@ public class ShowdownCutInPopup : MonoBehaviour
         ResetSpecialCardHighlights();
         SetActive(specialActivationImage, false);
         SetActive(specialCallBackdropImage, false);
-        SetActive(resultBackdropImage, data.IsMatchDecided);
+        SetActive(resultBackdropImage, false);
         SetImage(resultStampImage, GetPlayerResultStampSprite(data));
         SetImage(cpuResultStampImage, GetCpuResultStampSprite(data));
         specialCallText.gameObject.SetActive(false);
-        resultText.text = data.IsMatchDecided ? BuildMatchResultText(data) : BuildWinnerText(data);
-        damageText.text = data.IsMatchDecided ? BuildMatchLifeText(data) : BuildDamageText(data);
-        resultText.gameObject.SetActive(data.IsMatchDecided);
-        damageText.gameObject.SetActive(data.IsMatchDecided);
+        resultText.gameObject.SetActive(false);
+        damageText.gameObject.SetActive(false);
         SetTextActive(playerLifeDeductionText, false);
         SetTextActive(cpuLifeDeductionText, false);
         closeButton.gameObject.SetActive(false);
@@ -1289,10 +1295,10 @@ public class ShowdownCutInPopup : MonoBehaviour
         yield return ShowLifeDeduction(data);
         if (data.IsMatchDecided)
         {
-            yield return AnimateMatchDecisionIn();
+            yield break;
         }
 
-        ConfigureCloseButtonVisual(data.IsMatchDecided);
+        ConfigureCloseButtonVisual(false);
         closeButton.gameObject.SetActive(true);
         closeButton.Select();
     }
@@ -1812,6 +1818,18 @@ public class ShowdownCutInPopup : MonoBehaviour
             image.color = Color.white;
         }
 
+        Sprite highlightedSprite = assetSet != null
+            ? assetSet.closeButtonHighlighted
+            : null;
+        if (highlightedSprite != null)
+        {
+            SpriteState spriteState = closeButton.spriteState;
+            spriteState.highlightedSprite = highlightedSprite;
+            spriteState.pressedSprite = highlightedSprite;
+            spriteState.selectedSprite = highlightedSprite;
+            closeButton.spriteState = spriteState;
+        }
+
         ColorBlock closeColors = closeButton.colors;
         closeColors.normalColor = Color.white;
         closeColors.highlightedColor = Color.white;
@@ -1819,7 +1837,9 @@ public class ShowdownCutInPopup : MonoBehaviour
         closeColors.pressedColor = new Color(0.72f, 0.72f, 0.72f, 1f);
         closeColors.disabledColor = Color.white;
         closeColors.colorMultiplier = 1f;
-        closeButton.transition = Selectable.Transition.ColorTint;
+        closeButton.transition = highlightedSprite != null
+            ? Selectable.Transition.SpriteSwap
+            : Selectable.Transition.ColorTint;
         closeButton.colors = closeColors;
         if (image != null)
         {
@@ -1831,12 +1851,7 @@ public class ShowdownCutInPopup : MonoBehaviour
             labelText.gameObject.SetActive(false);
         }
 
-        SetNormalizedRect(
-            closeButton.GetComponent<RectTransform>(),
-            0.89f,
-            0.8f,
-            0.97f,
-            0.94f);
+        SetReferencePixelRect(closeButton.GetComponent<RectTransform>(), CloseButtonRect);
     }
 
     private static string BuildWinnerText(Data data)

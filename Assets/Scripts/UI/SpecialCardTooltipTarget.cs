@@ -4,6 +4,7 @@ using UnityEngine.EventSystems;
 [RequireComponent(typeof(Card))]
 public sealed class SpecialCardTooltipTarget : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerMoveHandler
 {
+    private static ShowdownCutInAssetSet tooltipAssetSet;
     private Card card;
     private bool isPointerOver;
     private bool tooltipEnabled = true;
@@ -29,13 +30,13 @@ public sealed class SpecialCardTooltipTarget : MonoBehaviour, IPointerEnterHandl
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        if (!TryGetTooltipText(out string title, out string body))
+        if (!TryGetTooltipSprite(out Sprite tooltipSprite))
         {
             return;
         }
 
         isPointerOver = true;
-        SpecialCardTooltip.Show(this, title, body, eventData.position);
+        SpecialCardTooltip.Show(this, tooltipSprite, eventData.position);
     }
 
     public void OnPointerMove(PointerEventData eventData)
@@ -59,10 +60,9 @@ public sealed class SpecialCardTooltipTarget : MonoBehaviour, IPointerEnterHandl
         SpecialCardTooltip.Hide(this);
     }
 
-    private bool TryGetTooltipText(out string title, out string body)
+    private bool TryGetTooltipSprite(out Sprite tooltipSprite)
     {
-        title = string.Empty;
-        body = string.Empty;
+        tooltipSprite = null;
 
         if (!tooltipEnabled)
         {
@@ -74,8 +74,21 @@ public sealed class SpecialCardTooltipTarget : MonoBehaviour, IPointerEnterHandl
             card = GetComponent<Card>();
         }
 
-        return card != null &&
-               SpecialCardResolver.TryGetSpecialCardTooltip(card.CardData, out title, out body);
+        if (card == null ||
+            !SpecialCardResolver.TryGetSpecialCardId(card.CardData, out SpecialCardResolver.SpecialCardId id))
+        {
+            return false;
+        }
+
+        if (tooltipAssetSet == null)
+        {
+            tooltipAssetSet = Resources.Load<ShowdownCutInAssetSet>("ShowdownCutInAssets");
+        }
+
+        tooltipSprite = tooltipAssetSet != null
+            ? tooltipAssetSet.GetSpecialCardTooltipSprite(id)
+            : null;
+        return tooltipSprite != null;
     }
 
     private void HideTooltip()

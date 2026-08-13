@@ -5,8 +5,7 @@ public static class CardPatternUtility
     private static readonly Number[] SequenceOrder =
     {
         Number.One, Number.Two, Number.Three, Number.Four, Number.Five,
-        Number.Six, Number.Seven, Number.Eight, Number.Nine, Number.Ten,
-        Number.Jack, Number.Queen, Number.King, Number.One
+        Number.Six, Number.Seven, Number.Eight, Number.Nine, Number.Ten
     };
 
     public static Dictionary<Number, List<Card>> BuildNumberGroups(IEnumerable<Card> cards)

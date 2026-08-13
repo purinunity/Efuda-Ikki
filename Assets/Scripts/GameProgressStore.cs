@@ -41,6 +41,17 @@ public static class GameProgressStore
         return level <= HighestUnlockedIkkiLevel;
     }
 
+    public static bool IsIkkiLevelCleared(int level)
+    {
+        if (level < CpuLevelCatalog.MinLevel || level > CpuLevelCatalog.MaxLevel)
+        {
+            return false;
+        }
+
+        ProgressData data = Load();
+        return data.ikkiCleared || level < data.highestUnlockedIkkiLevel;
+    }
+
     public static bool IsSpecialCardUnlocked(CardData cardData)
     {
         return SpecialCardResolver.TryGetUnlockOrder(cardData, out int order) &&

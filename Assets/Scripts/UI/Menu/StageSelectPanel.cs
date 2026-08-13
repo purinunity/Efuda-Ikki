@@ -30,13 +30,17 @@ public class StageSelectPanel : MonoBehaviour
     [SerializeField] private Color unlockedCharacterColor = Color.white;
     [SerializeField] private Sprite[] lockedCharacterSprites = new Sprite[9];
     [SerializeField] private Sprite[] hoverCharacterSprites = new Sprite[9];
+    [SerializeField] private Sprite[] clearedCharacterSprites = new Sprite[9];
+    [SerializeField] private Sprite[] clearedHoverCharacterSprites = new Sprite[9];
     [SerializeField] private Vector2 backButtonTopLeftOffset = new Vector2(48f, -40f);
     [SerializeField] private Vector2 backButtonSize = new Vector2(200f, 80f);
 
     private Sprite[] unlockedCharacterSprites;
+    private ShowdownCutInAssetSet sharedAssetSet;
 
     private void Awake()
     {
+        sharedAssetSet = Resources.Load<ShowdownCutInAssetSet>("ShowdownCutInAssets");
         CacheUnlockedCharacterSprites();
     }
 
@@ -95,6 +99,7 @@ public class StageSelectPanel : MonoBehaviour
             bool unlocked = level >= CpuLevelCatalog.MinLevel &&
                             level <= CpuLevelCatalog.MaxLevel &&
                             level <= highestUnlockedLevel;
+            bool cleared = unlocked && GameProgressStore.IsIkkiLevelCleared(level);
             button.interactable = unlocked;
 
             Image image = button.targetGraphic as Image;
@@ -113,14 +118,19 @@ public class StageSelectPanel : MonoBehaviour
                     unlockedCharacterSprites != null && i < unlockedCharacterSprites.Length
                         ? unlockedCharacterSprites[i]
                         : image.sprite;
+                Sprite clearedSprite = GetClearedSprite(i, false);
 
-                image.sprite = unlocked || lockedSprite == null
-                    ? unlockedSprite
-                    : lockedSprite;
+                image.sprite = cleared && clearedSprite != null
+                    ? clearedSprite
+                    : unlocked || lockedSprite == null
+                        ? unlockedSprite
+                        : lockedSprite;
                 image.color = unlocked || lockedSprite != null
                     ? unlockedCharacterColor
                     : Color.black;
             }
+
+            ConfigureHoverSprite(button, i, cleared);
 
             ColorBlock colors = button.colors;
             colors.disabledColor = Color.white;
@@ -203,22 +213,26 @@ public class StageSelectPanel : MonoBehaviour
                 button.targetGraphic = image;
             }
 
-            ConfigureHoverSprite(button, i);
+            ConfigureHoverSprite(button, i, false);
             SetTextLabelsActive(button.transform, !hideLegacyTextLabels);
         }
     }
 
-    private void ConfigureHoverSprite(Button button, int index)
+    private void ConfigureHoverSprite(Button button, int index, bool cleared)
     {
         if (button == null)
         {
             return;
         }
 
-        Sprite hoverSprite =
-            hoverCharacterSprites != null && index < hoverCharacterSprites.Length
-                ? hoverCharacterSprites[index]
-                : null;
+        Sprite hoverSprite = cleared
+            ? GetClearedSprite(index, true)
+            : null;
+        if (hoverSprite == null)
+        {
+            hoverSprite = GetSprite(hoverCharacterSprites, index);
+        }
+
         if (hoverSprite == null)
         {
             return;
@@ -226,8 +240,40 @@ public class StageSelectPanel : MonoBehaviour
 
         SpriteState spriteState = button.spriteState;
         spriteState.highlightedSprite = hoverSprite;
+        spriteState.pressedSprite = hoverSprite;
         button.spriteState = spriteState;
         button.transition = Selectable.Transition.SpriteSwap;
+    }
+
+    private static Sprite GetSprite(Sprite[] sprites, int index)
+    {
+        return sprites != null && index >= 0 && index < sprites.Length
+            ? sprites[index]
+            : null;
+    }
+
+    private Sprite GetClearedSprite(int index, bool mouseOver)
+    {
+        Sprite[] inspectorSprites = mouseOver
+            ? clearedHoverCharacterSprites
+            : clearedCharacterSprites;
+        Sprite sprite = GetSprite(inspectorSprites, index);
+        if (sprite != null)
+        {
+            return sprite;
+        }
+
+        if (sharedAssetSet == null)
+        {
+            sharedAssetSet = Resources.Load<ShowdownCutInAssetSet>("ShowdownCutInAssets");
+        }
+
+        Sprite[] sharedSprites = sharedAssetSet == null
+            ? null
+            : mouseOver
+                ? sharedAssetSet.clearedHoverCharacterSprites
+                : sharedAssetSet.clearedCharacterSprites;
+        return GetSprite(sharedSprites, index);
     }
 
     private void CacheUnlockedCharacterSprites()
