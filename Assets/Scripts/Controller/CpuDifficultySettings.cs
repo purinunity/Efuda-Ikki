@@ -9,7 +9,7 @@ public sealed class CpuDifficultySettings
     [Tooltip("1 means the CPU chooses the best evaluated special card. 0 means random special-card choice.")]
     [SerializeField, Range(0f, 1f)] private float specialCardDecisionStrength = 1f;
 
-    [Header("Special Card Evaluation")]
+    [Header("Legacy Special Card Evaluation (reserved)")]
     [Tooltip("Utility added when a special-card choice makes the CPU win.")]
     [SerializeField, Min(0)] private int specialCardWinUtility = 10000;
     [Tooltip("Utility used when a special-card choice makes the round a draw.")]

@@ -45,7 +45,14 @@ public class PopupPreviewCardArea : CardArea
     [SerializeField] private float popupBottomPadding = 24f;
 
     private readonly List<Card> previewCards = new List<Card>();
-    private readonly Dictionary<Card, UnityAction> sourceCardClickHandlers = new Dictionary<Card, UnityAction>();
+    private readonly Dictionary<Button, UnityAction> sourceCardClickHandlers = new Dictionary<Button, UnityAction>();
+    private Button subscribedCloseButton;
+
+    private void OnEnable()
+    {
+        WireCloseButton();
+        BindSourceCardClickHandlers();
+    }
 
     private void Start()
     {
@@ -54,13 +61,8 @@ public class PopupPreviewCardArea : CardArea
             popupRoot.SetActive(false);
         }
 
-        if (closeButton != null)
-        {
-            ConfigureCloseButtonColors(closeButton);
-            closeButton.onClick.RemoveListener(ClosePopup);
-            closeButton.onClick.AddListener(ClosePopup);
-            closeButton.transform.SetAsLastSibling();
-        }
+        WireCloseButton();
+        BindSourceCardClickHandlers();
     }
 
     private static void ConfigureCloseButtonColors(Button button)
@@ -86,17 +88,19 @@ public class PopupPreviewCardArea : CardArea
     public override void SetCards(List<Card> cards, float totalDuration = 1.0f)
     {
         base.SetCards(cards, totalDuration);
-        BindSourceCardClickHandlers();
+        RefreshSourceCardClickHandlers();
     }
 
     public override void SetCardsBySpeed(List<Card> cards, float moveSpeed, float turnSpeed)
     {
         base.SetCardsBySpeed(cards, moveSpeed, turnSpeed);
-        BindSourceCardClickHandlers();
+        RefreshSourceCardClickHandlers();
     }
 
     public void ShowPopup(Card focusedCard = null)
     {
+        WireCloseButton();
+
         if (popupRoot == null || popupCardArea == null || previewCardPrefab == null)
         {
             Debug.LogWarning("PopupPreviewCardArea: popup references are not assigned.");
@@ -130,6 +134,11 @@ public class PopupPreviewCardArea : CardArea
     {
         UnbindSourceCardClickHandlers();
 
+        if (!isActiveAndEnabled)
+        {
+            return;
+        }
+
         foreach (var source in cardsInArea)
         {
             if (source == null) continue;
@@ -139,22 +148,49 @@ public class PopupPreviewCardArea : CardArea
 
             Card captured = source;
             UnityAction action = () => ShowPopup(captured);
-            sourceCardClickHandlers[captured] = action;
+            sourceCardClickHandlers[sourceButton] = action;
             sourceButton.onClick.AddListener(action);
         }
+    }
+
+    private void RefreshSourceCardClickHandlers()
+    {
+        if (isActiveAndEnabled)
+        {
+            BindSourceCardClickHandlers();
+            return;
+        }
+
+        UnbindSourceCardClickHandlers();
     }
 
     private void UnbindSourceCardClickHandlers()
     {
         foreach (var pair in sourceCardClickHandlers)
         {
-            if (pair.Key == null) continue;
-
-            Button sourceButton = pair.Key.GetComponent<Button>();
-            if (sourceButton == null) continue;
-            sourceButton.onClick.RemoveListener(pair.Value);
+            pair.Key?.onClick.RemoveListener(pair.Value);
         }
         sourceCardClickHandlers.Clear();
+    }
+
+    private void WireCloseButton()
+    {
+        UnwireCloseButton();
+        subscribedCloseButton = closeButton;
+        if (subscribedCloseButton == null)
+        {
+            return;
+        }
+
+        ConfigureCloseButtonColors(subscribedCloseButton);
+        subscribedCloseButton.onClick.AddListener(ClosePopup);
+        subscribedCloseButton.transform.SetAsLastSibling();
+    }
+
+    private void UnwireCloseButton()
+    {
+        subscribedCloseButton?.onClick.RemoveListener(ClosePopup);
+        subscribedCloseButton = null;
     }
 
     private void RebuildPreviewCards(Card focusedCard)
@@ -611,13 +647,16 @@ public class PopupPreviewCardArea : CardArea
         previewCards.Clear();
     }
 
+    private void OnDisable()
+    {
+        UnbindSourceCardClickHandlers();
+        UnwireCloseButton();
+    }
+
     private void OnDestroy()
     {
         UnbindSourceCardClickHandlers();
-        if (closeButton != null)
-        {
-            closeButton.onClick.RemoveListener(ClosePopup);
-        }
+        UnwireCloseButton();
         ClearPreviewCards();
     }
 }

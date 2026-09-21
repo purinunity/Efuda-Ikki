@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -126,8 +127,14 @@ public class PlayerState
         }
     }
 
-    public void decreaseLifePoints(int amount)
+    public void DecreaseLifePoints(int amount)
     {
         SetLifePoints(LifePoints - amount);
+    }
+
+    [Obsolete("Use DecreaseLifePoints instead.")]
+    public void decreaseLifePoints(int amount)
+    {
+        DecreaseLifePoints(amount);
     }
 }

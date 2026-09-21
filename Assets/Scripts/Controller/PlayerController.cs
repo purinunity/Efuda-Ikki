@@ -17,6 +17,8 @@ public class PlayerController : Controller
     private int maxTrashCountThisTurn = int.MaxValue;
     private bool isFinalTrashTurnThisAct = false;
     private Sprite decisionButtonNormalSprite;
+    private System.Action<ControllerResponse> pendingCallback;
+    private int inputRequestVersion;
 
     private void Awake()
     {
@@ -28,23 +30,41 @@ public class PlayerController : Controller
     // 現状はダミーで即座に応答
     public override IEnumerator Act(GameState gameState, System.Action<ControllerResponse> callback)
     {
+        CancelPendingInput();
+        if (gameState == null)
+        {
+            callback?.Invoke(CreateEmptyResponse(false));
+            yield break;
+        }
+
+        int requestVersion = ++inputRequestVersion;
+        pendingCallback = callback;
         maxTrashCountThisTurn = Mathf.Max(0, gameState.maxHandTrashCount);
         isFinalTrashTurnThisAct = IsFinalTrashTurn(gameState);
         IsInputReceivable = true; // 入力受付可能に設定
         SetDecisionButtonPressed(false, true);
         while (!IsInputReceived)
         {
+            if (requestVersion != inputRequestVersion)
+            {
+                yield break;
+            }
+
+            if (!isActiveAndEnabled)
+            {
+                CompleteInput(CreateEmptyResponse(false));
+                yield break;
+            }
+
             yield return null; // 入力完了まで待機
         }
-        IsInputReceived = false; // フラグをリセット
-        IsInputReceivable = false; // 入力受付不可に設定
 
         var response = new ControllerResponse
         {
             actionCompleted = true,
-            cardsTrash = trash
+            cardsTrash = trash ?? new List<Card>()
         };
-        callback?.Invoke(response);
+        CompleteInput(response);
     }
     
     // プレイヤーの入力を受け取るメソッド
@@ -67,6 +87,51 @@ public class PlayerController : Controller
                 uiManager.SetPlayerSpecialCardInputEnabled(false);
             }
         }
+    }
+
+    public void CancelPendingInput()
+    {
+        inputRequestVersion++;
+        if (pendingCallback != null)
+        {
+            CompleteInput(CreateEmptyResponse(false));
+            return;
+        }
+
+        IsInputReceived = false;
+        IsInputReceivable = false;
+        trash = null;
+        SetDecisionButtonPressed(false, false, resolveReferences: false);
+    }
+
+    private void OnDisable()
+    {
+        CancelPendingInput();
+    }
+
+    private void OnDestroy()
+    {
+        CancelPendingInput();
+    }
+
+    private void CompleteInput(ControllerResponse response)
+    {
+        System.Action<ControllerResponse> callback = pendingCallback;
+        pendingCallback = null;
+        IsInputReceived = false;
+        IsInputReceivable = false;
+        trash = null;
+        SetDecisionButtonPressed(false, false, resolveReferences: false);
+        callback?.Invoke(response);
+    }
+
+    private static ControllerResponse CreateEmptyResponse(bool completed)
+    {
+        return new ControllerResponse
+        {
+            actionCompleted = completed,
+            cardsTrash = new List<Card>()
+        };
     }
 
     private bool IsFinalTrashTurn(GameState gameState)
@@ -112,9 +177,14 @@ public class PlayerController : Controller
         }
     }
 
-    private void SetDecisionButtonPressed(bool pressed, bool interactable)
+    private void SetDecisionButtonPressed(bool pressed, bool interactable, bool resolveReferences = true)
     {
-        ResolveDecisionButton();
+        // OnDisable/OnDestroy can run while the scene hierarchy is being
+        // unloaded. Do not search that hierarchy for new UI references then.
+        if (resolveReferences && isActiveAndEnabled)
+        {
+            ResolveDecisionButton();
+        }
 
         if (decisionButtonImage != null)
         {

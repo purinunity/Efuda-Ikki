@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
+using EfudaIkki.Core;
 
 // CPUプレイヤーの行動を制御するクラス
 public class CPUController : Controller
@@ -13,6 +14,9 @@ public class CPUController : Controller
     [SerializeField] private CpuDifficultySettings difficultySettings = new CpuDifficultySettings();
     private CpuDifficultySettings defaultDifficultySettings;
     private CpuLevelDefinition currentLevelDefinition = CpuLevelCatalog.GetLevel(CpuLevelCatalog.MinLevel);
+    private IRandomSource randomSource;
+
+    private IRandomSource RandomSource => randomSource ?? (randomSource = new UnityRandomSource());
 
     private void Awake()
     {
@@ -35,6 +39,11 @@ public class CPUController : Controller
     {
         EnsureDifficultySettings();
         difficultySettings.SetDecisionStrengths(exchangeStrength, specialCardStrength);
+    }
+
+    public void SetRandomSource(IRandomSource source)
+    {
+        randomSource = source;
     }
 
     public void ResetDecisionStrengths()
@@ -101,37 +110,20 @@ public class CPUController : Controller
         CpuLevelDefinition levelDefinition = currentLevelDefinition ?? CpuLevelCatalog.GetLevel(CpuLevelCatalog.MinLevel);
         HandEvaluator.HandRank cpuRank = EvaluateCpuHandRank(gameState, cpuState);
 
-        Card fixedCard1 = FindUsableCard(
-            levelDefinition.FixedCard1,
-            levelDefinition.FixedCard1Condition,
-            cpuRank,
-            usableCpuSpecialCards);
-        if (fixedCard1 != null)
-        {
-            return fixedCard1;
-        }
+        string[] candidateIds = usableCpuSpecialCards
+            .Select(GetStableSpecialCardId)
+            .ToArray();
+        int selectedIndex = CpuSpecialCardPolicy.SelectCardIndex(
+            candidateIds,
+            (HandRole)(int)cpuRank,
+            CreateFixedChoice(levelDefinition.FixedCard1, levelDefinition.FixedCard1Condition),
+            CreateFixedChoice(levelDefinition.FixedCard2, levelDefinition.FixedCard2Condition),
+            difficultySettings.SpecialCardDecisionStrength,
+            RandomSource);
 
-        Card fixedCard2 = FindUsableCard(
-            levelDefinition.FixedCard2,
-            levelDefinition.FixedCard2Condition,
-            cpuRank,
-            usableCpuSpecialCards);
-        if (fixedCard2 != null)
-        {
-            return fixedCard2;
-        }
-
-        if (Random.value >= 0.5f)
-        {
-            return null;
-        }
-
-        List<Card> freeCards = usableCpuSpecialCards
-            .Where(card =>
-                !SpecialCardResolver.IsSpecialCard(card.CardData, levelDefinition.FixedCard1) &&
-                !SpecialCardResolver.IsSpecialCard(card.CardData, levelDefinition.FixedCard2))
-            .ToList();
-        return freeCards.Count > 0 ? freeCards[Random.Range(0, freeCards.Count)] : null;
+        return selectedIndex >= 0 && selectedIndex < usableCpuSpecialCards.Count
+            ? usableCpuSpecialCards[selectedIndex]
+            : null;
     }
 
     private HandEvaluator.HandRank EvaluateCpuHandRank(GameState gameState, PlayerState cpuState)
@@ -145,53 +137,22 @@ public class CPUController : Controller
         return handInfo != null ? handInfo.Rank : HandEvaluator.HandRank.Miezu;
     }
 
-    private Card FindUsableCard(
+    private static CpuFixedSpecialChoice CreateFixedChoice(
         SpecialCardResolver.SpecialCardId cardId,
-        CpuFixedCardCondition condition,
-        HandEvaluator.HandRank cpuRank,
-        List<Card> usableCpuSpecialCards)
-    {
-        if (!MatchesCondition(cpuRank, condition) || usableCpuSpecialCards == null)
-        {
-            return null;
-        }
-
-        foreach (Card card in usableCpuSpecialCards)
-        {
-            if (card != null && SpecialCardResolver.IsSpecialCard(card.CardData, cardId))
-            {
-                return card;
-            }
-        }
-
-        return null;
-    }
-
-    private static bool MatchesCondition(
-        HandEvaluator.HandRank rank,
         CpuFixedCardCondition condition)
     {
-        int rankIndex = HandRoleCatalog.GetIndex(rank);
-        switch (condition)
-        {
-            case CpuFixedCardCondition.Always:
-                return true;
-            case CpuFixedCardCondition.AtLeastIsso:
-                return rankIndex >= HandRoleCatalog.GetIndex(HandEvaluator.HandRank.Isso);
-            case CpuFixedCardCondition.AtLeastNiso:
-                return rankIndex >= HandRoleCatalog.GetIndex(HandEvaluator.HandRank.Niso);
-            case CpuFixedCardCondition.AtMostIsso:
-                return rankIndex <= HandRoleCatalog.GetIndex(HandEvaluator.HandRank.Isso);
-            case CpuFixedCardCondition.AtMostNiso:
-                return rankIndex <= HandRoleCatalog.GetIndex(HandEvaluator.HandRank.Niso);
-            case CpuFixedCardCondition.AtMostSanju:
-                return rankIndex <= HandRoleCatalog.GetIndex(HandEvaluator.HandRank.Sanju);
-            case CpuFixedCardCondition.NisoThroughSuzi:
-                return rankIndex >= HandRoleCatalog.GetIndex(HandEvaluator.HandRank.Niso) &&
-                       rankIndex <= HandRoleCatalog.GetIndex(HandEvaluator.HandRank.Suzi);
-            default:
-                return false;
-        }
+        string stableId = SpecialCardCatalog.TryGet(cardId, out SpecialCardCatalog.Entry entry)
+            ? entry.Id
+            : cardId.ToString();
+        return new CpuFixedSpecialChoice(stableId, (CpuHandCondition)(int)condition);
+    }
+
+    private static string GetStableSpecialCardId(Card card)
+    {
+        return card != null &&
+               SpecialCardCatalog.TryGet(card.CardData, out SpecialCardCatalog.Entry entry)
+            ? entry.Id
+            : card?.CardData?.name ?? string.Empty;
     }
 
     // CPUの行動ロジック
@@ -200,108 +161,23 @@ public class CPUController : Controller
         EnsureDifficultySettings();
         yield return new WaitForSeconds(difficultySettings.ThinkingDelaySeconds); // 思考時間の演出
 
-        PlayerState playerState = gameState.GetPlayerState(); // 現在のプレイヤー状態取得
-        List<Card> playerHand = playerState.HandCards; // 手札
-        List<Card> commonCards = gameState.commonCards; // 共通札
+        PlayerState playerState = gameState?.GetPlayerState();
+        List<Card> playerHand = playerState?.HandCards ?? new List<Card>();
+        List<Card> commonCards = gameState?.commonCards ?? new List<Card>();
 
-        foreach (var card in playerHand)
-        {
-            card.IsFaceUp = true; // 役判定のためCPUの手札を表向きに設定
-        }
-        var handInfo = HandEvaluator.EvaluateHand(playerHand, commonCards); // 役判定
-        Debug.Log($"CPUの役判定結果: {handInfo.Name} (ランク: {handInfo.Rank}, ポイント: {handInfo.Score})");
-        foreach (var card in playerHand)
-        {
-            card.IsFaceUp = false; // CPUの手札を裏向きに戻す
-        }
+        CpuExchangeDecision decision = CpuExchangePolicy.Decide(
+            ToCardValues(playerHand),
+            ToCardValues(commonCards),
+            gameState != null ? gameState.maxHandTrashCount : 0,
+            difficultySettings.ExchangeDecisionStrength,
+            RandomSource);
+        Debug.Log($"CPUの役判定結果: {HandRoleRules.GetDisplayName(decision.EvaluatedRole)} " +
+                  $"(ランク: {decision.EvaluatedRole}, ポイント: {HandRoleRules.GetScore(decision.EvaluatedRole)})");
 
-        List<Card> trash = new List<Card>(); // 捨てるカードリスト// 手札と共通札を結合
-        List<Card> allCards = playerHand.Concat(commonCards ?? Enumerable.Empty<Card>()).ToList();
-        Dictionary<Number, List<Card>> numberGroups = CardPatternUtility.BuildNumberGroups(allCards);
-        Dictionary<Suit, List<Card>> suitGroups = CardPatternUtility.BuildSuitGroups(allCards);
-
-        // 役ごとに捨てるカードを決定
-        switch (handInfo.Rank)
-        {
-            case HandEvaluator.HandRank.Miezu:
-                // 不見の場合、全てのカードを捨てる
-                trash.AddRange(playerHand);
-                break;
-            case HandEvaluator.HandRank.Isso:
-                // 一双の場合、ペアでないカードを全て捨てる
-                AddCardsNotMatchingNumbers(
-                    trash,
-                    playerHand,
-                    CardPatternUtility.GetNumbersWithGroupCount(numberGroups, 2, 1));
-                break;
-            case HandEvaluator.HandRank.Niso:
-                // 二双の場合、ペアでないカードを全て捨てる
-                AddCardsNotMatchingNumbers(
-                    trash,
-                    playerHand,
-                    CardPatternUtility.GetNumbersWithGroupCount(numberGroups, 2, 2));
-                break;
-            case HandEvaluator.HandRank.Sanju:
-                // 三珠の場合、トリプルでないカードを捨てる
-                AddCardsNotMatchingNumbers(
-                    trash,
-                    playerHand,
-                    CardPatternUtility.GetNumbersWithGroupCount(numberGroups, 3, 1));
-                break;
-            case HandEvaluator.HandRank.Yonju:
-                // 四珠の場合、フォーカードでないカードを捨てる
-                AddCardsNotMatchingNumbers(
-                    trash,
-                    playerHand,
-                    CardPatternUtility.GetNumbersWithGroupCount(numberGroups, 4, 1));
-                break;
-            case HandEvaluator.HandRank.Tenshu:
-                // 天守の場合、１０以下のカードを捨てる 
-                foreach (var card in playerHand)
-                {
-                    if ((int)card.CardData.number <= 10)
-                    {
-                        trash.Add(card);
-                    }
-                }
-                break;
-            case HandEvaluator.HandRank.Suzi:
-                // 筋の場合、連続する5枚を除くすべてのカードを捨てる
-                AddCardsNotMatchingNumbers(
-                    trash,
-                    playerHand,
-                    CardPatternUtility.FindSequence(numberGroups, 5));
-                break;
-            case HandEvaluator.HandRank.Hikari:
-                // 光の場合、スートが少数派であるカードを全て捨てる
-                if (CardPatternUtility.TryFindMinoritySuit(suitGroups, out Suit minoritySuit))
-                {
-                    foreach (var card in playerHand)
-                    {
-                        if (card.CardData.suit == minoritySuit)
-                        {
-                            trash.Add(card);
-                        }
-                    }
-                }
-                break;
-            case HandEvaluator.HandRank.Nanasuzi:
-                // 七筋の場合、捨てるカードはなし
-                break;
-            case HandEvaluator.HandRank.Nanahikari:
-                // 七光の場合、捨てるカードはなし
-                break;
-            case HandEvaluator.HandRank.Tenshukaku:
-                // 天守閣の場合、捨てるカードはなし
-                break;
-            default:
-                // 役がなければ全てのカードを捨てる
-                trash.AddRange(playerHand);
-                break;
-        }
-
-        // 行動結果をコールバック
-        trash = ApplyExchangeDecisionStrength(trash, playerHand, gameState.maxHandTrashCount);
+        List<Card> trash = decision.DiscardIndexes
+            .Where(index => index >= 0 && index < playerHand.Count && playerHand[index] != null)
+            .Select(index => playerHand[index])
+            .ToList();
 
         var response = new ControllerResponse
         {
@@ -311,60 +187,12 @@ public class CPUController : Controller
         callback?.Invoke(response);
     }
 
-    private static void AddCardsNotMatchingNumbers(List<Card> trash, List<Card> playerHand, List<Number> keepNumbers)
+    private static List<CardValue> ToCardValues(IEnumerable<Card> cards)
     {
-        if (trash == null || playerHand == null)
-        {
-            return;
-        }
-
-        if (keepNumbers == null || keepNumbers.Count == 0)
-        {
-            trash.AddRange(playerHand);
-            return;
-        }
-
-        HashSet<Number> keepNumberSet = new HashSet<Number>(keepNumbers);
-        foreach (Card card in playerHand)
-        {
-            if (card?.CardData == null || !keepNumberSet.Contains(card.CardData.number))
-            {
-                trash.Add(card);
-            }
-        }
-    }
-
-    private List<Card> ApplyExchangeDecisionStrength(List<Card> plannedTrash, List<Card> playerHand, int maxTrashCount)
-    {
-        float strength = difficultySettings.ExchangeDecisionStrength;
-        if (strength >= 0.999f || Random.value <= strength)
-        {
-            return plannedTrash;
-        }
-
-        return BuildRandomTrash(playerHand, maxTrashCount);
-    }
-
-    private List<Card> BuildRandomTrash(List<Card> playerHand, int maxTrashCount)
-    {
-        List<Card> randomTrash = new List<Card>();
-        if (playerHand == null || playerHand.Count == 0)
-        {
-            return randomTrash;
-        }
-
-        List<Card> candidates = new List<Card>(playerHand);
-        int trashCount = Random.Range(0, Mathf.Min(Mathf.Max(0, maxTrashCount), candidates.Count) + 1);
-
-        for (int i = 0; i < trashCount; i++)
-        {
-            int randomIndex = Random.Range(i, candidates.Count);
-            Card temp = candidates[i];
-            candidates[i] = candidates[randomIndex];
-            candidates[randomIndex] = temp;
-            randomTrash.Add(candidates[i]);
-        }
-
-        return randomTrash;
+        return (cards ?? Enumerable.Empty<Card>())
+            .Select(card => card != null && card.CardData != null
+                ? new CardValue((int)card.CardData.number, (int)card.CardData.suit)
+                : CardValue.Invalid)
+            .ToList();
     }
 }

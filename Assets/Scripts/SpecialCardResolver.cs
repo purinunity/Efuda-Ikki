@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using EfudaIkki.Core;
 using UnityEngine;
 using static HandEvaluator;
 
@@ -11,19 +12,19 @@ public static class SpecialCardResolver
 
     public enum SpecialCardId
     {
-        Aiko,
-        Seal,
-        Bonus5,
-        Curse,
-        Bonus10,
-        Bonus15,
-        DoubleScore,
-        Bet,
-        Rain,
-        Festival,
-        Sunny,
-        Swap,
-        Oni
+        Aiko = 0,
+        Seal = 1,
+        Bonus5 = 2,
+        Curse = 3,
+        Bonus10 = 4,
+        Bonus15 = 5,
+        DoubleScore = 6,
+        Bet = 7,
+        Rain = 8,
+        Festival = 9,
+        Sunny = 10,
+        Swap = 11,
+        Oni = 12
     }
 
     public sealed class ResolvedHand
@@ -94,6 +95,12 @@ public static class SpecialCardResolver
         {
             CurrentRoleIndex = HandRoleCatalog.ClampIndex(snapshot.RoleIndex);
             Score = Mathf.Max(0, snapshot.Score);
+        }
+
+        internal void ApplyResolvedState(int roleIndex, int score)
+        {
+            CurrentRoleIndex = HandRoleCatalog.ClampIndex(roleIndex);
+            Score = Mathf.Max(0, score);
         }
     }
 
@@ -176,36 +183,13 @@ public static class SpecialCardResolver
         }
     }
 
-    private sealed class SpecialCardDefinition
-    {
-        public SpecialCardId Id { get; }
-        public string DisplayName { get; }
-        public string Description { get; }
-        public int Priority { get; }
-        public string[] AssetNames { get; }
-
-        public SpecialCardDefinition(
-            SpecialCardId id,
-            string displayName,
-            string description,
-            int priority,
-            params string[] assetNames)
-        {
-            Id = id;
-            DisplayName = displayName;
-            Description = description;
-            Priority = priority;
-            AssetNames = assetNames ?? Array.Empty<string>();
-        }
-    }
-
     private sealed class PendingEffect
     {
         public int OwnerPlayerId { get; }
         public Card Card { get; }
-        public SpecialCardDefinition Definition { get; }
+        public SpecialCardCatalog.Entry Definition { get; }
 
-        public PendingEffect(int ownerPlayerId, Card card, SpecialCardDefinition definition)
+        public PendingEffect(int ownerPlayerId, Card card, SpecialCardCatalog.Entry definition)
         {
             OwnerPlayerId = ownerPlayerId;
             Card = card;
@@ -213,123 +197,7 @@ public static class SpecialCardResolver
         }
     }
 
-    private sealed class ResolutionContext
-    {
-        public IReadOnlyList<ResolvedHand> Hands { get; }
-        public List<string> Logs { get; } = new List<string>();
-        public List<EffectStep> EffectSteps { get; } = new List<EffectStep>();
-        public bool ForceDraw { get; set; }
-        public bool AreRemainingEffectsSealed { get; private set; }
-        public int DamageMultiplier { get; private set; } = 1;
-        public int? FestivalSwingOverride { get; }
-        public int? BetMultiplierOverride { get; }
-
-        public ResolutionContext(List<ResolvedHand> hands, int? festivalSwingOverride, int? betMultiplierOverride)
-        {
-            Hands = hands;
-            FestivalSwingOverride = festivalSwingOverride;
-            BetMultiplierOverride = betMultiplierOverride;
-        }
-
-        public void SealRemainingEffects()
-        {
-            AreRemainingEffectsSealed = true;
-        }
-
-        public void DoubleDamage()
-        {
-            DamageMultiplier *= 2;
-        }
-
-        public IEnumerable<int> GetOpponentIds(int ownerPlayerId)
-        {
-            for (int i = 0; i < Hands.Count; i++)
-            {
-                if (i != ownerPlayerId)
-                {
-                    yield return i;
-                }
-            }
-        }
-
-        public int GetWinnerIndex()
-        {
-            if (ForceDraw)
-            {
-                return -1;
-            }
-
-            int winnerIndex = -1;
-            int highestScore = int.MinValue;
-
-            for (int i = 0; i < Hands.Count; i++)
-            {
-                int score = Hands[i].Score;
-                if (score > highestScore)
-                {
-                    highestScore = score;
-                    winnerIndex = i;
-                    continue;
-                }
-
-                if (score == highestScore)
-                {
-                    winnerIndex = -1;
-                }
-            }
-
-            return winnerIndex;
-        }
-
-        public int GetDamage()
-        {
-            int winnerIndex = GetWinnerIndex();
-            if (winnerIndex < 0)
-            {
-                return 0;
-            }
-
-            return Mathf.Max(0, Hands[winnerIndex].Score * DamageMultiplier);
-        }
-    }
-
-    // Priority is centralized here so effect order can be adjusted without
-    // changing the showdown flow code.
-    private static readonly SpecialCardDefinition[] Definitions =
-    {
-        new SpecialCardDefinition(SpecialCardId.Seal, "封札", "この札より後に発動する特殊札をすべて無効にする。", 100, "sp 2", "sp_seal"),
-        new SpecialCardDefinition(SpecialCardId.Rain, "雨札", "相手の役を1段階下げる。", 200, "sp 9", "sp_rain"),
-        new SpecialCardDefinition(SpecialCardId.Sunny, "晴札", "自分の役を1段階上げる。", 300, "sp 11", "sp_sunny"),
-        new SpecialCardDefinition(SpecialCardId.Swap, "換札", "自分と相手の役・得点を入れ替える。", 400, "sp 12", "sp_swap"),
-        new SpecialCardDefinition(SpecialCardId.Bonus5, "副札5", "自分の得点を5点上げる。", 500, "sp 3", "sp_bonus5"),
-        new SpecialCardDefinition(SpecialCardId.Bonus10, "副札10", "自分の得点を10点上げる。", 600, "sp 5", "sp_bonus10"),
-        new SpecialCardDefinition(SpecialCardId.Bonus15, "副札15", "自分の得点を15点上げる。", 700, "sp 6", "sp_bonus15"),
-        new SpecialCardDefinition(SpecialCardId.Oni, "鬼札", "自分の得点を30点上げる。", 750, "sp_oni"),
-        new SpecialCardDefinition(SpecialCardId.Festival, "祭札", "自分の得点がランダムで20点上がるか、20点下がる。", 800, "sp 10", "sp_festival"),
-        new SpecialCardDefinition(SpecialCardId.Curse, "呪い札", "相手の得点を10点下げる。", 900, "sp 4", "sp_curse"),
-        new SpecialCardDefinition(SpecialCardId.DoubleScore, "倍札", "自分の得点を2倍にする。", 1000, "sp 7", "sp_double_score"),
-        new SpecialCardDefinition(SpecialCardId.Bet, "賭札", "自分の得点がランダムで0倍または2倍になる。", 1100, "sp 8", "sp_bet"),
-        new SpecialCardDefinition(SpecialCardId.Aiko, "相子札", "この勝負を引き分けにする。ダメージは発生しない。", 1200, "sp 1", "sp_aiko")
-    };
-
-    private static readonly Dictionary<string, SpecialCardDefinition> DefinitionByAssetName = BuildDefinitionMap();
-    private static readonly SpecialCardId[] UnlockOrder =
-    {
-        SpecialCardId.Bonus5,
-        SpecialCardId.Bonus10,
-        SpecialCardId.Aiko,
-        SpecialCardId.Seal,
-        SpecialCardId.Sunny,
-        SpecialCardId.Rain,
-        SpecialCardId.Bonus15,
-        SpecialCardId.Festival,
-        SpecialCardId.Swap,
-        SpecialCardId.Curse,
-        SpecialCardId.Bet,
-        SpecialCardId.DoubleScore
-    };
-
-    public static int SpecialCardCount => UnlockOrder.Length;
+    public static int SpecialCardCount => SpecialCardCatalog.UnlockableCardCount;
 
     public static bool TryGetSpecialCardId(CardData cardData, out SpecialCardId id)
     {
@@ -339,12 +207,12 @@ public static class SpecialCardResolver
             return false;
         }
 
-        if (!DefinitionByAssetName.TryGetValue(cardData.name, out SpecialCardDefinition definition))
+        if (!SpecialCardCatalog.TryGet(cardData, out SpecialCardCatalog.Entry definition))
         {
             return false;
         }
 
-        id = definition.Id;
+        id = definition.CardId;
         return true;
     }
 
@@ -366,13 +234,13 @@ public static class SpecialCardResolver
             return false;
         }
 
-        int index = Array.IndexOf(UnlockOrder, id);
-        if (index < 0)
+        if (!SpecialCardCatalog.TryGet(id, out SpecialCardCatalog.Entry definition) ||
+            definition.UnlockOrder <= 0)
         {
             return false;
         }
 
-        order = index + 1;
+        order = definition.UnlockOrder;
         return true;
     }
 
@@ -405,7 +273,7 @@ public static class SpecialCardResolver
             return true;
         }
 
-        if (!DefinitionByAssetName.TryGetValue(cardData.name, out SpecialCardDefinition definition))
+        if (!SpecialCardCatalog.TryGet(cardData, out SpecialCardCatalog.Entry definition))
         {
             return false;
         }
@@ -420,6 +288,34 @@ public static class SpecialCardResolver
         int? festivalSwingOverride = null,
         int? betMultiplierOverride = null)
     {
+        return ResolveWithRandom(
+            gameState,
+            new UnityRandomSource(),
+            festivalSwingOverride,
+            betMultiplierOverride);
+    }
+
+    /// <summary>
+    /// Resolves a showdown with an injectable random source while keeping the legacy
+    /// <see cref="Resolve(GameState, int?, int?)"/> overload unambiguous for null arguments.
+    /// </summary>
+    public static ShowdownResult ResolveWithRandom(
+        GameState gameState,
+        IRandomSource randomSource,
+        int? festivalSwingOverride = null,
+        int? betMultiplierOverride = null)
+    {
+        if (gameState == null || gameState.PlayerStates == null)
+        {
+            return new ShowdownResult(
+                new List<ResolvedHand>(),
+                -1,
+                0,
+                new List<string>(),
+                new List<EffectStep>());
+        }
+
+        randomSource = randomSource ?? new UnityRandomSource();
         List<ResolvedHand> hands = new List<ResolvedHand>();
         for (int i = 0; i < gameState.PlayerStates.Count; i++)
         {
@@ -427,185 +323,74 @@ public static class SpecialCardResolver
             hands.Add(new ResolvedHand(i, baseHand));
         }
 
-        ResolutionContext context = new ResolutionContext(hands, festivalSwingOverride, betMultiplierOverride);
         List<PendingEffect> pendingEffects = CollectEffects(gameState);
+        var coreInput = new SpecialCardResolutionInput(
+            hands.Select(hand => (HandRole)(int)hand.BaseHand.Rank),
+            pendingEffects.Select((effect, index) => new SpecialCardEffectInput(
+                index,
+                effect.OwnerPlayerId,
+                (SpecialEffectKind)(int)effect.Definition.CardId,
+                effect.Definition.Priority,
+                effect.Definition.DisplayName)),
+            festivalSwingOverride,
+            betMultiplierOverride);
+        SpecialCardResolutionResult coreResult =
+            SpecialCardEffectPolicy.Resolve(coreInput, randomSource);
 
-        foreach (PendingEffect effect in pendingEffects)
+        foreach (SpecialResolvedHand coreHand in coreResult.Hands)
         {
-            if (context.AreRemainingEffectsSealed)
+            if (coreHand.PlayerId >= 0 && coreHand.PlayerId < hands.Count)
             {
-                string sealedMessage = $"Player {effect.OwnerPlayerId}: {effect.Definition.DisplayName} was sealed.";
-                context.Logs.Add(sealedMessage);
-                context.EffectSteps.Add(CreateEffectStep(effect, context, sealedMessage, wasSealed: true));
-                continue;
+                hands[coreHand.PlayerId].ApplyResolvedState(
+                    (int)coreHand.CurrentRole,
+                    coreHand.Score);
             }
-
-            int logStartIndex = context.Logs.Count;
-            ApplyEffect(effect, context);
-            string message = BuildEffectStepMessage(context.Logs, logStartIndex, effect.Definition.DisplayName);
-            context.EffectSteps.Add(CreateEffectStep(effect, context, message, wasSealed: false));
         }
+
+        List<EffectStep> effectSteps = coreResult.EffectSteps
+            .Select(step => CreateEffectStep(step, pendingEffects))
+            .Where(step => step != null)
+            .ToList();
 
         return new ShowdownResult(
             hands,
-            context.GetWinnerIndex(),
-            context.GetDamage(),
-            context.Logs,
-            context.EffectSteps);
-    }
-
-    private static void ApplyEffect(PendingEffect effect, ResolutionContext context)
-    {
-        ResolvedHand ownerHand = context.Hands[effect.OwnerPlayerId];
-
-        switch (effect.Definition.Id)
-        {
-            case SpecialCardId.Aiko:
-            {
-                context.ForceDraw = true;
-                context.Logs.Add($"Player {effect.OwnerPlayerId}: Aiko forced the round to a draw.");
-                break;
-            }
-            case SpecialCardId.Seal:
-            {
-                context.SealRemainingEffects();
-                context.Logs.Add($"Player {effect.OwnerPlayerId}: Seal disabled every later special card.");
-                break;
-            }
-            case SpecialCardId.Bonus5:
-            {
-                ownerHand.AddScore(5);
-                context.Logs.Add($"Player {effect.OwnerPlayerId}: Bonus+5 applied.");
-                break;
-            }
-            case SpecialCardId.Curse:
-            {
-                foreach (int opponentId in context.GetOpponentIds(effect.OwnerPlayerId))
-                {
-                    context.Hands[opponentId].AddScore(-10);
-                }
-                context.Logs.Add($"Player {effect.OwnerPlayerId}: Curse reduced the opponent by 10.");
-                break;
-            }
-            case SpecialCardId.Bonus10:
-            {
-                ownerHand.AddScore(10);
-                context.Logs.Add($"Player {effect.OwnerPlayerId}: Bonus+10 applied.");
-                break;
-            }
-            case SpecialCardId.Bonus15:
-            {
-                ownerHand.AddScore(15);
-                context.Logs.Add($"Player {effect.OwnerPlayerId}: Bonus+15 applied.");
-                break;
-            }
-            case SpecialCardId.Oni:
-            {
-                ownerHand.AddScore(30);
-                context.Logs.Add($"Player {effect.OwnerPlayerId}: Oni+30 applied.");
-                break;
-            }
-            case SpecialCardId.DoubleScore:
-            {
-                ownerHand.MultiplyScore(2);
-                context.Logs.Add($"Player {effect.OwnerPlayerId}: DoubleScore doubled the hand score.");
-                break;
-            }
-            case SpecialCardId.Bet:
-            {
-                int multiplier = context.BetMultiplierOverride ?? (UnityEngine.Random.Range(0, 2) == 0 ? 0 : 2);
-                ownerHand.MultiplyScore(multiplier);
-                context.Logs.Add($"Player {effect.OwnerPlayerId}: Bet multiplied the hand score by {multiplier}.");
-                break;
-            }
-            case SpecialCardId.Rain:
-            {
-                foreach (int opponentId in context.GetOpponentIds(effect.OwnerPlayerId))
-                {
-                    bool steppedDown = context.Hands[opponentId].StepDownRank(1);
-                    if (steppedDown)
-                    {
-                        context.Logs.Add($"Player {effect.OwnerPlayerId}: Rain lowered Player {opponentId}'s hand by one rank.");
-                    }
-                    else
-                    {
-                        context.Logs.Add($"Player {effect.OwnerPlayerId}: Rain had no lower rank for Player {opponentId}.");
-                    }
-                }
-                break;
-            }
-            case SpecialCardId.Festival:
-            {
-                int swing = context.FestivalSwingOverride ?? (UnityEngine.Random.Range(0, 2) == 0 ? -20 : 20);
-                ownerHand.AddScore(swing);
-                string direction = swing >= 0 ? "+20" : "-20";
-                context.Logs.Add($"Player {effect.OwnerPlayerId}: Festival changed the hand score by {direction}.");
-                break;
-            }
-            case SpecialCardId.Sunny:
-            {
-                bool steppedUp = ownerHand.StepUpRank(1);
-                if (steppedUp)
-                {
-                    context.Logs.Add($"Player {effect.OwnerPlayerId}: Sunny raised the hand by one rank.");
-                }
-                else
-                {
-                    context.Logs.Add($"Player {effect.OwnerPlayerId}: Sunny had no higher rank to raise.");
-                }
-                break;
-            }
-            case SpecialCardId.Swap:
-            {
-                int opponentId = context.GetOpponentIds(effect.OwnerPlayerId).FirstOrDefault();
-                if (opponentId != effect.OwnerPlayerId)
-                {
-                    ResolvedHand opponentHand = context.Hands[opponentId];
-                    HandSnapshot ownerSnapshot = ownerHand.CreateSnapshot();
-                    HandSnapshot opponentSnapshot = opponentHand.CreateSnapshot();
-                    ownerHand.ApplySnapshot(opponentSnapshot);
-                    opponentHand.ApplySnapshot(ownerSnapshot);
-                    context.Logs.Add($"Player {effect.OwnerPlayerId}: Swap exchanged both hand results.");
-                }
-                break;
-            }
-        }
+            coreResult.WinnerIndex,
+            coreResult.Damage,
+            coreResult.Logs,
+            effectSteps);
     }
 
     private static EffectStep CreateEffectStep(
-        PendingEffect effect,
-        ResolutionContext context,
-        string message,
-        bool wasSealed)
+        SpecialEffectStepResult step,
+        IReadOnlyList<PendingEffect> pendingEffects)
     {
-        ResolvedHand playerHand = GetHand(context.Hands, 0);
-        ResolvedHand cpuHand = GetHand(context.Hands, 1);
+        if (step == null || pendingEffects == null ||
+            step.SourceIndex < 0 || step.SourceIndex >= pendingEffects.Count)
+        {
+            return null;
+        }
+
+        PendingEffect effect = pendingEffects[step.SourceIndex];
+        SpecialResolvedHand playerHand = GetCoreHand(step.Hands, 0);
+        SpecialResolvedHand cpuHand = GetCoreHand(step.Hands, 1);
 
         return new EffectStep(
-            effect.OwnerPlayerId,
+            step.OwnerPlayerId,
             effect.Card,
-            effect.Definition.DisplayName,
-            message,
-            wasSealed,
-            playerHand != null ? playerHand.DisplayName : string.Empty,
-            cpuHand != null ? cpuHand.DisplayName : string.Empty,
-            playerHand != null ? playerHand.CurrentRank : HandRank.Miezu,
-            cpuHand != null ? cpuHand.CurrentRank : HandRank.Miezu,
+            step.EffectName,
+            step.Message,
+            step.WasSealed,
+            playerHand != null ? HandRoleRules.GetDisplayName(playerHand.CurrentRole) : string.Empty,
+            cpuHand != null ? HandRoleRules.GetDisplayName(cpuHand.CurrentRole) : string.Empty,
+            playerHand != null ? (HandRank)(int)playerHand.CurrentRole : HandRank.Miezu,
+            cpuHand != null ? (HandRank)(int)cpuHand.CurrentRole : HandRank.Miezu,
             playerHand != null ? playerHand.Score : 0,
             cpuHand != null ? cpuHand.Score : 0);
     }
 
-    private static string BuildEffectStepMessage(List<string> logs, int startIndex, string fallback)
-    {
-        if (logs == null || startIndex < 0 || startIndex >= logs.Count)
-        {
-            return fallback;
-        }
-
-        return string.Join("\n", logs.Skip(startIndex));
-    }
-
-    private static ResolvedHand GetHand(IReadOnlyList<ResolvedHand> hands, int playerId)
+    private static SpecialResolvedHand GetCoreHand(
+        IReadOnlyList<SpecialResolvedHand> hands,
+        int playerId)
     {
         if (hands == null || playerId < 0 || playerId >= hands.Count)
         {
@@ -647,7 +432,7 @@ public static class SpecialCardResolver
                     continue;
                 }
 
-                if (!DefinitionByAssetName.TryGetValue(card.CardData.name, out SpecialCardDefinition definition))
+                if (!SpecialCardCatalog.TryGet(card.CardData, out SpecialCardCatalog.Entry definition))
                 {
                     Debug.LogWarning($"Unknown special card: {card.CardData.name}");
                     continue;
@@ -664,23 +449,4 @@ public static class SpecialCardResolver
             .ToList();
     }
 
-    private static Dictionary<string, SpecialCardDefinition> BuildDefinitionMap()
-    {
-        Dictionary<string, SpecialCardDefinition> map = new Dictionary<string, SpecialCardDefinition>(StringComparer.Ordinal);
-
-        foreach (SpecialCardDefinition definition in Definitions)
-        {
-            foreach (string assetName in definition.AssetNames)
-            {
-                if (string.IsNullOrWhiteSpace(assetName))
-                {
-                    continue;
-                }
-
-                map[assetName] = definition;
-            }
-        }
-
-        return map;
-    }
 }

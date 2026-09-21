@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: sp_festival
   m_EditorClassIdentifier: 
   Image: {fileID: 21300000, guid: 65109f0ac3c999a4fbf6302c64258c58, type: 3}
-  BackImage: {fileID: 21300000, guid: 65e3e66536c08fb4284a331c59c9e0d6, type: 3}
+  BackImage: {fileID: 21300000, guid: 26c7f37dfc3f7f844bb116798103dc52, type: 3}
   number: 0
   suit: 0

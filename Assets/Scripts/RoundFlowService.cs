@@ -10,6 +10,13 @@ public sealed class RoundFlowService
     private readonly Func<float, IEnumerator> waitForUi;
     private readonly Func<bool> isGameOver;
 
+    /// <summary>
+    /// True when an in-progress player action was cancelled rather than completed.
+    /// The session flow uses this to avoid treating a disabled input component as
+    /// permission to continue into showdown.
+    /// </summary>
+    public bool WasCancelled { get; private set; }
+
     public RoundFlowService(
         GameState gameState,
         Cards allCards,
@@ -26,6 +33,12 @@ public sealed class RoundFlowService
 
     public IEnumerator InitializeRound()
     {
+        if (gameState == null || allCards == null || allCards.cardList == null)
+        {
+            Debug.LogError("RoundFlowService cannot initialize because its game state or card deck is missing.");
+            yield break;
+        }
+
         foreach (Card card in allCards.cardList)
         {
             gameState.AddCardToDeck(card);
@@ -54,6 +67,12 @@ public sealed class RoundFlowService
 
     public IEnumerator RunExchangeRound()
     {
+        if (gameState == null)
+        {
+            Debug.LogError("RoundFlowService cannot run because its game state is missing.");
+            yield break;
+        }
+
         for (int i = 0; i < gameState.maxHandTrashTurn; i++)
         {
             for (int j = 0; j < gameState.playerCount; j++)
@@ -63,19 +82,104 @@ public sealed class RoundFlowService
                     yield break;
                 }
 
-                Controller controller = controllers[gameState.CurrentPlayerIndex];
-                bool waiting = true;
+                Controller controller = GetCurrentController();
+                bool callbackInvoked = false;
                 ControllerResponse response = null;
 
-                yield return controller.Act(gameState, r =>
+                if (controller is PlayerController disabledPlayerController &&
+                    !disabledPlayerController.isActiveAndEnabled)
                 {
-                    response = r;
-                    waiting = false;
-                });
+                    WasCancelled = true;
+                    disabledPlayerController.CancelPendingInput();
+                    yield break;
+                }
 
-                while (waiting)
+                if (controller != null && controller.isActiveAndEnabled)
                 {
-                    yield return null;
+                    IEnumerator action = null;
+                    try
+                    {
+                        action = controller.Act(gameState, r =>
+                        {
+                            if (callbackInvoked)
+                            {
+                                Debug.LogWarning($"{controller.name} completed its action callback more than once.", controller);
+                                return;
+                            }
+
+                            response = r;
+                            callbackInvoked = true;
+                        });
+                    }
+                    catch (Exception exception)
+                    {
+                        Debug.LogException(exception, controller);
+                    }
+
+                    if (action != null)
+                    {
+                        while (!callbackInvoked)
+                        {
+                            if (IsGameOver())
+                            {
+                                DisposeControllerAction(action);
+                                CancelControllerInput(controller);
+                                yield break;
+                            }
+
+                            if (!controller.isActiveAndEnabled)
+                            {
+                                WasCancelled = controller is PlayerController;
+                                CancelControllerInput(controller);
+                                break;
+                            }
+
+                            bool hasNext;
+                            object current = null;
+                            try
+                            {
+                                hasNext = action.MoveNext();
+                                if (hasNext)
+                                {
+                                    current = action.Current;
+                                }
+                            }
+                            catch (Exception exception)
+                            {
+                                Debug.LogException(exception, controller);
+                                hasNext = false;
+                            }
+
+                            if (!hasNext)
+                            {
+                                break;
+                            }
+
+                            yield return current;
+                        }
+
+                        DisposeControllerAction(action);
+                    }
+                }
+
+                if (IsGameOver())
+                {
+                    CancelControllerInput(controller);
+                    yield break;
+                }
+
+                if (response != null && !response.actionCompleted)
+                {
+                    WasCancelled = true;
+                    CancelControllerInput(controller);
+                    yield break;
+                }
+
+                if (!callbackInvoked || response == null)
+                {
+                    string controllerName = controller != null ? controller.name : "<missing controller>";
+                    Debug.LogWarning($"{controllerName} returned no action result. Continuing with no discarded cards.");
+                    response = CreateEmptyResponse();
                 }
 
                 gameState.TrashCards(response.cardsTrash);
@@ -109,5 +213,41 @@ public sealed class RoundFlowService
     private bool IsGameOver()
     {
         return isGameOver != null && isGameOver();
+    }
+
+    private Controller GetCurrentController()
+    {
+        int index = gameState.CurrentPlayerIndex;
+        if (controllers == null || index < 0 || index >= controllers.Length)
+        {
+            return null;
+        }
+
+        return controllers[index];
+    }
+
+    private static void CancelControllerInput(Controller controller)
+    {
+        if (controller is PlayerController playerController)
+        {
+            playerController.CancelPendingInput();
+        }
+    }
+
+    private static void DisposeControllerAction(IEnumerator action)
+    {
+        if (action is IDisposable disposable)
+        {
+            disposable.Dispose();
+        }
+    }
+
+    private static ControllerResponse CreateEmptyResponse()
+    {
+        return new ControllerResponse
+        {
+            actionCompleted = true,
+            cardsTrash = new System.Collections.Generic.List<Card>()
+        };
     }
 }

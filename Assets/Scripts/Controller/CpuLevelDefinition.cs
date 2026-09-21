@@ -2,13 +2,13 @@ using static SpecialCardResolver;
 
 public enum CpuFixedCardCondition
 {
-    Always,
-    AtLeastIsso,
-    AtLeastNiso,
-    AtMostIsso,
-    AtMostNiso,
-    AtMostSanju,
-    NisoThroughSuzi
+    Always = 0,
+    AtLeastIsso = 1,
+    AtLeastNiso = 2,
+    AtMostIsso = 3,
+    AtMostNiso = 4,
+    AtMostSanju = 5,
+    NisoThroughSuzi = 6
 }
 
 public sealed class CpuLevelDefinition

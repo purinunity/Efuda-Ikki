@@ -1,13 +1,38 @@
 using System;
+using EfudaIkki.Core;
 using UnityEngine;
 
 public static class GameProgressStore
 {
     private const int CurrentSchemaVersion = 2;
     private const string ProgressDataKey = "EfudaIkki.Progress";
+    private const string BackupDataKey = "EfudaIkki.Progress.Backup";
 
     public const string IkkiClearedKey = "EfudaIkki.IkkiCleared";
     public const string BestKachinukiStreakKey = "EfudaIkki.BestKachinukiStreak";
+
+    private static IProgressRepository repository = new PlayerPrefsProgressRepository();
+    private static bool pendingFlush;
+
+    public static IProgressRepository Repository
+    {
+        get => repository;
+        set
+        {
+            if (value == null) throw new ArgumentNullException(nameof(value));
+            if (ReferenceEquals(repository, value)) return;
+            repository = value;
+            pendingFlush = false;
+        }
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void AutoLoadAtStartup()
+    {
+        // Load also migrates/repairs old data and immediately persists the
+        // normalized result, so gameplay code never has to call Save itself.
+        Load();
+    }
 
     [Serializable]
     public sealed class ProgressData
@@ -20,6 +45,17 @@ public static class GameProgressStore
     }
 
     public static bool IsBattleGroundUnlocked => Load().ikkiCleared;
+
+    /// <summary>
+    /// Returns whether progress has been persisted in the current format or in
+    /// one of the legacy PlayerPrefs keys. Calling this property never creates
+    /// save data.
+    /// </summary>
+    public static bool HasSaveData =>
+        !string.IsNullOrWhiteSpace(repository.GetString(ProgressDataKey, string.Empty)) ||
+        !string.IsNullOrWhiteSpace(repository.GetString(BackupDataKey, string.Empty)) ||
+        repository.GetInt(IkkiClearedKey, 0) != 0 ||
+        repository.GetInt(BestKachinukiStreakKey, 0) != 0;
 
     public static bool IsKachinukiUnlocked => IsBattleGroundUnlocked;
 
@@ -60,8 +96,13 @@ public static class GameProgressStore
 
     public static int RecordIkkiVictory(int defeatedLevel)
     {
+        if (defeatedLevel < CpuLevelCatalog.MinLevel || defeatedLevel > CpuLevelCatalog.MaxLevel)
+        {
+            throw new ArgumentOutOfRangeException(nameof(defeatedLevel));
+        }
+
         int clampedLevel = CpuLevelCatalog.ClampLevel(defeatedLevel);
-        ProgressData data = Load();
+        ProgressData data = LoadForUpdate();
         data.unlockedSpecialCardCount = Mathf.Max(
             data.unlockedSpecialCardCount,
             SpecialCardResolver.GetUnlockedCardCountAfterIkkiVictory(clampedLevel));
@@ -84,7 +125,7 @@ public static class GameProgressStore
 
     public static void MarkIkkiCleared()
     {
-        ProgressData data = Load();
+        ProgressData data = LoadForUpdate();
         data.highestUnlockedIkkiLevel = CpuLevelCatalog.MaxLevel;
         data.ikkiCleared = true;
         Save(data);
@@ -93,7 +134,7 @@ public static class GameProgressStore
     public static int RecordBattleGroundStreak(int winStreak)
     {
         int clampedStreak = Mathf.Max(0, winStreak);
-        ProgressData data = Load();
+        ProgressData data = LoadForUpdate();
         data.bestKachinukiStreak = Mathf.Max(data.bestKachinukiStreak, clampedStreak);
         Save(data);
         return data.bestKachinukiStreak;
@@ -106,33 +147,90 @@ public static class GameProgressStore
 
     public static ProgressData Load()
     {
-        ProgressData data = null;
-        string json = PlayerPrefs.GetString(ProgressDataKey, string.Empty);
+        return LoadInternal(autoRepair: true);
+    }
 
-        if (!string.IsNullOrWhiteSpace(json))
+    private static ProgressData LoadForUpdate()
+    {
+        // The caller will persist the updated value, so avoid writing the
+        // default/migrated value immediately before the actual update.
+        return LoadInternal(autoRepair: false);
+    }
+
+    private static ProgressData LoadInternal(bool autoRepair)
+    {
+        string json = repository.GetString(ProgressDataKey, string.Empty);
+        if (!TryReadData(json, out ProgressData data))
         {
-            try
+            if (!string.IsNullOrWhiteSpace(json))
             {
-                data = JsonUtility.FromJson<ProgressData>(json);
+                Debug.LogWarning("Failed to load progress data. Recovering from backup or legacy data.");
             }
-            catch (ArgumentException exception)
+            if (!TryReadData(repository.GetString(BackupDataKey, string.Empty), out data))
             {
-                Debug.LogWarning($"Failed to load progress data. Legacy data will be used. {exception.Message}");
+                data = LoadLegacyData();
             }
         }
 
-        if (data == null)
-        {
-            data = LoadLegacyData();
-        }
-
+        // An older build may read the known fields of a newer save, but must
+        // never silently downgrade it or discard fields it does not understand.
+        int sourceVersion = data.schemaVersion;
         Normalize(data);
+        if (sourceVersion > CurrentSchemaVersion)
+        {
+            data.schemaVersion = sourceVersion;
+            return data;
+        }
+        if (autoRepair)
+        {
+            Save(data);
+        }
+
+        return data;
+    }
+
+    private static bool TryReadData(string json, out ProgressData data)
+    {
+        data = null;
+        if (string.IsNullOrWhiteSpace(json)) return false;
+
+        string trimmed = json.Trim();
+        if (!trimmed.StartsWith("{") || !trimmed.EndsWith("}")) return false;
+
+        try
+        {
+            // Explicit defaults also support old saves without the card-count
+            // field. The sentinel rejects empty/unrelated JSON objects.
+            var candidate = new ProgressData
+            {
+                schemaVersion = 0,
+                highestUnlockedIkkiLevel = int.MinValue
+            };
+            JsonUtility.FromJsonOverwrite(trimmed, candidate);
+            if (candidate.highestUnlockedIkkiLevel == int.MinValue) return false;
+            data = candidate;
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Restores the initial progression and persists it immediately.
+    /// Intended for an explicit "delete save data" action and automated tests.
+    /// </summary>
+    public static ProgressData ResetProgress()
+    {
+        ProgressData data = new ProgressData();
+        Save(data);
         return data;
     }
 
     private static ProgressData LoadLegacyData()
     {
-        bool ikkiCleared = PlayerPrefs.GetInt(IkkiClearedKey, 0) == 1;
+        bool ikkiCleared = repository.GetInt(IkkiClearedKey, 0) == 1;
         return new ProgressData
         {
             highestUnlockedIkkiLevel = ikkiCleared
@@ -142,19 +240,38 @@ public static class GameProgressStore
                 ? SpecialCardResolver.SpecialCardCount
                 : SpecialCardResolver.InitialUnlockedSpecialCardCount,
             ikkiCleared = ikkiCleared,
-            bestKachinukiStreak = PlayerPrefs.GetInt(BestKachinukiStreakKey, 0)
+            bestKachinukiStreak = repository.GetInt(BestKachinukiStreakKey, 0)
         };
     }
 
     private static void Save(ProgressData data)
     {
+        if (data.schemaVersion > CurrentSchemaVersion)
+        {
+            throw new InvalidOperationException("Progress was saved by a newer game version and cannot be overwritten.");
+        }
+
         Normalize(data);
-        PlayerPrefs.SetString(ProgressDataKey, JsonUtility.ToJson(data));
+        string json = JsonUtility.ToJson(data);
+        if (!pendingFlush && repository.GetString(ProgressDataKey, string.Empty) == json &&
+            repository.GetString(BackupDataKey, string.Empty) == json &&
+            repository.GetInt(IkkiClearedKey, -1) == (data.ikkiCleared ? 1 : 0) &&
+            repository.GetInt(BestKachinukiStreakKey, -1) == data.bestKachinukiStreak)
+        {
+            return;
+        }
+
+        pendingFlush = true;
+        repository.SetString(ProgressDataKey, json);
+        // Keep a recovery copy of the latest committed progression, including
+        // resets, so recovery cannot resurrect progress the player deleted.
+        repository.SetString(BackupDataKey, json);
 
         // Keep the original keys synchronized for compatibility with existing builds.
-        PlayerPrefs.SetInt(IkkiClearedKey, data.ikkiCleared ? 1 : 0);
-        PlayerPrefs.SetInt(BestKachinukiStreakKey, data.bestKachinukiStreak);
-        PlayerPrefs.Save();
+        repository.SetInt(IkkiClearedKey, data.ikkiCleared ? 1 : 0);
+        repository.SetInt(BestKachinukiStreakKey, data.bestKachinukiStreak);
+        repository.Save();
+        pendingFlush = false;
     }
 
     private static void Normalize(ProgressData data)
@@ -179,4 +296,5 @@ public static class GameProgressStore
             data.unlockedSpecialCardCount = SpecialCardResolver.SpecialCardCount;
         }
     }
+
 }

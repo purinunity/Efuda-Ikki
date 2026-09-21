@@ -1,9 +1,51 @@
 ﻿using UnityEngine;
+using EfudaIkki.Core;
 using UnityEngine.UI;
+using UnityEngine.Events;
 using TMPro;
+using System;
+using System.Collections.Generic;
 
 public class StageSelectPanel : MonoBehaviour
 {
+    [Serializable]
+    private sealed class CharacterBinding
+    {
+        [SerializeField] private string characterId;
+        [SerializeField] private Button button;
+        [SerializeField] private Sprite normal;
+        [SerializeField] private Sprite normalHover;
+        [SerializeField] private Sprite locked;
+        [SerializeField] private Sprite cleared;
+        [SerializeField] private Sprite clearedHover;
+
+        public string CharacterId => characterId;
+        public Button Button => button;
+        public Sprite Normal => normal;
+        public Sprite NormalHover => normalHover;
+        public Sprite Locked => locked;
+        public Sprite Cleared => cleared;
+        public Sprite ClearedHover => clearedHover;
+
+        public CharacterBinding(
+            string characterId,
+            Button button,
+            Sprite normal,
+            Sprite normalHover,
+            Sprite locked,
+            Sprite cleared,
+            Sprite clearedHover)
+        {
+            this.characterId = characterId;
+            this.button = button;
+            this.normal = normal;
+            this.normalHover = normalHover;
+            this.locked = locked;
+            this.cleared = cleared;
+            this.clearedHover = clearedHover;
+        }
+    }
+
     private static readonly Vector2[] CharacterFramePositions =
     {
         new Vector2(-540f, -360f),
@@ -32,16 +74,25 @@ public class StageSelectPanel : MonoBehaviour
     [SerializeField] private Sprite[] hoverCharacterSprites = new Sprite[9];
     [SerializeField] private Sprite[] clearedCharacterSprites = new Sprite[9];
     [SerializeField] private Sprite[] clearedHoverCharacterSprites = new Sprite[9];
+    [Tooltip("Preferred ID-based bindings. Existing scenes continue to use the legacy arrays as a fallback.")]
+    [SerializeField] private CharacterBinding[] characterBindings = Array.Empty<CharacterBinding>();
     [SerializeField] private Vector2 backButtonTopLeftOffset = new Vector2(48f, -40f);
     [SerializeField] private Vector2 backButtonSize = new Vector2(200f, 80f);
 
     private Sprite[] unlockedCharacterSprites;
+    private CharacterBinding[] activeCharacterBindings;
     private ShowdownCutInAssetSet sharedAssetSet;
+    private readonly Dictionary<Button, UnityAction> characterClickHandlers =
+        new Dictionary<Button, UnityAction>();
+    private UnityAction backClickHandler;
+    private Button subscribedBackButton;
+    private bool started;
 
     private void Awake()
     {
         sharedAssetSet = Resources.Load<ShowdownCutInAssetSet>("ShowdownCutInAssets");
         CacheUnlockedCharacterSprites();
+        BuildActiveCharacterBindings();
     }
 
     private void Start()
@@ -51,51 +102,134 @@ public class StageSelectPanel : MonoBehaviour
         HideLegacyTextLabels();
         RefreshProgression();
 
-        // 9つのステージボタンをセットアップ
-        for (int i = 0; i < 9; i++)
-        {
-            int stageNumber = i; // クロージャ用
-            if (stageButtons[i] != null)
-            {
-                stageButtons[i].onClick.AddListener(() => SelectStage(stageNumber));
-            }
-        }
+        started = true;
+        RegisterButtonListeners();
+    }
 
-        // 戻るボタン
-        if (backButton != null)
+    private void OnEnable()
+    {
+        if (started)
         {
-            backButton.onClick.AddListener(() => titleUIManager.BackFromStageSelect());
+            RegisterButtonListeners();
         }
     }
 
-    private void SelectStage(int stageNumber)
+    private void OnDisable()
     {
-        int level = stageNumber + 1;
+        UnregisterButtonListeners();
+    }
+
+    private void OnDestroy()
+    {
+        UnregisterButtonListeners();
+    }
+
+    private void SelectCharacter(string characterId)
+    {
+        if (!StageCharacterCatalog.TryGet(characterId, out StageCharacterCatalog.Entry character))
+        {
+            Debug.LogWarning($"Unknown stage character ID: {characterId}");
+            return;
+        }
+
+        int level = character.Level;
         if (!GameProgressStore.IsIkkiLevelUnlocked(level))
         {
             return;
         }
 
-        titleUIManager.SelectStage(stageNumber);
+        if (titleUIManager == null)
+        {
+            Debug.LogWarning("Stage character cannot be selected because TitleUIManager is not assigned.");
+            return;
+        }
+
+        titleUIManager.SelectStage(level - 1);
+    }
+
+    private void RegisterButtonListeners()
+    {
+        UnregisterButtonListeners();
+        if (activeCharacterBindings != null)
+        {
+            foreach (CharacterBinding binding in activeCharacterBindings)
+            {
+                if (binding?.Button == null ||
+                    !StageCharacterCatalog.TryGet(binding.CharacterId, out _))
+                {
+                    continue;
+                }
+
+                if (characterClickHandlers.ContainsKey(binding.Button))
+                {
+                    Debug.LogWarning(
+                        $"Stage button is bound to more than one character; ignoring duplicate {binding.CharacterId}.",
+                        this);
+                    continue;
+                }
+
+                string characterId = binding.CharacterId;
+                UnityAction action = () => SelectCharacter(characterId);
+                characterClickHandlers.Add(binding.Button, action);
+                binding.Button.onClick.AddListener(action);
+            }
+        }
+
+        if (backButton != null)
+        {
+            backClickHandler = HandleBackClicked;
+            subscribedBackButton = backButton;
+            backButton.onClick.AddListener(backClickHandler);
+        }
+    }
+
+    private void UnregisterButtonListeners()
+    {
+        foreach (KeyValuePair<Button, UnityAction> pair in characterClickHandlers)
+        {
+            if (pair.Key != null)
+            {
+                pair.Key.onClick.RemoveListener(pair.Value);
+            }
+        }
+
+        characterClickHandlers.Clear();
+        if (subscribedBackButton != null && backClickHandler != null)
+        {
+            subscribedBackButton.onClick.RemoveListener(backClickHandler);
+        }
+
+        backClickHandler = null;
+        subscribedBackButton = null;
+    }
+
+    private void HandleBackClicked()
+    {
+        if (titleUIManager != null)
+        {
+            titleUIManager.BackFromStageSelect();
+        }
     }
 
     public void RefreshProgression()
     {
-        if (stageButtons == null)
+        if (activeCharacterBindings == null)
         {
-            return;
+            CacheUnlockedCharacterSprites();
+            BuildActiveCharacterBindings();
         }
 
         int highestUnlockedLevel = GameProgressStore.HighestUnlockedIkkiLevel;
-        for (int i = 0; i < stageButtons.Length; i++)
+        foreach (CharacterBinding binding in activeCharacterBindings)
         {
-            Button button = stageButtons[i];
-            if (button == null)
+            if (binding?.Button == null ||
+                !StageCharacterCatalog.TryGet(binding.CharacterId, out StageCharacterCatalog.Entry character))
             {
                 continue;
             }
 
-            int level = i + 1;
+            Button button = binding.Button;
+            int level = character.Level;
             bool unlocked = level >= CpuLevelCatalog.MinLevel &&
                             level <= CpuLevelCatalog.MaxLevel &&
                             level <= highestUnlockedLevel;
@@ -110,15 +244,9 @@ public class StageSelectPanel : MonoBehaviour
 
             if (image != null)
             {
-                Sprite lockedSprite =
-                    lockedCharacterSprites != null && i < lockedCharacterSprites.Length
-                        ? lockedCharacterSprites[i]
-                        : null;
-                Sprite unlockedSprite =
-                    unlockedCharacterSprites != null && i < unlockedCharacterSprites.Length
-                        ? unlockedCharacterSprites[i]
-                        : image.sprite;
-                Sprite clearedSprite = GetClearedSprite(i, false);
+                Sprite lockedSprite = binding.Locked;
+                Sprite unlockedSprite = binding.Normal != null ? binding.Normal : image.sprite;
+                Sprite clearedSprite = GetClearedSprite(binding, false);
 
                 image.sprite = cleared && clearedSprite != null
                     ? clearedSprite
@@ -130,7 +258,7 @@ public class StageSelectPanel : MonoBehaviour
                     : Color.black;
             }
 
-            ConfigureHoverSprite(button, i, cleared);
+            ConfigureHoverSprite(binding, cleared);
 
             ColorBlock colors = button.colors;
             colors.disabledColor = Color.white;
@@ -140,6 +268,8 @@ public class StageSelectPanel : MonoBehaviour
 
     private void OnValidate()
     {
+        CacheUnlockedCharacterSprites();
+        BuildActiveCharacterBindings();
         ApplyCharacterFrameLayout();
         ApplyBackButtonLayout();
         HideLegacyTextLabels();
@@ -213,7 +343,14 @@ public class StageSelectPanel : MonoBehaviour
                 button.targetGraphic = image;
             }
 
-            ConfigureHoverSprite(button, i, false);
+            if (activeCharacterBindings != null && i < activeCharacterBindings.Length)
+            {
+                ConfigureHoverSprite(activeCharacterBindings[i], false);
+            }
+            else
+            {
+                ConfigureHoverSprite(button, i, false);
+            }
             SetTextLabelsActive(button.transform, !hideLegacyTextLabels);
         }
     }
@@ -245,6 +382,31 @@ public class StageSelectPanel : MonoBehaviour
         button.transition = Selectable.Transition.SpriteSwap;
     }
 
+    private void ConfigureHoverSprite(CharacterBinding binding, bool cleared)
+    {
+        if (binding?.Button == null)
+        {
+            return;
+        }
+
+        Sprite hoverSprite = cleared ? GetClearedSprite(binding, true) : null;
+        if (hoverSprite == null)
+        {
+            hoverSprite = binding.NormalHover;
+        }
+
+        if (hoverSprite == null)
+        {
+            return;
+        }
+
+        SpriteState spriteState = binding.Button.spriteState;
+        spriteState.highlightedSprite = hoverSprite;
+        spriteState.pressedSprite = hoverSprite;
+        binding.Button.spriteState = spriteState;
+        binding.Button.transition = Selectable.Transition.SpriteSwap;
+    }
+
     private static Sprite GetSprite(Sprite[] sprites, int index)
     {
         return sprites != null && index >= 0 && index < sprites.Length
@@ -274,6 +436,67 @@ public class StageSelectPanel : MonoBehaviour
                 ? sharedAssetSet.clearedHoverCharacterSprites
                 : sharedAssetSet.clearedCharacterSprites;
         return GetSprite(sharedSprites, index);
+    }
+
+    private Sprite GetClearedSprite(CharacterBinding binding, bool mouseOver)
+    {
+        Sprite sprite = mouseOver ? binding.ClearedHover : binding.Cleared;
+        if (sprite != null)
+        {
+            return sprite;
+        }
+
+        if (!StageCharacterCatalog.TryGet(binding.CharacterId, out StageCharacterCatalog.Entry character))
+        {
+            return null;
+        }
+
+        return GetClearedSprite(character.Level - 1, mouseOver);
+    }
+
+    private void BuildActiveCharacterBindings()
+    {
+        activeCharacterBindings = new CharacterBinding[StageCharacterCatalog.Entries.Count];
+        foreach (StageCharacterCatalog.Entry character in StageCharacterCatalog.Entries)
+        {
+            int index = character.Level - 1;
+            CharacterBinding configured = FindConfiguredBinding(character.Id);
+            Button button = configured?.Button ?? GetButton(index);
+
+            activeCharacterBindings[index] = new CharacterBinding(
+                character.Id,
+                button,
+                configured?.Normal ?? GetSprite(unlockedCharacterSprites, index),
+                configured?.NormalHover ?? GetSprite(hoverCharacterSprites, index),
+                configured?.Locked ?? GetSprite(lockedCharacterSprites, index),
+                configured?.Cleared ?? GetSprite(clearedCharacterSprites, index),
+                configured?.ClearedHover ?? GetSprite(clearedHoverCharacterSprites, index));
+        }
+    }
+
+    private CharacterBinding FindConfiguredBinding(string characterId)
+    {
+        if (characterBindings == null)
+        {
+            return null;
+        }
+
+        foreach (CharacterBinding binding in characterBindings)
+        {
+            if (binding != null && string.Equals(binding.CharacterId, characterId, StringComparison.Ordinal))
+            {
+                return binding;
+            }
+        }
+
+        return null;
+    }
+
+    private Button GetButton(int index)
+    {
+        return stageButtons != null && index >= 0 && index < stageButtons.Length
+            ? stageButtons[index]
+            : null;
     }
 
     private void CacheUnlockedCharacterSprites()

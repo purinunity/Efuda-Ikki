@@ -18,10 +18,39 @@ public class SpecialCardArea : CardArea
     [SerializeField] private Color normalSpecialCardTint = Color.white;
 
     private readonly Dictionary<Card, UnityAction> clickHandlers = new Dictionary<Card, UnityAction>();
+    private readonly Dictionary<Card, Button> clickHandlerButtons = new Dictionary<Card, Button>();
     private readonly HashSet<Card> usedCards = new HashSet<Card>();
     private Card selectedTopCard;
     private Coroutine topSwitchCoroutine;
     private bool inputEnabled = true;
+
+    private void OnEnable()
+    {
+        if (cardsInArea == null)
+        {
+            return;
+        }
+
+        foreach (Card card in cardsInArea)
+        {
+            if (card != null)
+            {
+                SetupCardClickHandler(card);
+            }
+        }
+    }
+
+    private void OnDisable()
+    {
+        StopTopSwitchAndRecoverLayout();
+        UnsubscribeAllCardClickHandlers();
+    }
+
+    private void OnDestroy()
+    {
+        StopTopSwitchAndRecoverLayout();
+        UnsubscribeAllCardClickHandlers();
+    }
 
     public void SetUsedCards(IEnumerable<Card> cards)
     {
@@ -115,6 +144,7 @@ public class SpecialCardArea : CardArea
         {
             if (oldCard != null && !nextCards.Contains(oldCard))
             {
+                RemoveCardClickHandler(oldCard);
                 oldCard.IsSelected = false;
                 oldCard.UseSelectedYOffset = true;
             }
@@ -198,18 +228,68 @@ public class SpecialCardArea : CardArea
 
     private void SetupCardClickHandler(Card card)
     {
+        if (!isActiveAndEnabled)
+        {
+            return;
+        }
+
         Button cardButton = card.GetComponent<Button>();
         if (cardButton == null) return;
 
         if (clickHandlers.TryGetValue(card, out var oldHandler))
         {
-            cardButton.onClick.RemoveListener(oldHandler);
+            clickHandlerButtons.TryGetValue(card, out Button oldButton);
+            if (oldButton == cardButton)
+            {
+                ApplyCardUsageState(card);
+                return;
+            }
+
+            oldButton?.onClick.RemoveListener(oldHandler);
         }
 
         UnityAction newHandler = () => SwitchTopCard(card);
         clickHandlers[card] = newHandler;
+        clickHandlerButtons[card] = cardButton;
         cardButton.onClick.AddListener(newHandler);
         ApplyCardUsageState(card);
+    }
+
+    private void RemoveCardClickHandler(Card card)
+    {
+        if (card == null || !clickHandlers.TryGetValue(card, out UnityAction handler))
+        {
+            return;
+        }
+
+        if (clickHandlerButtons.TryGetValue(card, out Button button))
+        {
+            button?.onClick.RemoveListener(handler);
+        }
+
+        clickHandlers.Remove(card);
+        clickHandlerButtons.Remove(card);
+    }
+
+    private void UnsubscribeAllCardClickHandlers()
+    {
+        var cards = new List<Card>(clickHandlers.Keys);
+        foreach (Card card in cards)
+        {
+            RemoveCardClickHandler(card);
+        }
+    }
+
+    private void StopTopSwitchAndRecoverLayout()
+    {
+        if (topSwitchCoroutine != null)
+        {
+            StopCoroutine(topSwitchCoroutine);
+            topSwitchCoroutine = null;
+        }
+
+        ApplyStackTargetsAndSiblingOrder();
+        SnapStackToTargets();
     }
 
     private void SwitchTopCard(Card selectedCard)

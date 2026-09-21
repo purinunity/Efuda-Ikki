@@ -17,8 +17,14 @@ public class Cards : MonoBehaviour
     // カードリストの初期化処理
     public void Initialize()
     {
+        if (cardList == null)
+        {
+            cardList = new List<Card>();
+        }
+
         foreach (var card in cardList)
         {
+            if (card == null) continue;
             card.gameObject.transform.SetParent(this.transform); // 親をこの Cards オブジェクトに設定
             card.Initialize(selectedYOffset); // Card に Initialize メソッドが存在する前提で呼び出す
         }
@@ -34,11 +40,10 @@ public class Cards : MonoBehaviour
         {
             Card card = Instantiate(cardPrefab, this.transform);
             card.SetCardData(cardData);
-            card.Initialize();
+            card.Initialize(selectedYOffset);
             cardList.Add(card);
         }
         Debug.Log($"Cards initialized. Count: {cardList.Count}");
-        Initialize();
     }
 
     // 指定したカードデータに対応するCardオブジェクトを取得

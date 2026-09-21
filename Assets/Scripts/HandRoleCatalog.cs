@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using EfudaIkki.Core;
 using static HandEvaluator;
 
 public sealed class HandRoleDefinition
@@ -19,20 +20,20 @@ public sealed class HandRoleDefinition
 
 public static class HandRoleCatalog
 {
-    // 役の強さ順に並べる。点数調整はこの Score だけを変更する。
+    // Public ordering is retained for serialized/UI compatibility; values come from Core.
     private static readonly HandRoleDefinition[] RolesInRankOrder =
     {
-        new HandRoleDefinition(HandRank.Miezu, "不見", 0),
-        new HandRoleDefinition(HandRank.Isso, "一双", 5),
-        new HandRoleDefinition(HandRank.Niso, "二双", 10),
-        new HandRoleDefinition(HandRank.Sanju, "三珠", 20),
-        new HandRoleDefinition(HandRank.Hikari, "光", 30),
-        new HandRoleDefinition(HandRank.Suzi, "筋", 35),
-        new HandRoleDefinition(HandRank.Yonju, "四珠", 40),
-        new HandRoleDefinition(HandRank.Tenshu, "天守", 45),
-        new HandRoleDefinition(HandRank.Nanahikari, "七光", 60),
-        new HandRoleDefinition(HandRank.Nanasuzi, "七筋", 70),
-        new HandRoleDefinition(HandRank.Tenshukaku, "天守閣", 90)
+        Create(HandRank.Miezu),
+        Create(HandRank.Isso),
+        Create(HandRank.Niso),
+        Create(HandRank.Sanju),
+        Create(HandRank.Hikari),
+        Create(HandRank.Suzi),
+        Create(HandRank.Yonju),
+        Create(HandRank.Tenshu),
+        Create(HandRank.Nanahikari),
+        Create(HandRank.Nanasuzi),
+        Create(HandRank.Tenshukaku)
     };
 
     private static readonly Dictionary<HandRank, int> IndexByRank = BuildIndexByRank();
@@ -113,6 +114,15 @@ public static class HandRoleCatalog
         }
 
         return map;
+    }
+
+    private static HandRoleDefinition Create(HandRank rank)
+    {
+        HandRole coreRole = (HandRole)(int)rank;
+        return new HandRoleDefinition(
+            rank,
+            HandRoleRules.GetDisplayName(coreRole),
+            HandRoleRules.GetScore(coreRole));
     }
 
     private static Dictionary<string, int> BuildIndexByDisplayName()

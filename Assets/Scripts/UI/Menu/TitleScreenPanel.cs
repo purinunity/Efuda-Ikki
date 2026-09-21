@@ -5,12 +5,43 @@ public class TitleScreenPanel : MonoBehaviour
 {
     public Button titleButton;
     public TitleUIManager titleUIManager;
+    private Button subscribedTitleButton;
 
     private void Start()
     {
-        if (titleButton != null)
-        {
-            titleButton.onClick.AddListener(() => titleUIManager.ShowMainMenu());
-        }
+        WireButtonListener();
+    }
+
+    private void OnEnable()
+    {
+        WireButtonListener();
+    }
+
+    private void OnDisable()
+    {
+        UnwireButtonListener();
+    }
+
+    private void OnDestroy()
+    {
+        UnwireButtonListener();
+    }
+
+    private void WireButtonListener()
+    {
+        UnwireButtonListener();
+        subscribedTitleButton = titleButton;
+        subscribedTitleButton?.onClick.AddListener(HandleTitleClicked);
+    }
+
+    private void UnwireButtonListener()
+    {
+        subscribedTitleButton?.onClick.RemoveListener(HandleTitleClicked);
+        subscribedTitleButton = null;
+    }
+
+    private void HandleTitleClicked()
+    {
+        titleUIManager?.ShowMainMenu();
     }
 }

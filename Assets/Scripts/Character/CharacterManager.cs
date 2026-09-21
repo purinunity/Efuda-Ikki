@@ -1,5 +1,8 @@
+using System;
+using EfudaIkki.Core;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Serialization;
 
 public class CharacterManager : MonoBehaviour
 {
@@ -11,13 +14,27 @@ public class CharacterManager : MonoBehaviour
 
     public Sprite PlayerSprite;
     public Sprite[] CPUSprite;
-    public int CPUNuber;
+    [FormerlySerializedAs("CPUNuber")]
+    [SerializeField] private int cpuNumber;
+
+    public int CpuNumber
+    {
+        get => cpuNumber;
+        set => cpuNumber = value;
+    }
+
+    [Obsolete("Use CpuNumber instead.")]
+    public int CPUNuber
+    {
+        get => CpuNumber;
+        set => CpuNumber = value;
+    }
 
     void Awake()
     {
         ResolveImages();
         ApplyPlayerSprite();
-        ApplyCpuSprite(CPUNuber);
+        ApplyCpuSprite(CpuNumber);
     }
 
     private void ResolveImages()
@@ -57,8 +74,8 @@ public class CharacterManager : MonoBehaviour
             return;
         }
 
-        CPUNuber = Mathf.Clamp(cpuCharNum, 0, CPUSprite.Length - 1);
-        cpuImage.sprite = CPUSprite[CPUNuber];
+        CpuNumber = Mathf.Clamp(cpuCharNum, 0, CPUSprite.Length - 1);
+        cpuImage.sprite = CPUSprite[CpuNumber];
         cpuImage.preserveAspect = true;
     }
 
@@ -67,6 +84,24 @@ public class CharacterManager : MonoBehaviour
         ResolveImages();
         ApplyPlayerSprite();
         ApplyCpuSprite(cpuCharNum);
+    }
+
+    public bool SetCPUCharacter(string characterId)
+    {
+        if (!StageCharacterCatalog.TryGet(characterId, out StageCharacterCatalog.Entry character))
+        {
+            Debug.LogWarning($"Unknown CPU character ID: {characterId}");
+            return false;
+        }
+
+        SetCPUImage(character.Level - 1);
+        return true;
+    }
+
+    public string GetCpuCharacterId()
+    {
+        StageCharacterCatalog.Entry character = StageCharacterCatalog.GetByLevel(CpuNumber + 1);
+        return character?.Id;
     }
 
     public Sprite GetPlayerSprite()
@@ -90,7 +125,7 @@ public class CharacterManager : MonoBehaviour
 
         if (CPUSprite != null && CPUSprite.Length > 0)
         {
-            int index = Mathf.Clamp(CPUNuber, 0, CPUSprite.Length - 1);
+            int index = Mathf.Clamp(CpuNumber, 0, CPUSprite.Length - 1);
             return CPUSprite[index];
         }
 

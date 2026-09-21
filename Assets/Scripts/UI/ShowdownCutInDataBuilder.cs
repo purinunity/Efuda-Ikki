@@ -17,6 +17,8 @@ public sealed class ShowdownCutInDataBuilder
     {
         SpecialCardResolver.ResolvedHand playerHand = FindResolvedHand(showdownResult, 0);
         SpecialCardResolver.ResolvedHand cpuHand = FindResolvedHand(showdownResult, 1);
+        List<Sprite> playerCards = BuildShowdownCardSprites(0);
+        List<Sprite> cpuCards = BuildShowdownCardSprites(1);
         int playerLifeBefore = GetLifePoints(0);
         int cpuLifeBefore = GetLifePoints(1);
         int playerLifeAfter = playerLifeBefore;
@@ -49,10 +51,10 @@ public sealed class ShowdownCutInDataBuilder
             GetFinalRoleRank(cpuHand),
             GetFinalScore(playerHand),
             GetFinalScore(cpuHand),
-            BuildShowdownCardSprites(0),
-            BuildShowdownCardSprites(1),
-            BuildRoleHighlightFlags(0, GetBaseRoleRank(playerHand)),
-            BuildRoleHighlightFlags(1, GetBaseRoleRank(cpuHand)),
+            playerCards,
+            cpuCards,
+            BuildRoleHighlightFlags(playerCards.Count, playerHand?.BaseHand),
+            BuildRoleHighlightFlags(cpuCards.Count, cpuHand?.BaseHand),
             GetSelectedSpecialCardSprite(0),
             GetSelectedSpecialCardSprite(1),
             BuildEffectStepData(showdownResult),
@@ -135,200 +137,19 @@ public sealed class ShowdownCutInDataBuilder
         sprites.Add(card != null && card.CardData != null ? card.CardData.Image : null);
     }
 
-    private List<bool> BuildRoleHighlightFlags(int playerId, HandRank roleRank)
+    private static List<bool> BuildRoleHighlightFlags(
+        int cardCount,
+        HandInfo baseHand)
     {
-        List<Card> cards = BuildShowdownCards(playerId);
-        HashSet<Card> relatedCards = FindRoleRelatedCards(cards, roleRank);
-        List<bool> highlights = new List<bool>();
-
-        foreach (Card card in cards)
+        var contributingIndexes = new HashSet<int>(
+            baseHand?.ContributingCardIndexes ?? new int[0]);
+        var highlights = new List<bool>(Mathf.Max(0, cardCount));
+        for (int index = 0; index < cardCount; index++)
         {
-            highlights.Add(card != null && relatedCards.Contains(card));
+            highlights.Add(contributingIndexes.Contains(index));
         }
 
         return highlights;
-    }
-
-    private List<Card> BuildShowdownCards(int playerId)
-    {
-        List<Card> cards = new List<Card>();
-        if (gameState == null || gameState.PlayerStates == null || playerId < 0 || playerId >= gameState.PlayerStates.Count)
-        {
-            return cards;
-        }
-
-        PlayerState playerState = gameState.PlayerStates[playerId];
-        if (playerState?.HandCards != null)
-        {
-            cards.AddRange(playerState.HandCards);
-        }
-
-        if (gameState.commonCards != null)
-        {
-            cards.AddRange(gameState.commonCards);
-        }
-
-        return cards;
-    }
-
-    private HashSet<Card> FindRoleRelatedCards(List<Card> cards, HandRank roleRank)
-    {
-        HashSet<Card> relatedCards = new HashSet<Card>();
-        if (cards == null || roleRank == HandRank.Miezu)
-        {
-            return relatedCards;
-        }
-
-        Dictionary<Number, List<Card>> numberGroups = CardPatternUtility.BuildNumberGroups(cards);
-        Dictionary<Suit, List<Card>> suitGroups = CardPatternUtility.BuildSuitGroups(cards);
-
-        switch (roleRank)
-        {
-            case HandRank.Isso:
-                AddNumberGroupByCount(relatedCards, numberGroups, 2, 1);
-                break;
-            case HandRank.Niso:
-                AddNumberGroupByCount(relatedCards, numberGroups, 2, 2);
-                break;
-            case HandRank.Sanju:
-                AddNumberGroupByCount(relatedCards, numberGroups, 3, 1);
-                break;
-            case HandRank.Yonju:
-                AddNumberGroupByCount(relatedCards, numberGroups, 4, 1);
-                break;
-            case HandRank.Tenshu:
-                AddTenshuGroups(relatedCards, suitGroups, 1);
-                break;
-            case HandRank.Suzi:
-                AddSequenceCards(relatedCards, numberGroups, 5);
-                break;
-            case HandRank.Hikari:
-                AddSuitGroupByCount(relatedCards, suitGroups, 5, 1);
-                break;
-            case HandRank.Nanasuzi:
-                AddSequenceCards(relatedCards, numberGroups, 7);
-                break;
-            case HandRank.Nanahikari:
-                AddSuitGroupByCount(relatedCards, suitGroups, 7, 1);
-                break;
-            case HandRank.Tenshukaku:
-                AddTenshuGroups(relatedCards, suitGroups, 2);
-                break;
-        }
-
-        return relatedCards;
-    }
-
-    private static void AddNumberGroupByCount(
-        HashSet<Card> relatedCards,
-        Dictionary<Number, List<Card>> numberGroups,
-        int requiredCount,
-        int requiredGroups)
-    {
-        int addedGroups = 0;
-        foreach (KeyValuePair<Number, List<Card>> group in numberGroups)
-        {
-            if (group.Value.Count < requiredCount)
-            {
-                continue;
-            }
-
-            foreach (Card card in group.Value)
-            {
-                relatedCards.Add(card);
-            }
-
-            addedGroups++;
-            if (addedGroups >= requiredGroups)
-            {
-                return;
-            }
-        }
-    }
-
-    private static void AddSuitGroupByCount(
-        HashSet<Card> relatedCards,
-        Dictionary<Suit, List<Card>> suitGroups,
-        int requiredCount,
-        int requiredGroups)
-    {
-        int addedGroups = 0;
-        foreach (KeyValuePair<Suit, List<Card>> group in suitGroups)
-        {
-            if (group.Value.Count < requiredCount)
-            {
-                continue;
-            }
-
-            foreach (Card card in group.Value)
-            {
-                relatedCards.Add(card);
-            }
-
-            addedGroups++;
-            if (addedGroups >= requiredGroups)
-            {
-                return;
-            }
-        }
-    }
-
-    private static void AddTenshuGroups(
-        HashSet<Card> relatedCards,
-        Dictionary<Suit, List<Card>> suitGroups,
-        int requiredGroups)
-    {
-        int addedGroups = 0;
-        foreach (KeyValuePair<Suit, List<Card>> group in suitGroups)
-        {
-            if (!CardPatternUtility.HasNumber(group.Value, Number.Jack) ||
-                !CardPatternUtility.HasNumber(group.Value, Number.Queen) ||
-                !CardPatternUtility.HasNumber(group.Value, Number.King))
-            {
-                continue;
-            }
-
-            AddCardsWithNumber(relatedCards, group.Value, Number.Jack);
-            AddCardsWithNumber(relatedCards, group.Value, Number.Queen);
-            AddCardsWithNumber(relatedCards, group.Value, Number.King);
-
-            addedGroups++;
-            if (addedGroups >= requiredGroups)
-            {
-                return;
-            }
-        }
-    }
-
-    private static void AddSequenceCards(
-        HashSet<Card> relatedCards,
-        Dictionary<Number, List<Card>> numberGroups,
-        int sequenceLength)
-    {
-        List<Number> sequence = CardPatternUtility.FindSequence(numberGroups, sequenceLength);
-        foreach (Number number in sequence)
-        {
-            if (!numberGroups.TryGetValue(number, out List<Card> cards))
-            {
-                continue;
-            }
-
-            foreach (Card card in cards)
-            {
-                relatedCards.Add(card);
-            }
-        }
-    }
-
-    private static void AddCardsWithNumber(HashSet<Card> relatedCards, List<Card> cards, Number number)
-    {
-        foreach (Card card in cards)
-        {
-            if (card?.CardData != null && card.CardData.number == number)
-            {
-                relatedCards.Add(card);
-            }
-        }
     }
 
     private List<ShowdownCutInPopup.Data.EffectStepData> BuildEffectStepData(

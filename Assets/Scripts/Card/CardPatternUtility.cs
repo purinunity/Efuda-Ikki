@@ -1,13 +1,8 @@
 using System.Collections.Generic;
+using System.Linq;
 
 public static class CardPatternUtility
 {
-    private static readonly Number[] SequenceOrder =
-    {
-        Number.One, Number.Two, Number.Three, Number.Four, Number.Five,
-        Number.Six, Number.Seven, Number.Eight, Number.Nine, Number.Ten
-    };
-
     public static Dictionary<Number, List<Card>> BuildNumberGroups(IEnumerable<Card> cards)
     {
         Dictionary<Number, List<Card>> groups = new Dictionary<Number, List<Card>>();
@@ -96,29 +91,15 @@ public static class CardPatternUtility
         Dictionary<Number, List<Card>> numberGroups,
         int sequenceLength)
     {
-        List<Number> current = new List<Number>();
         if (numberGroups == null || sequenceLength <= 0)
         {
-            return current;
+            return new List<Number>();
         }
 
-        foreach (Number number in SequenceOrder)
-        {
-            if (numberGroups.ContainsKey(number))
-            {
-                current.Add(number);
-                if (current.Count >= sequenceLength)
-                {
-                    return current.GetRange(current.Count - sequenceLength, sequenceLength);
-                }
-            }
-            else
-            {
-                current.Clear();
-            }
-        }
-
-        return new List<Number>();
+        return EfudaIkki.Core.CardPatternAnalyzer
+            .FindSequence(numberGroups.Keys.Select(number => (int)number), sequenceLength)
+            .Select(number => (Number)number)
+            .ToList();
     }
 
     public static bool HasNumber(IEnumerable<Card> cards, Number number)

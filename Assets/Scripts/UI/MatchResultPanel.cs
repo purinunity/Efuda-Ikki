@@ -48,8 +48,25 @@ public sealed class MatchResultPanel : MonoBehaviour
     private TextMeshProUGUI summaryText;
     private Button continueButton;
     private TextMeshProUGUI continueButtonText;
+    private Button subscribedContinueButton;
     private TMP_FontAsset font;
     private bool isWaiting;
+
+    private void OnEnable()
+    {
+        WireContinueButton();
+    }
+
+    private void OnDisable()
+    {
+        UnwireContinueButton();
+        isWaiting = false;
+    }
+
+    private void OnDestroy()
+    {
+        UnwireContinueButton();
+    }
 
     public static MatchResultPanel GetOrCreate(
         MatchResultPanel current,
@@ -112,6 +129,19 @@ public sealed class MatchResultPanel : MonoBehaviour
         }
 
         gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Releases a pending result wait when the owning game session is cancelled.
+    /// Safe to call when the panel has not been initialized or is already hidden.
+    /// </summary>
+    public void CancelDisplay()
+    {
+        isWaiting = false;
+        if (gameObject.activeSelf)
+        {
+            gameObject.SetActive(false);
+        }
     }
 
     private void Initialize()
@@ -235,17 +265,17 @@ public sealed class MatchResultPanel : MonoBehaviour
 
     private void CreateContinueButton()
     {
-        RectTransform buttonRect = CreateRect("ContinueButton", panel);
+        continueButton = RuntimeUiFactory.CreateButton("ContinueButton", panel);
+        RectTransform buttonRect = continueButton.GetComponent<RectTransform>();
         buttonRect.anchorMin = new Vector2(0.68f, 0.04f);
         buttonRect.anchorMax = new Vector2(0.95f, 0.14f);
         buttonRect.offsetMin = Vector2.zero;
         buttonRect.offsetMax = Vector2.zero;
 
-        Image image = GetOrAdd<Image>(buttonRect.gameObject);
+        Image image = continueButton.GetComponent<Image>();
         image.color = AccentColor;
-        continueButton = GetOrAdd<Button>(buttonRect.gameObject);
         continueButton.targetGraphic = image;
-        continueButton.onClick.AddListener(() => isWaiting = false);
+        WireContinueButton();
 
         continueButtonText = CreateText(
             "Label",
@@ -259,6 +289,33 @@ public sealed class MatchResultPanel : MonoBehaviour
         continueButtonText.fontSizeMax = 25f;
         continueButtonText.margin = new Vector4(8f, 0f, 8f, 0f);
         Stretch(continueButtonText.rectTransform);
+    }
+
+    private void WireContinueButton()
+    {
+        UnwireContinueButton();
+        if (continueButton == null)
+        {
+            return;
+        }
+
+        subscribedContinueButton = continueButton;
+        continueButton.onClick.AddListener(HandleContinueClicked);
+    }
+
+    private void UnwireContinueButton()
+    {
+        if (subscribedContinueButton != null)
+        {
+            subscribedContinueButton.onClick.RemoveListener(HandleContinueClicked);
+        }
+
+        subscribedContinueButton = null;
+    }
+
+    private void HandleContinueClicked()
+    {
+        isWaiting = false;
     }
 
     private void Populate(
@@ -367,22 +424,21 @@ public sealed class MatchResultPanel : MonoBehaviour
         FontStyles fontStyle,
         TextAlignmentOptions alignment)
     {
-        RectTransform rect = CreateRect(name, parent);
-        TextMeshProUGUI text = rect.gameObject.AddComponent<TextMeshProUGUI>();
+        TextMeshProUGUI text = RuntimeUiFactory.CreateText(
+            name,
+            parent,
+            font,
+            fontSize,
+            fontStyle,
+            alignment,
+            Color.white);
         text.font = font;
-        text.fontSize = fontSize;
-        text.fontStyle = fontStyle;
-        text.alignment = alignment;
-        text.color = Color.white;
-        text.raycastTarget = false;
         return text;
     }
 
     private static RectTransform CreateRect(string name, Transform parent)
     {
-        GameObject child = new GameObject(name, typeof(RectTransform));
-        child.transform.SetParent(parent, false);
-        return child.GetComponent<RectTransform>();
+        return RuntimeUiFactory.CreateRect(name, parent);
     }
 
     private static void AddHorizontalLayout(GameObject target, int spacing, int padding)
@@ -404,24 +460,17 @@ public sealed class MatchResultPanel : MonoBehaviour
         float minY,
         float maxY)
     {
-        rect.anchorMin = new Vector2(minX, minY);
-        rect.anchorMax = new Vector2(maxX, maxY);
-        rect.offsetMin = Vector2.zero;
-        rect.offsetMax = Vector2.zero;
+        RuntimeUiFactory.SetAnchoredBand(rect, minX, maxX, minY, maxY);
     }
 
     private static void Stretch(RectTransform rect)
     {
-        rect.anchorMin = Vector2.zero;
-        rect.anchorMax = Vector2.one;
-        rect.offsetMin = Vector2.zero;
-        rect.offsetMax = Vector2.zero;
+        RuntimeUiFactory.Stretch(rect);
     }
 
     private static T GetOrAdd<T>(GameObject target) where T : Component
     {
-        T component = target.GetComponent<T>();
-        return component != null ? component : target.AddComponent<T>();
+        return RuntimeUiFactory.GetOrAdd<T>(target);
     }
 
     private static Canvas FindGameCanvas(UIManager uiManager, MonoBehaviour owner)

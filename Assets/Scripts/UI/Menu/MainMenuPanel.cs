@@ -17,6 +17,9 @@ public class MainMenuPanel : MonoBehaviour
     [SerializeField] private Color lockedBattleGroundColor = new Color(0.18f, 0.18f, 0.18f, 1f);
 
     private TextMeshProUGUI battleGroundStatusLabel;
+    private Button subscribedIkkiModeButton;
+    private Button subscribedBattleGroundButton;
+    private Button subscribedSettingsButton;
 
     private void Awake()
     {
@@ -25,26 +28,68 @@ public class MainMenuPanel : MonoBehaviour
 
     private void Start()
     {
-        if (kinouAriButton != null)
-        {
-            kinouAriButton.onClick.AddListener(() => titleUIManager.SelectIkkiMode());
-        }
-        if (battleGroundButton != null)
-        {
-            battleGroundButton.onClick.AddListener(() => titleUIManager.SelectBattleGroundMode());
-        }
-        if (settingsButton != null)
-        {
-            settingsButton.onClick.AddListener(() => titleUIManager.ShowSettings());
-        }
-
+        WireButtonListeners();
         ApplyModeButtonImages();
         RefreshModeAvailability();
+    }
+
+    private void OnEnable()
+    {
+        WireButtonListeners();
+    }
+
+    private void OnDisable()
+    {
+        UnwireButtonListeners();
+    }
+
+    private void OnDestroy()
+    {
+        UnwireButtonListeners();
     }
 
     private void OnValidate()
     {
         ApplyModeButtonImages();
+    }
+
+    private void WireButtonListeners()
+    {
+        UnwireButtonListeners();
+
+        subscribedIkkiModeButton = kinouAriButton;
+        subscribedBattleGroundButton = battleGroundButton;
+        subscribedSettingsButton = settingsButton;
+
+        subscribedIkkiModeButton?.onClick.AddListener(HandleIkkiModeClicked);
+        subscribedBattleGroundButton?.onClick.AddListener(HandleBattleGroundClicked);
+        subscribedSettingsButton?.onClick.AddListener(HandleSettingsClicked);
+    }
+
+    private void UnwireButtonListeners()
+    {
+        subscribedIkkiModeButton?.onClick.RemoveListener(HandleIkkiModeClicked);
+        subscribedBattleGroundButton?.onClick.RemoveListener(HandleBattleGroundClicked);
+        subscribedSettingsButton?.onClick.RemoveListener(HandleSettingsClicked);
+
+        subscribedIkkiModeButton = null;
+        subscribedBattleGroundButton = null;
+        subscribedSettingsButton = null;
+    }
+
+    private void HandleIkkiModeClicked()
+    {
+        titleUIManager?.SelectIkkiMode();
+    }
+
+    private void HandleBattleGroundClicked()
+    {
+        titleUIManager?.SelectBattleGroundMode();
+    }
+
+    private void HandleSettingsClicked()
+    {
+        titleUIManager?.ShowSettings();
     }
 
     public void RefreshModeAvailability()
@@ -169,8 +214,7 @@ public class MainMenuPanel : MonoBehaviour
         battleGroundStatusLabel.fontSizeMax = 32f;
         battleGroundStatusLabel.fontStyle = FontStyles.Bold;
         battleGroundStatusLabel.color = Color.white;
-        battleGroundStatusLabel.outlineColor = Color.black;
-        battleGroundStatusLabel.outlineWidth = 0.2f;
+        RuntimeUiFactory.SetTextOutline(battleGroundStatusLabel, Color.black, 0.2f);
         battleGroundStatusLabel.raycastTarget = false;
         return battleGroundStatusLabel;
     }

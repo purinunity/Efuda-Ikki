@@ -12,15 +12,7 @@ public class LimitedSelectableCardArea : CardArea
     [SerializeField] private float selectMoveDuration = 0.3f;
     private readonly HashSet<Card> managedCards = new HashSet<Card>();
     private readonly HashSet<Card> unavailableCards = new HashSet<Card>();
-
-    private void Start()
-    {
-    }
-
-    private void LateUpdate()
-    {
-        RefreshSelectionState();
-    }
+    private readonly HashSet<Card> currentAreaCards = new HashSet<Card>();
 
     public override void SetCards(System.Collections.Generic.List<Card> cards, float totalDuration = 1.0f)
     {
@@ -64,6 +56,7 @@ public class LimitedSelectableCardArea : CardArea
         }
 
         card.IsSelectable = isAvailable;
+        RefreshSelectionState();
     }
 
     public bool CanSelect(Card card)
@@ -90,8 +83,9 @@ public class LimitedSelectableCardArea : CardArea
 
         if (!card.MoveComplete)
         {
-            RefreshSelectionState();
-            return false;
+            // Finish the previous selection movement so a quick second click can
+            // immediately switch the card instead of being silently ignored.
+            card.SnapToTargetPosition();
         }
 
         if (!card.IsSelectable)
@@ -116,11 +110,11 @@ public class LimitedSelectableCardArea : CardArea
     {
         int selectedCount = CountSelectedCards();
 
-        var areaCards = new HashSet<Card>();
+        currentAreaCards.Clear();
         foreach (var card in cardsInArea)
         {
             if (card == null) continue;
-            areaCards.Add(card);
+            currentAreaCards.Add(card);
             managedCards.Add(card);
             card.IsSelectable = !unavailableCards.Contains(card);
         }
@@ -128,7 +122,7 @@ public class LimitedSelectableCardArea : CardArea
         foreach (var card in managedCards)
         {
             if (card == null) continue;
-            if (areaCards.Contains(card)) continue;
+            if (currentAreaCards.Contains(card)) continue;
             card.IsSelectable = false;
             card.IsSelected = false;
         }

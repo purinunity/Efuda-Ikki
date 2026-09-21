@@ -19,8 +19,8 @@ MonoBehaviour:
   loseResult: {fileID: 21300000, guid: ef1376ecc7873b149a4635886a0ee0ac, type: 3}
   drawResult: {fileID: 21300000, guid: 85cfd8ef5c7ea4f4e9751a2eaecabfbc, type: 3}
   specialActivation: {fileID: 21300000, guid: e48838a77edcf084688c7c58694d675c, type: 3}
-  closeButton: {fileID: 21300000, guid: cfcf659c019b9da439f7c131aa1df20a, type: 3}
-  closeButtonHighlighted: {fileID: 21300000, guid: 0e0f65742f41e494da6459a7648622db, type: 3}
+  closeButton: {fileID: 21300000, guid: b0c7d441f26cbe444ac2f80e925a7462, type: 3}
+  closeButtonHighlighted: {fileID: 21300000, guid: 2919fa037e234df43b3678e774358856, type: 3}
   clearedCharacterSprites:
   - {fileID: 21300000, guid: 6110346dfada80a408c67e38bf068890, type: 3}
   - {fileID: 21300000, guid: b5274cee22abb3945bfbca24d98454a2, type: 3}
@@ -55,6 +55,46 @@ MonoBehaviour:
   - {fileID: 21300000, guid: eba833354014b8b4eace1323709b4e04, type: 3}
   - {fileID: 21300000, guid: 43993c217e066ce44b978256161f0456, type: 3}
   - {fileID: 0}
+  specialCardBindings:
+  - id: aiko
+    cardData: {fileID: 11400000, guid: 42718300bc4fb57408eacde7af22e8b7, type: 2}
+    tooltipSprite: {fileID: 21300000, guid: 122b773bd686e384b98401a1ae8d2066, type: 3}
+  - id: seal
+    cardData: {fileID: 11400000, guid: 0bd2c67e771a54141be2a02f0e3cad21, type: 2}
+    tooltipSprite: {fileID: 21300000, guid: 824635b289be2934e91b4546076c739f, type: 3}
+  - id: bonus_05
+    cardData: {fileID: 11400000, guid: ab6d102ca9490a34ca9d0a60c1bd62c6, type: 2}
+    tooltipSprite: {fileID: 21300000, guid: 32bab445726351f43b6dadf28b86377e, type: 3}
+  - id: curse
+    cardData: {fileID: 11400000, guid: 11568acdc6084c44d8fb20bf1d54dbfe, type: 2}
+    tooltipSprite: {fileID: 21300000, guid: 0074d1318c9678c489c208100a248e33, type: 3}
+  - id: bonus_10
+    cardData: {fileID: 11400000, guid: bb40d60b7c9f59643bac80e618875011, type: 2}
+    tooltipSprite: {fileID: 21300000, guid: 09535b3c803fedf4eb1023aa3d68dd8f, type: 3}
+  - id: bonus_15
+    cardData: {fileID: 11400000, guid: 9ff05326ffc160147950820b8fe0a23a, type: 2}
+    tooltipSprite: {fileID: 21300000, guid: 557a5ba1f970a8d4e954b8b7d9d3ee51, type: 3}
+  - id: double_score
+    cardData: {fileID: 11400000, guid: 6a7f3e881ef53d84099b4f026debbcb0, type: 2}
+    tooltipSprite: {fileID: 21300000, guid: 19440817190459a4cb197136ea8c35b1, type: 3}
+  - id: bet
+    cardData: {fileID: 11400000, guid: 1563bf00fcce24a44a3adcc5813b74bd, type: 2}
+    tooltipSprite: {fileID: 21300000, guid: d626e02edebf8be43b2c450bc5f84e32, type: 3}
+  - id: rain
+    cardData: {fileID: 11400000, guid: aebad18162086394f96b136e6dba819b, type: 2}
+    tooltipSprite: {fileID: 21300000, guid: 4387d2c5e2286f744b8ad7372456556b, type: 3}
+  - id: festival
+    cardData: {fileID: 11400000, guid: 93bbd85a68d13154ba166046e70118fe, type: 2}
+    tooltipSprite: {fileID: 21300000, guid: 0caaf86649975f64c9bda3e79d4057ec, type: 3}
+  - id: sunny
+    cardData: {fileID: 11400000, guid: 327136ae90bfec245ada420e3abf1fe0, type: 2}
+    tooltipSprite: {fileID: 21300000, guid: eba833354014b8b4eace1323709b4e04, type: 3}
+  - id: swap
+    cardData: {fileID: 11400000, guid: 4043c6ba29b51244ebf6d1ca6d6849ee, type: 2}
+    tooltipSprite: {fileID: 21300000, guid: 43993c217e066ce44b978256161f0456, type: 3}
+  - id: oni
+    cardData: {fileID: 11400000, guid: d810d82037ae42d58cc80edcbcf7f406, type: 2}
+    tooltipSprite: {fileID: 0}
   textFont: {fileID: 11400000, guid: 2a7b3e5085dcef945861217a568646fa, type: 2}
   cpuRoleSpriteRect: {x: 328, y: 176, z: 416, w: 82}
   playerRoleSpriteRect: {x: 280, y: 318, z: 416, w: 82}

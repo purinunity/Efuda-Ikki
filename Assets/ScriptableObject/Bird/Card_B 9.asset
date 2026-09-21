@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: Card_B 9
   m_EditorClassIdentifier: 
   Image: {fileID: 21300000, guid: cf2de475631eb4e40b439790abf0a36b, type: 3}
-  BackImage: {fileID: 21300000, guid: 65e3e66536c08fb4284a331c59c9e0d6, type: 3}
+  BackImage: {fileID: 21300000, guid: 5c45659cd77e6c0428ebbdaa6a6a8dd1, type: 3}
   number: 9
   suit: 2

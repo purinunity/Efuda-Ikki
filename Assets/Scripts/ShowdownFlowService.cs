@@ -4,13 +4,43 @@ public sealed class PreparedShowdown
 {
     public SpecialCardResolver.ShowdownResult Result { get; }
     public IReadOnlyList<Card> SpecialCardsToConsume { get; }
+    public int PlayerLifeBefore { get; }
+    public int CpuLifeBefore { get; }
+    public bool IsCommitted => CommitResult != null;
+    public ShowdownCommitResult CommitResult { get; private set; }
 
     public PreparedShowdown(
         SpecialCardResolver.ShowdownResult result,
-        IReadOnlyList<Card> specialCardsToConsume)
+        IReadOnlyList<Card> specialCardsToConsume,
+        int playerLifeBefore,
+        int cpuLifeBefore)
     {
         Result = result;
         SpecialCardsToConsume = specialCardsToConsume;
+        PlayerLifeBefore = playerLifeBefore;
+        CpuLifeBefore = cpuLifeBefore;
+    }
+
+    internal void MarkCommitted(ShowdownCommitResult commitResult)
+    {
+        CommitResult = commitResult;
+    }
+}
+
+public sealed class ShowdownCommitResult
+{
+    public MatchRoundResult RoundResult { get; }
+    public bool IsGameOver { get; }
+    public int MatchWinnerIndex { get; }
+
+    public ShowdownCommitResult(
+        MatchRoundResult roundResult,
+        bool isGameOver,
+        int matchWinnerIndex)
+    {
+        RoundResult = roundResult;
+        IsGameOver = isGameOver;
+        MatchWinnerIndex = matchWinnerIndex;
     }
 }
 
@@ -36,7 +66,55 @@ public sealed class ShowdownFlowService
 
         List<Card> specialCardsToConsume = CollectSelectedUsableSpecialCards();
         SpecialCardResolver.ShowdownResult result = SpecialCardResolver.Resolve(gameState);
-        return new PreparedShowdown(result, specialCardsToConsume);
+        return new PreparedShowdown(
+            result,
+            specialCardsToConsume,
+            GetLifePoints(0),
+            GetLifePoints(1));
+    }
+
+    /// <summary>
+    /// Applies every state mutation produced by a showdown exactly once.
+    /// Repeated calls return the first result without consuming cards or dealing damage again.
+    /// </summary>
+    public ShowdownCommitResult Commit(PreparedShowdown preparedShowdown, int roundNumber)
+    {
+        if (preparedShowdown == null)
+        {
+            return new ShowdownCommitResult(null, CheckGameOver(), DetermineMatchWinnerIndex());
+        }
+
+        if (preparedShowdown.IsCommitted)
+        {
+            return preparedShowdown.CommitResult;
+        }
+
+        MarkSpecialCardsUsed(preparedShowdown.SpecialCardsToConsume);
+
+        SpecialCardResolver.ShowdownResult showdownResult = preparedShowdown.Result;
+        if (showdownResult != null && !showdownResult.IsDraw)
+        {
+            ApplyDamage(showdownResult);
+        }
+
+        MatchRoundResult roundResult = showdownResult == null
+            ? null
+            : new MatchRoundResult(
+                roundNumber,
+                showdownResult.WinnerIndex,
+                showdownResult.Damage,
+                preparedShowdown.PlayerLifeBefore,
+                GetLifePoints(0),
+                preparedShowdown.CpuLifeBefore,
+                GetLifePoints(1));
+
+        bool isGameOver = CheckGameOver();
+        ShowdownCommitResult commitResult = new ShowdownCommitResult(
+            roundResult,
+            isGameOver,
+            isGameOver ? DetermineMatchWinnerIndex() : -1);
+        preparedShowdown.MarkCommitted(commitResult);
+        return commitResult;
     }
 
     public void MarkSpecialCardsUsed(IReadOnlyList<Card> usedCards)
@@ -74,7 +152,7 @@ public sealed class ShowdownFlowService
         {
             if (i != showdownResult.WinnerIndex)
             {
-                gameState.PlayerStates[i].decreaseLifePoints(showdownResult.Damage);
+                gameState.PlayerStates[i].DecreaseLifePoints(showdownResult.Damage);
             }
         }
     }
@@ -95,6 +173,25 @@ public sealed class ShowdownFlowService
         }
 
         return false;
+    }
+
+    public int DetermineMatchWinnerIndex()
+    {
+        if (gameState?.PlayerStates == null)
+        {
+            return -1;
+        }
+
+        for (int i = 0; i < gameState.PlayerStates.Count; i++)
+        {
+            PlayerState playerState = gameState.PlayerStates[i];
+            if (playerState != null && playerState.LifePoints > 0)
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     private void OpenAllHands()
@@ -136,5 +233,18 @@ public sealed class ShowdownFlowService
         }
 
         return selectedCards;
+    }
+
+    private int GetLifePoints(int playerIndex)
+    {
+        if (gameState?.PlayerStates == null ||
+            playerIndex < 0 ||
+            playerIndex >= gameState.PlayerStates.Count ||
+            gameState.PlayerStates[playerIndex] == null)
+        {
+            return 0;
+        }
+
+        return gameState.PlayerStates[playerIndex].LifePoints;
     }
 }

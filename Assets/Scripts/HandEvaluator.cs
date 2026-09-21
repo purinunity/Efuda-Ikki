@@ -1,147 +1,90 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
+using EfudaIkki.Core;
 
-// ポーカーの役判定を行う静的クラス
+/// <summary>
+/// Unity-facing compatibility facade for the pure EfudaIkki.Core hand evaluator.
+/// Existing public types and enum values are intentionally preserved.
+/// </summary>
 public static class HandEvaluator
 {
-    // ポーカーの役を表す列挙型
     public enum HandRank
     {
-        Miezu,
-        Isso,
-        Niso,
-        Sanju,
-        Hikari,
-        Suzi,
-        Yonju,
-        Tenshu,
-        Nanahikari,
-        Nanasuzi,
-        Tenshukaku
+        Miezu = 0,
+        Isso = 1,
+        Niso = 2,
+        Sanju = 3,
+        Hikari = 4,
+        Suzi = 5,
+        Yonju = 6,
+        Tenshu = 7,
+        Nanahikari = 8,
+        Nanasuzi = 9,
+        Tenshukaku = 10
     }
 
-    // 役判定結果を格納するクラス
     public class HandInfo
     {
+        private readonly int[] contributingCardIndexes;
+
         public HandRank Rank { get; private set; }
         public string Name { get; private set; }
         public int Score => HandRoleCatalog.GetScore(Rank);
+        public IReadOnlyList<int> ContributingCardIndexes => contributingCardIndexes;
 
         public HandInfo(HandRank rank, string name)
+            : this(rank, name, null)
+        {
+        }
+
+        public HandInfo(HandRank rank, string name, IEnumerable<int> contributingCardIndexes)
         {
             Rank = rank;
             Name = name;
+            this.contributingCardIndexes = contributingCardIndexes == null
+                ? Array.Empty<int>()
+                : contributingCardIndexes.ToArray();
         }
     }
 
-    // 手札と共通札から役を判定するメソッド
     public static HandInfo EvaluateHand(List<Card> playerHand, List<Card> commonCards)
     {
-        // 手札が5枚でない場合は役表示を行わない（空文字を返す）
+        // Preserve the existing UI contract: an incomplete or hidden hand has no role label.
         if (playerHand == null || playerHand.Count != 5)
         {
             return new HandInfo(HandRank.Miezu, "");
         }
 
-        // 表向きになっていないカードが含まれている場合は判定不能とする（空文字を返す）
         if (playerHand.Any(card => !card.IsFaceUp))
         {
             return new HandInfo(HandRank.Miezu, "");
         }
+
         if (commonCards != null && commonCards.Any(card => !card.IsFaceUp))
         {
             return new HandInfo(HandRank.Miezu, "");
         }
 
-        // 手札と共通札を結合
         List<Card> allCards = playerHand.Concat(commonCards ?? Enumerable.Empty<Card>()).ToList();
-
-        // 数字・スートごとの枚数を集計
-        Dictionary<Number, List<Card>> numberGroups = CardPatternUtility.BuildNumberGroups(allCards);
-        Dictionary<Suit, List<Card>> suitGroups = CardPatternUtility.BuildSuitGroups(allCards);
-        string rankName = HandRoleCatalog.GetDisplayName(HandRank.Miezu);
-        HandRank rank = HandRank.Miezu;
-        // 一双判定
-        foreach (List<Card> group in numberGroups.Values)
-        {
-            if (group.Count >= 2)
-            {
-                SetBestHand(ref rank, ref rankName, HandRank.Isso);
-                break;
-            }
-        }
-        // 二双判定
-        if (numberGroups.Values.Count(group => group.Count >= 2) >= 2)
-        {
-            SetBestHand(ref rank, ref rankName, HandRank.Niso);
-        }
-        // 三珠判定
-        foreach (List<Card> group in numberGroups.Values)
-        {
-            if (group.Count >= 3)
-            {
-                SetBestHand(ref rank, ref rankName, HandRank.Sanju);
-                break;
-            }
-        }
-        // 四珠判定
-        foreach (List<Card> group in numberGroups.Values)
-        {
-            if (group.Count >= 4)
-            {
-                SetBestHand(ref rank, ref rankName, HandRank.Yonju);
-                break;
-            }
-        }
-        // 天守判定
-        if (suitGroups.Values.Any(cards =>
-            CardPatternUtility.HasNumber(cards, Number.Jack) &&
-            CardPatternUtility.HasNumber(cards, Number.Queen) &&
-            CardPatternUtility.HasNumber(cards, Number.King)))
-        {
-            SetBestHand(ref rank, ref rankName, HandRank.Tenshu);
-        }
-        // 筋判定
-        if (CardPatternUtility.FindSequence(numberGroups, 5).Count >= 5)
-        {
-            SetBestHand(ref rank, ref rankName, HandRank.Suzi);
-        }
-        // 光判定
-        if (suitGroups.Values.Any(cards => cards.Count >= 5))
-        {
-            SetBestHand(ref rank, ref rankName, HandRank.Hikari);
-        }
-        // 七筋判定
-        if (CardPatternUtility.FindSequence(numberGroups, 7).Count >= 7)
-        {
-            SetBestHand(ref rank, ref rankName, HandRank.Nanasuzi);
-        }
-        // 七光判定
-        if (suitGroups.Values.Any(cards => cards.Count >= 7))
-        {
-            SetBestHand(ref rank, ref rankName, HandRank.Nanahikari);
-        }
-        // 天守閣判定
-        if (suitGroups.Values.Count(cards =>
-            CardPatternUtility.HasNumber(cards, Number.Jack) &&
-            CardPatternUtility.HasNumber(cards, Number.Queen) &&
-            CardPatternUtility.HasNumber(cards, Number.King)) >= 2)
-        {
-            SetBestHand(ref rank, ref rankName, HandRank.Tenshukaku);
-        }
-        return new HandInfo(rank, rankName);
+        HandEvaluationResult result = CoreHandEvaluator.Evaluate(ToCoreValues(allCards));
+        HandRank rank = ToLegacyRank(result.Role);
+        return new HandInfo(rank, HandRoleCatalog.GetDisplayName(rank), result.ContributingCardIndexes);
     }
 
-    private static void SetBestHand(ref HandRank rank, ref string rankName, HandRank candidateRank)
+    /// <summary>
+    /// Returns indexes into <paramref name="cards"/> which visually constitute the requested role.
+    /// This keeps cut-in highlighting on the same rules used for evaluation.
+    /// </summary>
+    public static IReadOnlyList<int> GetContributingCardIndexes(
+        IReadOnlyList<Card> cards,
+        HandRank rank)
     {
-        if (HandRoleCatalog.IsHigherRole(candidateRank, rank))
-        {
-            rank = candidateRank;
-            rankName = HandRoleCatalog.GetDisplayName(candidateRank);
-        }
+        return CoreHandEvaluator.FindContributingCardIndexes(
+            ToCoreValues(cards),
+            (HandRole)(int)rank);
     }
-    
+
     public static int DetermineWinner(List<HandInfo> handInfos)
     {
         List<int> winners = new List<int>();
@@ -161,15 +104,30 @@ public static class HandEvaluator
             }
         }
 
-        if (winners.Count > 1)
+        return winners.Count == 1 ? winners[0] : -1;
+    }
+
+    private static List<CardValue> ToCoreValues(IReadOnlyList<Card> cards)
+    {
+        var values = new List<CardValue>();
+        if (cards == null)
         {
-            return -1; // 引き分け
-        }
-        if (winners.Count == 0)
-        {
-            return -1; // 引き分け
+            return values;
         }
 
-        return winners[0]; // 勝者のインデックスを返す
+        for (int i = 0; i < cards.Count; i++)
+        {
+            Card card = cards[i];
+            values.Add(card?.CardData == null
+                ? CardValue.Invalid
+                : new CardValue((int)card.CardData.number, (int)card.CardData.suit));
+        }
+
+        return values;
+    }
+
+    private static HandRank ToLegacyRank(HandRole role)
+    {
+        return (HandRank)(int)role;
     }
 }

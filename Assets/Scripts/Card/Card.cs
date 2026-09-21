@@ -39,6 +39,8 @@ public class Card : MonoBehaviour // カードの表示・状態管理
     private float selectedYOffset = 20f; // 選択時のYオフセット
 
     private Coroutine movementCoroutine;
+    private Button selectionButton;
+    private bool selectionListenerRegistered;
     private const float PositionTolerance = 0.1f;
 
     public float SelectedYOffset
@@ -48,6 +50,7 @@ public class Card : MonoBehaviour // カードの表示・状態管理
     }
 
     public bool UseSelectedYOffset { get; set; } = true;
+    public float DisplayScale { get; set; } = 0.25f;
 
     // 初期化処理（Image, RectTransform取得）
     public void Initialize(float selectedYOffset = 20f)
@@ -62,11 +65,7 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         }
         this.selectedYOffset = selectedYOffset;
         // Buttonコンポーネント取得とクリックイベント登録
-        Button button = GetComponent<Button>();
-        if (button != null)
-        {
-            button.onClick.AddListener(ToggleSelect);
-        }
+        RegisterSelectionListener();
 
         if (GetComponent<SpecialCardTooltipTarget>() == null)
         {
@@ -76,15 +75,15 @@ public class Card : MonoBehaviour // カードの表示・状態管理
     // クリックイベントで選択フラグをトグル
     private void ToggleSelect()
     {
-        if (!MoveComplete)
-        {
-            return;
-        }
-
         var selectionLimiter = GetComponentInParent<LimitedSelectableCardArea>();
         if (selectionLimiter != null)
         {
             selectionLimiter.TryToggleSelection(this);
+            return;
+        }
+
+        if (!MoveComplete)
+        {
             return;
         }
 
@@ -103,6 +102,23 @@ public class Card : MonoBehaviour // カードの表示・状態管理
     public void Awake()
     {
         Initialize();
+    }
+
+    private void OnEnable()
+    {
+        RegisterSelectionListener();
+    }
+
+    private void OnDisable()
+    {
+        UnregisterSelectionListener();
+        StopMotion(true);
+    }
+
+    private void OnDestroy()
+    {
+        UnregisterSelectionListener();
+        StopMotion(true);
     }
 
     // カード情報をセットし、画像を更新
@@ -131,7 +147,7 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         // 表示スケールを固定しておく（Turn時と同じ基準にする）
         if (cardRect != null)
         {
-            cardRect.localScale = new Vector3(0.25f, 0.25f, 0.25f);
+            cardRect.localScale = Vector3.one * DisplayScale;
         }
 
         // 内部状態を整える
@@ -223,6 +239,10 @@ public class Card : MonoBehaviour // カードの表示・状態管理
 
     public void SnapToTargetPosition()
     {
+        if (cardImage == null)
+        {
+            cardImage = GetComponent<Image>();
+        }
         if (cardRect == null)
         {
             cardRect = GetComponent<RectTransform>();
@@ -231,6 +251,13 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         StopMotion(true);
         if (cardRect != null)
         {
+            if (cardImage != null && CardData != null)
+            {
+                cardImage.sprite = IsFaceUp ? CardData.Image : CardData.BackImage;
+                cardImage.SetNativeSize();
+                cardRect.localScale = Vector3.one * DisplayScale;
+            }
+
             cardRect.anchoredPosition = GetFinalAnchoredPosition();
         }
 
@@ -241,6 +268,12 @@ public class Card : MonoBehaviour // カードの表示・状態管理
 
     private void StartMotion(IEnumerator motion)
     {
+        if (!isActiveAndEnabled || motion == null)
+        {
+            MoveComplete = true;
+            return;
+        }
+
         StopMotion(false);
         MoveComplete = false;
         movementCoroutine = StartCoroutine(RunMotion(motion));
@@ -263,6 +296,33 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         }
 
         MoveComplete = markComplete;
+    }
+
+    private void RegisterSelectionListener()
+    {
+        if (selectionButton == null)
+        {
+            selectionButton = GetComponent<Button>();
+            selectionListenerRegistered = false;
+        }
+
+        if (!isActiveAndEnabled || selectionButton == null || selectionListenerRegistered)
+        {
+            return;
+        }
+
+        selectionButton.onClick.AddListener(ToggleSelect);
+        selectionListenerRegistered = true;
+    }
+
+    private void UnregisterSelectionListener()
+    {
+        if (selectionButton != null && selectionListenerRegistered)
+        {
+            selectionButton.onClick.RemoveListener(ToggleSelect);
+        }
+
+        selectionListenerRegistered = false;
     }
 
     private Vector2 GetFinalAnchoredPosition()
@@ -469,13 +529,13 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         {
             cardImage.sprite = CardData.Image;
             cardImage.SetNativeSize();
-            rectTransform.localScale = new Vector3(0.25f, 0.25f, 0.25f); // サイズを元に戻す　☆修正by降幡
+            rectTransform.localScale = Vector3.one * DisplayScale;
         }
         else
         {
             cardImage.sprite = CardData.BackImage;
             cardImage.SetNativeSize();
-            rectTransform.localScale = new Vector3(0.25f, 0.25f, 0.25f); // サイズを元に戻す　☆修正by降幡
+            rectTransform.localScale = Vector3.one * DisplayScale;
         }
         float targetWidth = rectTransform.sizeDelta.x;
         float targetHeight = rectTransform.sizeDelta.y;

@@ -74,8 +74,7 @@ public sealed class SpecialCardTooltipTarget : MonoBehaviour, IPointerEnterHandl
             card = GetComponent<Card>();
         }
 
-        if (card == null ||
-            !SpecialCardResolver.TryGetSpecialCardId(card.CardData, out SpecialCardResolver.SpecialCardId id))
+        if (card == null || card.CardData == null)
         {
             return false;
         }
@@ -86,7 +85,7 @@ public sealed class SpecialCardTooltipTarget : MonoBehaviour, IPointerEnterHandl
         }
 
         tooltipSprite = tooltipAssetSet != null
-            ? tooltipAssetSet.GetSpecialCardTooltipSprite(id)
+            ? tooltipAssetSet.GetSpecialCardTooltipSprite(card.CardData)
             : null;
         return tooltipSprite != null;
     }

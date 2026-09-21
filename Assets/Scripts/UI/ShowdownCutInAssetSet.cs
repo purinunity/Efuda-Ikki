@@ -17,11 +17,36 @@ public class ShowdownCutInAssetSet : ScriptableObject
     public Sprite[] clearedCharacterSprites = new Sprite[9];
     public Sprite[] clearedHoverCharacterSprites = new Sprite[9];
     public Sprite[] specialCardTooltipSprites = new Sprite[13];
+    [Tooltip("Preferred CardData/ID/tooltip bindings. The existing enum-indexed array remains the compatibility fallback.")]
+    [SerializeField] private SpecialCardCatalog.AssetBinding[] specialCardBindings;
     public TMP_FontAsset textFont;
+
+    private void OnEnable()
+    {
+        SpecialCardCatalog.RegisterBindings(specialCardBindings);
+    }
+
+    public Sprite GetSpecialCardTooltipSprite(CardData cardData)
+    {
+        Sprite boundSprite = SpecialCardCatalog.GetTooltipSprite(cardData, specialCardBindings);
+        if (boundSprite != null)
+        {
+            return boundSprite;
+        }
+
+        return SpecialCardCatalog.TryGet(cardData, specialCardBindings, out SpecialCardCatalog.Entry entry)
+            ? GetSpecialCardTooltipSprite(entry.CardId)
+            : null;
+    }
 
     public Sprite GetSpecialCardTooltipSprite(SpecialCardResolver.SpecialCardId id)
     {
-        int index = (int)id;
+        if (!SpecialCardCatalog.TryGet(id, out SpecialCardCatalog.Entry entry))
+        {
+            return null;
+        }
+
+        int index = entry.TooltipIndex;
         return specialCardTooltipSprites != null &&
                index >= 0 &&
                index < specialCardTooltipSprites.Length
