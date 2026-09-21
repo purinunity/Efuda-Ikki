@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f058b57e079b844468980c2e1cb266bb, type: 3}
   m_Name: sp_oni
   m_EditorClassIdentifier:
-  Image: {fileID: 21300000, guid: f58738f757ee13b43a5677bd638490ba, type: 3}
+  Image: {fileID: 21300000, guid: 663b9249ac7169e4292fa76ba454cb36, type: 3}
   BackImage: {fileID: 21300000, guid: 26c7f37dfc3f7f844bb116798103dc52, type: 3}
   number: 0
   suit: 0
