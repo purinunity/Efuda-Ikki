@@ -17,7 +17,7 @@ public class SpecialCardSelectPanel : MonoBehaviour
     [SerializeField] private Color lockedCardColor = new Color(0.2f, 0.2f, 0.2f, 1f);
     [SerializeField, Min(1)] private int gridColumnCount = 4;
     [SerializeField, Range(0.05f, 0.5f)] private float gridCardScale = 0.234375f;
-    [SerializeField, Range(0.05f, 0.5f)] private float selectedCardScale = 0.1f;
+    [SerializeField, Range(0.05f, 0.5f)] private float selectedCardScale = 0.1171875f;
     public TitleUIManager titleUIManager;
 
     private GameModeData currentGameModeData;
@@ -139,14 +139,9 @@ public class SpecialCardSelectPanel : MonoBehaviour
             float y;
             if (card.IsSelected)
             {
-                float selectedLeft = rect.xMin + rect.width * 0.59375f;
-                float selectedRight = rect.xMin + rect.width * 0.9375f;
-                float selectedBottom = rect.yMin + rect.height * 0.637153f;
-                float selectedTop = rect.yMin + rect.height * 0.748264f;
-                float selectedCellWidth = (selectedRight - selectedLeft) /
-                                          Mathf.Max(1, maxSelectableSpecialCards);
-                x = selectedLeft + selectedCellWidth * (selectedIndex + 0.5f);
-                y = (selectedBottom + selectedTop) * 0.5f;
+                // Exact centers of the four 48x64 black selected-card slots.
+                x = rect.xMin + rect.width * ((664f + 80f * selectedIndex) / 1024f);
+                y = rect.yMin + rect.height * (400f / 576f);
                 selectedIndex++;
                 card.DisplayScale = selectedCardScale;
             }
