@@ -7827,6 +7827,7 @@ GameObject:
   - component: {fileID: 1241104505}
   - component: {fileID: 1241104504}
   - component: {fileID: 1241104503}
+  - component: {fileID: 1241104507}
   m_Layer: 5
   m_Name: GameCanvas
   m_TagString: Untagged
@@ -7929,6 +7930,24 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!114 &1241104507
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1241104502}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec7f72adc3d7ac644993778d2b843955, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  openButtonSprite: {fileID: 21300000, guid: 27dbc5d564d712849b39913a2e500b86, type: 3}
+  openButtonHighlightedSprite: {fileID: 21300000, guid: 81443b82905498245a73296fe9156605, type: 3}
+  firstPageSprite: {fileID: 21300000, guid: c3ee3e4eef95d78479580e206d4324d5, type: 3}
+  secondPageSprite: {fileID: 21300000, guid: bc3827869820d6142860e895d793162e, type: 3}
+  closeButtonSprite: {fileID: 21300000, guid: b0c7d441f26cbe444ac2f80e925a7462, type: 3}
+  closeButtonHighlightedSprite: {fileID: 21300000, guid: 2919fa037e234df43b3678e774358856, type: 3}
 --- !u!1 &1241225827
 GameObject:
   m_ObjectHideFlags: 0
@@ -11201,7 +11220,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 48, y: -40}
-  m_SizeDelta: {x: 200, y: 100}
+  m_SizeDelta: {x: 200, y: 80}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1887375874
 MonoBehaviour:

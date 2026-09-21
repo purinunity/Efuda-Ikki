@@ -60,6 +60,7 @@ namespace EfudaIkki.Core.Tests
                 new CpuFixedSpecialChoice("seal", CpuHandCondition.AtLeastNiso),
                 new CpuFixedSpecialChoice("rain", CpuHandCondition.Always),
                 1f,
+                1,
                 new FixedRandomSource());
 
             Assert.That(selected, Is.EqualTo(1));
@@ -76,6 +77,7 @@ namespace EfudaIkki.Core.Tests
                 new CpuFixedSpecialChoice("seal", CpuHandCondition.AtLeastNiso),
                 new CpuFixedSpecialChoice("rain", CpuHandCondition.AtMostIsso),
                 1f,
+                1,
                 new FixedRandomSource());
 
             Assert.That(selected, Is.EqualTo(2));
@@ -92,6 +94,7 @@ namespace EfudaIkki.Core.Tests
                 new CpuFixedSpecialChoice("seal", CpuHandCondition.Always),
                 new CpuFixedSpecialChoice("rain", CpuHandCondition.Always),
                 0f,
+                1,
                 new FixedRandomSource(new[] { 2 }, new[] { 1f, 0f }));
             int second = CpuSpecialCardPolicy.SelectCardIndex(
                 candidates,
@@ -99,10 +102,50 @@ namespace EfudaIkki.Core.Tests
                 new CpuFixedSpecialChoice("seal", CpuHandCondition.Always),
                 new CpuFixedSpecialChoice("rain", CpuHandCondition.Always),
                 0f,
+                1,
                 new FixedRandomSource(new[] { 2 }, new[] { 1f, 0f }));
 
             Assert.That(first, Is.EqualTo(2));
             Assert.That(second, Is.EqualTo(first));
+        }
+
+        [TestCase(1, 0.5f)]
+        [TestCase(4, 0.5f)]
+        [TestCase(5, 0.4f)]
+        [TestCase(8, 0.4f)]
+        [TestCase(9, 0.3f)]
+        public void SpecialPolicy_FreeCardProbabilityMatchesCpuLevel(
+            int cpuLevel,
+            float expectedProbability)
+        {
+            Assert.That(
+                CpuSpecialCardPolicy.GetFreeCardUseProbability(cpuLevel),
+                Is.EqualTo(expectedProbability));
+        }
+
+        [TestCase(1, 0.49f, true)]
+        [TestCase(1, 0.50f, false)]
+        [TestCase(5, 0.39f, true)]
+        [TestCase(5, 0.40f, false)]
+        [TestCase(9, 0.29f, true)]
+        [TestCase(9, 0.30f, false)]
+        public void SpecialPolicy_FreeCardUseRollRespectsLevelProbability(
+            int cpuLevel,
+            float freeCardRoll,
+            bool expectsSelection)
+        {
+            string[] candidates = { "bonus_05" };
+
+            int selected = CpuSpecialCardPolicy.SelectCardIndex(
+                candidates,
+                HandRole.Miezu,
+                new CpuFixedSpecialChoice("seal", CpuHandCondition.Always),
+                new CpuFixedSpecialChoice("rain", CpuHandCondition.Always),
+                0f,
+                cpuLevel,
+                new FixedRandomSource(new[] { 0 }, new[] { 1f, freeCardRoll }));
+
+            Assert.That(selected >= 0, Is.EqualTo(expectsSelection));
         }
 
         [TestCase(HandRole.Miezu, CpuHandCondition.AtMostIsso, true)]

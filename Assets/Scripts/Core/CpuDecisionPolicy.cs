@@ -184,6 +184,7 @@ namespace EfudaIkki.Core
             CpuFixedSpecialChoice firstChoice,
             CpuFixedSpecialChoice secondChoice,
             float decisionStrength,
+            int cpuLevel,
             IRandomSource randomSource)
         {
             if (randomSource == null)
@@ -213,7 +214,7 @@ namespace EfudaIkki.Core
                 }
             }
 
-            if (randomSource.Value01() >= 0.5f)
+            if (randomSource.Value01() >= GetFreeCardUseProbability(cpuLevel))
             {
                 return -1;
             }
@@ -232,6 +233,16 @@ namespace EfudaIkki.Core
             return freeIndexes.Count == 0
                 ? -1
                 : freeIndexes[randomSource.Range(0, freeIndexes.Count)];
+        }
+
+        public static float GetFreeCardUseProbability(int cpuLevel)
+        {
+            if (cpuLevel >= 9)
+            {
+                return 0.3f;
+            }
+
+            return cpuLevel >= 5 ? 0.4f : 0.5f;
         }
 
         public static bool MatchesCondition(HandRole role, CpuHandCondition condition)

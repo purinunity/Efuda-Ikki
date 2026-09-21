@@ -29,4 +29,36 @@ public sealed class UiSpriteReferenceTests
             if (openedForTest) EditorSceneManager.CloseScene(scene, true);
         }
     }
+
+    [Test]
+    public void LatestScene_RoleListPanelUsesProductionSprites()
+    {
+        var scene = SceneManager.GetSceneByPath("Assets/Scenes/latest.unity");
+        bool openedForTest = !scene.IsValid() || !scene.isLoaded;
+        if (openedForTest)
+            scene = EditorSceneManager.OpenScene("Assets/Scenes/latest.unity", OpenSceneMode.Additive);
+        try
+        {
+            RoleListPanelController panel = scene.GetRootGameObjects()
+                .SelectMany(root => root.GetComponentsInChildren<RoleListPanelController>(true))
+                .Single();
+            var serialized = new SerializedObject(panel);
+            AssertSprite(serialized, "openButtonSprite", "ui/buttons/common/show_role_list.png");
+            AssertSprite(serialized, "firstPageSprite", "ui/reference/roles/page_01.png");
+            AssertSprite(serialized, "secondPageSprite", "ui/reference/roles/page_02.png");
+            AssertSprite(serialized, "closeButtonSprite", "ui/buttons/common/close.png");
+        }
+        finally
+        {
+            if (openedForTest) EditorSceneManager.CloseScene(scene, true);
+        }
+    }
+
+    private static void AssertSprite(SerializedObject serialized, string propertyName, string relativePath)
+    {
+        var sprite = serialized.FindProperty(propertyName).objectReferenceValue;
+        Assert.That(sprite, Is.Not.Null, propertyName);
+        Assert.That(AssetDatabase.GetAssetPath(sprite),
+            Is.EqualTo("Assets/Sprite/production/" + relativePath));
+    }
 }

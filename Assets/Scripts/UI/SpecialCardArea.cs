@@ -42,13 +42,13 @@ public class SpecialCardArea : CardArea
 
     private void OnDisable()
     {
-        StopTopSwitchAndRecoverLayout();
+        StopTopSwitchWithoutChangingHierarchy();
         UnsubscribeAllCardClickHandlers();
     }
 
     private void OnDestroy()
     {
-        StopTopSwitchAndRecoverLayout();
+        StopTopSwitchWithoutChangingHierarchy();
         UnsubscribeAllCardClickHandlers();
     }
 
@@ -282,14 +282,21 @@ public class SpecialCardArea : CardArea
 
     private void StopTopSwitchAndRecoverLayout()
     {
-        if (topSwitchCoroutine != null)
-        {
-            StopCoroutine(topSwitchCoroutine);
-            topSwitchCoroutine = null;
-        }
+        StopTopSwitchWithoutChangingHierarchy();
 
         ApplyStackTargetsAndSiblingOrder();
         SnapStackToTargets();
+    }
+
+    private void StopTopSwitchWithoutChangingHierarchy()
+    {
+        if (topSwitchCoroutine == null)
+        {
+            return;
+        }
+
+        StopCoroutine(topSwitchCoroutine);
+        topSwitchCoroutine = null;
     }
 
     private void SwitchTopCard(Card selectedCard)

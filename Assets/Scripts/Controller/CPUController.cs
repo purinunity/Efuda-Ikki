@@ -119,6 +119,7 @@ public class CPUController : Controller
             CreateFixedChoice(levelDefinition.FixedCard1, levelDefinition.FixedCard1Condition),
             CreateFixedChoice(levelDefinition.FixedCard2, levelDefinition.FixedCard2Condition),
             difficultySettings.SpecialCardDecisionStrength,
+            levelDefinition.Level,
             RandomSource);
 
         return selectedIndex >= 0 && selectedIndex < usableCpuSpecialCards.Count
