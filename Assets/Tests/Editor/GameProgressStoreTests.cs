@@ -130,6 +130,20 @@ public sealed class GameProgressStoreTests
     }
 
     [Test]
+    public void UnlockAllProgress_UnlocksEveryModeStageAndSpecialCard()
+    {
+        GameProgressStore.RecordBattleGroundStreak(7);
+
+        GameProgressStore.ProgressData unlocked = GameProgressStore.UnlockAllProgress();
+
+        Assert.That(unlocked.ikkiCleared, Is.True);
+        Assert.That(unlocked.highestUnlockedIkkiLevel, Is.EqualTo(CpuLevelCatalog.MaxLevel));
+        Assert.That(unlocked.unlockedSpecialCardCount, Is.EqualTo(SpecialCardResolver.SpecialCardCount));
+        Assert.That(unlocked.bestKachinukiStreak, Is.EqualTo(7));
+        Assert.That(GameProgressStore.IsBattleGroundUnlocked, Is.True);
+    }
+
+    [Test]
     public void ResetProgress_RestoresDefaultsAndAutoSavesCompatibilityKeys()
     {
         GameProgressStore.RecordIkkiVictory(9);

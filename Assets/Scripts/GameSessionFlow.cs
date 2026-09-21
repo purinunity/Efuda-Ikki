@@ -34,6 +34,10 @@ public sealed class GameSessionFlow
     private GameEndNavigationService navigationService;
     private ShowdownCutInPopup showdownCutInPopup;
     private MatchResultPanel matchResultPanel;
+    private BattleGroundRewardPanel battleGroundRewardPanel;
+    private BattleGroundRunState battleGroundRun;
+    private BattleGroundRewardService battleGroundRewards;
+    private BattleGroundOpponentSelector battleGroundOpponents;
     private bool gameOver;
     private int currentMatchWinnerIndex = -1;
 
@@ -78,6 +82,15 @@ public sealed class GameSessionFlow
         CreateServices();
     }
 
+    public void RequestBattleGroundSurrender()
+    {
+        if (!IsRunning || battleGroundRun == null) return;
+        gameOver = true;
+        currentMatchWinnerIndex = 1;
+        if (playerController != null) playerController.CancelPendingInput();
+        if (uiManager != null) uiManager.SetPlayerSpecialCardInputEnabled(false);
+    }
+
     public bool TryStart(GameModeData modeData, out IEnumerator routine)
     {
         routine = null;
@@ -115,6 +128,8 @@ public sealed class GameSessionFlow
         if (playerController != null) playerController.CancelPendingInput();
         if (uiManager != null) uiManager.SetPlayerSpecialCardInputEnabled(false);
         if (matchResultPanel != null) matchResultPanel.CancelDisplay();
+        if (battleGroundRewardPanel != null) battleGroundRewardPanel.CancelDisplay();
+        BattleGroundVisualTheme.Deactivate(characterManager);
         if (showdownCutInPopup != null) showdownCutInPopup.CancelDisplay();
         ShowdownCutInPopup currentPopup = showdownPresentationService?.CurrentPopup;
         if (currentPopup != null && currentPopup != showdownCutInPopup) currentPopup.CancelDisplay();
@@ -167,12 +182,21 @@ public sealed class GameSessionFlow
             if (winnerIndex != 0)
             {
                 Debug.Log($"Mode ended. Winner: Player {winnerIndex}.");
-                yield return ShowMatchResult(
-                    modeData.CurrentLevel,
-                    false,
-                    modeData.Mode == GameModeData.GameMode.IkkiMode
-                        ? "キャラクター選択へ"
-                        : "タイトルへ");
+                if (battleGroundRun != null)
+                {
+                    yield return ShowMatchResult(
+                        modeData.CurrentLevel,
+                        false,
+                        "タイトルへ",
+                        $"今回 {battleGroundRun.WinStreak}人抜き　最高 {GameProgressStore.BestBattleGroundStreak}人抜き");
+                }
+                else
+                {
+                    yield return ShowMatchResult(
+                        modeData.CurrentLevel,
+                        false,
+                        "キャラクター選択へ");
+                }
                 break;
             }
 
@@ -200,6 +224,12 @@ public sealed class GameSessionFlow
             }
 
             modeData.IncrementWinStreak();
+            uiManager?.SetBattleGroundWinCount(modeData.CurrentWinStreak);
+            PlayerState winningPlayer = gameState.PlayerStates != null && gameState.PlayerStates.Count > 0
+                ? gameState.PlayerStates[0]
+                : null;
+            battleGroundRun.CaptureVictory(winningPlayer);
+            modeData.ReplaceSpecialCards(battleGroundRun.SpecialCards);
             int bestStreak =
                 GameProgressStore.RecordBattleGroundStreak(modeData.CurrentWinStreak);
             Debug.Log(
@@ -208,6 +238,11 @@ public sealed class GameSessionFlow
                 modeData.CurrentLevel,
                 true,
                 "次の対戦へ");
+            IEnumerator rewardRoutine = ShowBattleGroundReward(modeData);
+            while (rewardRoutine.MoveNext())
+            {
+                yield return rewardRoutine.Current;
+            }
             SelectRandomBattleGroundOpponent(modeData, avoidCurrentLevel: true);
             Debug.Log(
                 $"Battle Ground selected random CPU level {modeData.CurrentLevel}.");
@@ -223,6 +258,9 @@ public sealed class GameSessionFlow
     {
         if (modeData.Mode == GameModeData.GameMode.BattleGroundMode)
         {
+            battleGroundRun = new BattleGroundRunState(modeData.SelectedSpecialCardDatas);
+            battleGroundRewards = new BattleGroundRewardService(randomRange);
+            battleGroundOpponents = new BattleGroundOpponentSelector(randomRange);
             SelectRandomBattleGroundOpponent(modeData, avoidCurrentLevel: false);
             modeData.ResetWinStreak();
             return;
@@ -240,23 +278,9 @@ public sealed class GameSessionFlow
             return;
         }
 
-        int minLevel = CpuLevelCatalog.MinLevel;
-        int maxLevel = CpuLevelCatalog.MaxLevel;
-        int levelCount = maxLevel - minLevel + 1;
-
-        if (!avoidCurrentLevel ||
-            levelCount <= 1 ||
-            modeData.CurrentLevel < minLevel ||
-            modeData.CurrentLevel > maxLevel)
-        {
-            modeData.SetCurrentLevel(randomRange(minLevel, maxLevel + 1));
-            return;
-        }
-
-        int currentIndex = modeData.CurrentLevel - minLevel;
-        int randomOffset = randomRange(1, levelCount);
-        int nextLevel = minLevel + (currentIndex + randomOffset) % levelCount;
-        modeData.SetCurrentLevel(nextLevel);
+        battleGroundOpponents = battleGroundOpponents ?? new BattleGroundOpponentSelector(randomRange);
+        modeData.SetCurrentLevel(
+            battleGroundOpponents.Select(modeData.CurrentLevel, avoidCurrentLevel));
     }
 
     private IEnumerator RunSingleMatch(GameModeData modeData)
@@ -268,7 +292,17 @@ public sealed class GameSessionFlow
         gameState.ResetForNewMatch();
         CpuSetupService cpuSetupService = CreateCpuSetupService();
         cpuSetupService.ApplyLevelSettings(modeData.CurrentLevel);
+        if (battleGroundRun != null && gameState.PlayerStates.Count >= 2)
+        {
+            gameState.PlayerStates[0].SetLifePoints(battleGroundRun.PlayerLife);
+            gameState.PlayerStates[1].SetLifePoints(PlayerState.DefaultLifePoints);
+            modeData.ReplaceSpecialCards(battleGroundRun.SpecialCards);
+        }
         cpuSetupService.ApplySpecialCardsForLevel(modeData, modeData.CurrentLevel);
+        if (battleGroundRun != null)
+        {
+            BattleGroundVisualTheme.Activate(modeData.CurrentLevel, uiManager, characterManager);
+        }
 
         Debug.Log($"{modeData.Mode} match started. CPU level {modeData.CurrentLevel}.");
 
@@ -279,6 +313,10 @@ public sealed class GameSessionFlow
             if (!IsRunning)
             {
                 yield break;
+            }
+            if (gameOver)
+            {
+                break;
             }
 
             Debug.Log($"Round {gameState.RoundNumber} started.");
@@ -291,6 +329,10 @@ public sealed class GameSessionFlow
                 }
 
                 yield break;
+            }
+            if (gameOver)
+            {
+                break;
             }
 
             yield return RunShowdown();
@@ -384,7 +426,8 @@ public sealed class GameSessionFlow
     private IEnumerator ShowMatchResult(
         int cpuLevel,
         bool playerWon,
-        string buttonLabel)
+        string buttonLabel,
+        string summaryOverride = null)
     {
         matchResultPanel = MatchResultPanel.GetOrCreate(
             matchResultPanel,
@@ -401,13 +444,72 @@ public sealed class GameSessionFlow
             cpuLevel,
             currentMatchResults,
             playerWon,
-            buttonLabel);
+            buttonLabel,
+            summaryOverride);
+    }
+
+    private IEnumerator ShowBattleGroundReward(GameModeData modeData)
+    {
+        if (battleGroundRun == null || battleGroundRewards == null) yield break;
+
+        List<CardData> unlockedCards = GetUnlockedPlayerSpecialCards();
+        bool canChooseCard =
+            battleGroundRewards.BuildCandidates(battleGroundRun, unlockedCards).Count > 0;
+        battleGroundRewardPanel = BattleGroundRewardPanel.GetOrCreate(uiManager, owner);
+        if (battleGroundRewardPanel == null)
+        {
+            battleGroundRewards.ApplyHerb(battleGroundRun);
+            yield break;
+        }
+
+        BattleGroundRewardPanel.Choice choice = BattleGroundRewardPanel.Choice.None;
+        yield return battleGroundRewardPanel.Show(
+            battleGroundRun.PlayerLife,
+            battleGroundRun.WinStreak,
+            canChooseCard,
+            selected => choice = selected);
+
+        if (choice == BattleGroundRewardPanel.Choice.SpecialCard && canChooseCard)
+        {
+            CardData reward =
+                battleGroundRewards.GrantRandomSpecialCard(battleGroundRun, unlockedCards);
+            yield return battleGroundRewardPanel.RevealCard(reward);
+        }
+        else
+        {
+            battleGroundRewards.ApplyHerb(battleGroundRun);
+        }
+
+        modeData.ReplaceSpecialCards(battleGroundRun.SpecialCards);
+    }
+
+    private List<CardData> GetUnlockedPlayerSpecialCards()
+    {
+        var result = new List<CardData>();
+        if (playerSpecialCardsDeck == null || playerSpecialCardsDeck.cardList == null)
+        {
+            return result;
+        }
+
+        foreach (Card card in playerSpecialCardsDeck.cardList)
+        {
+            CardData data = card != null ? card.CardData : null;
+            if (data == null || SpecialCardResolver.IsNoUseSpecialCard(data)) continue;
+            if (GameProgressStore.IsSpecialCardUnlocked(data) && !result.Contains(data))
+            {
+                result.Add(data);
+            }
+        }
+
+        return result;
     }
 
     private void FinishMode(GameModeData.GameMode mode)
     {
         IsRunning = false;
         gameOver = false;
+        battleGroundRun = null;
+        BattleGroundVisualTheme.Deactivate(characterManager);
 
         if (mode == GameModeData.GameMode.IkkiMode)
         {

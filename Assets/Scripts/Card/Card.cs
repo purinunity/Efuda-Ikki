@@ -127,7 +127,7 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         runtimeState.SetCardData(cardData);
         if (cardImage != null && CardData != null)
         {
-            cardImage.sprite = CardData.BackImage;
+            cardImage.sprite = BattleGroundVisualTheme.ResolveBack(CardData);
         }
     }
 
@@ -140,7 +140,9 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         IsFaceUp = faceUp;
         if (CardData != null && cardImage != null)
         {
-            cardImage.sprite = IsFaceUp ? CardData.Image : CardData.BackImage;
+            cardImage.sprite = IsFaceUp
+                ? BattleGroundVisualTheme.ResolveFace(CardData)
+                : BattleGroundVisualTheme.ResolveBack(CardData);
             cardImage.SetNativeSize();
         }
 
@@ -253,7 +255,9 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         {
             if (cardImage != null && CardData != null)
             {
-                cardImage.sprite = IsFaceUp ? CardData.Image : CardData.BackImage;
+                cardImage.sprite = IsFaceUp
+                    ? BattleGroundVisualTheme.ResolveFace(CardData)
+                    : BattleGroundVisualTheme.ResolveBack(CardData);
                 cardImage.SetNativeSize();
                 cardRect.localScale = Vector3.one * DisplayScale;
             }
@@ -527,13 +531,13 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         // 画像を切り替え
         if (IsFaceUp)
         {
-            cardImage.sprite = CardData.Image;
+            cardImage.sprite = BattleGroundVisualTheme.ResolveFace(CardData);
             cardImage.SetNativeSize();
             rectTransform.localScale = Vector3.one * DisplayScale;
         }
         else
         {
-            cardImage.sprite = CardData.BackImage;
+            cardImage.sprite = BattleGroundVisualTheme.ResolveBack(CardData);
             cardImage.SetNativeSize();
             rectTransform.localScale = Vector3.one * DisplayScale;
         }

@@ -106,7 +106,16 @@ public sealed class ShowdownFlowService
                 preparedShowdown.PlayerLifeBefore,
                 GetLifePoints(0),
                 preparedShowdown.CpuLifeBefore,
-                GetLifePoints(1));
+                GetLifePoints(1),
+                GetHand(showdownResult, 0)?.DisplayName,
+                GetHand(showdownResult, 0)?.Score ?? 0,
+                GetHand(showdownResult, 1)?.DisplayName,
+                GetHand(showdownResult, 1)?.Score ?? 0,
+                BuildCardSprites(gameState.PlayerStates[0].HandCards),
+                BuildCardSprites(gameState.PlayerStates[1].HandCards),
+                BuildCardSprites(gameState.commonCards),
+                GetSelectedSpecialSprite(0, preparedShowdown.SpecialCardsToConsume),
+                GetSelectedSpecialSprite(1, preparedShowdown.SpecialCardsToConsume));
 
         bool isGameOver = CheckGameOver();
         ShowdownCommitResult commitResult = new ShowdownCommitResult(
@@ -115,6 +124,50 @@ public sealed class ShowdownFlowService
             isGameOver ? DetermineMatchWinnerIndex() : -1);
         preparedShowdown.MarkCommitted(commitResult);
         return commitResult;
+    }
+
+    private static SpecialCardResolver.ResolvedHand GetHand(
+        SpecialCardResolver.ShowdownResult result,
+        int playerId)
+    {
+        if (result?.Hands == null) return null;
+        foreach (SpecialCardResolver.ResolvedHand hand in result.Hands)
+        {
+            if (hand != null && hand.PlayerId == playerId) return hand;
+        }
+        return null;
+    }
+
+    private static List<UnityEngine.Sprite> BuildCardSprites(IReadOnlyList<Card> cards)
+    {
+        var sprites = new List<UnityEngine.Sprite>();
+        if (cards == null) return sprites;
+        foreach (Card card in cards)
+        {
+            CardData data = card != null ? card.CardData : null;
+            sprites.Add(data != null ? BattleGroundVisualTheme.ResolveFace(data) : null);
+        }
+        return sprites;
+    }
+
+    private UnityEngine.Sprite GetSelectedSpecialSprite(int playerIndex, IReadOnlyList<Card> selectedCards)
+    {
+        if (selectedCards == null || gameState?.PlayerStates == null ||
+            playerIndex < 0 || playerIndex >= gameState.PlayerStates.Count)
+        {
+            return null;
+        }
+
+        List<Card> owned = gameState.PlayerStates[playerIndex]?.SpecialCards;
+        if (owned == null) return null;
+        foreach (Card card in selectedCards)
+        {
+            if (card != null && owned.Contains(card) && card.CardData != null)
+            {
+                return BattleGroundVisualTheme.ResolveFace(card.CardData);
+            }
+        }
+        return null;
     }
 
     public void MarkSpecialCardsUsed(IReadOnlyList<Card> usedCards)

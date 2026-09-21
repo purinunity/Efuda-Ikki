@@ -131,6 +131,17 @@ public static class GameProgressStore
         Save(data);
     }
 
+    /// <summary>Unlocks every stage, mode, and player special card for debugging.</summary>
+    public static ProgressData UnlockAllProgress()
+    {
+        ProgressData data = LoadForUpdate();
+        data.highestUnlockedIkkiLevel = CpuLevelCatalog.MaxLevel;
+        data.unlockedSpecialCardCount = SpecialCardResolver.SpecialCardCount;
+        data.ikkiCleared = true;
+        Save(data);
+        return data;
+    }
+
     public static int RecordBattleGroundStreak(int winStreak)
     {
         int clampedStreak = Mathf.Max(0, winStreak);

@@ -64,7 +64,15 @@ public class UIManager : MonoBehaviour
 
         UIUpdateInProgress = true;
 
-        r.text = "第" + snapshot.RoundNumber.ToString() + "局";
+        GameModeData modeData = GameModeManager.GetGameModeData();
+        if (modeData != null && modeData.Mode == GameModeData.GameMode.BattleGroundMode)
+        {
+            SetBattleGroundWinCount(modeData.CurrentWinStreak);
+        }
+        else
+        {
+            r.text = "第" + snapshot.RoundNumber.ToString() + "局";
+        }
         L1.text = snapshot.PlayerLifePoints.ToString();
         L2.text = snapshot.CpuLifePoints.ToString();
 
@@ -116,6 +124,14 @@ public class UIManager : MonoBehaviour
         if (player1Special is SpecialCardArea specialCardArea)
         {
             specialCardArea.SetInputEnabled(enabled);
+        }
+    }
+
+    public void SetBattleGroundWinCount(int defeatedOpponents)
+    {
+        if (r != null)
+        {
+            r.text = Mathf.Max(0, defeatedOpponents) + "人抜き";
         }
     }
 

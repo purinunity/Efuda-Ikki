@@ -86,6 +86,27 @@ public class CharacterManager : MonoBehaviour
         ApplyCpuSprite(cpuCharNum);
     }
 
+    public void ApplyBattleGroundSprites(Sprite playerSprite, Sprite cpuSprite)
+    {
+        ResolveImages();
+        if (playerImage != null && playerSprite != null)
+        {
+            playerImage.sprite = playerSprite;
+            playerImage.preserveAspect = true;
+        }
+        if (cpuImage != null && cpuSprite != null)
+        {
+            cpuImage.sprite = cpuSprite;
+            cpuImage.preserveAspect = true;
+        }
+    }
+
+    public void RestoreModeSprites()
+    {
+        ApplyPlayerSprite();
+        ApplyCpuSprite(CpuNumber);
+    }
+
     public bool SetCPUCharacter(string characterId)
     {
         if (!StageCharacterCatalog.TryGet(characterId, out StageCharacterCatalog.Entry character))

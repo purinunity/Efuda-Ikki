@@ -38,6 +38,7 @@ public class GameManager : MonoBehaviour
     private GameSessionFlow sessionFlow;
     private GameState sessionGameState;
     private Coroutine sessionCoroutine;
+    private BattleGroundHud battleGroundHud;
 
     private void Start()
     {
@@ -52,6 +53,11 @@ public class GameManager : MonoBehaviour
             return;
         }
 
+        battleGroundHud = BattleGroundHud.GetOrCreate(uiManager, this);
+        battleGroundHud?.Configure(
+            modeData.Mode == GameModeData.GameMode.BattleGroundMode,
+            RequestBattleGroundSurrender);
+
         sessionCoroutine = StartCoroutine(RunSession(routine));
     }
 
@@ -59,6 +65,12 @@ public class GameManager : MonoBehaviour
     {
         yield return routine;
         sessionCoroutine = null;
+        battleGroundHud?.Configure(false, null);
+    }
+
+    public void RequestBattleGroundSurrender()
+    {
+        sessionFlow?.RequestBattleGroundSurrender();
     }
 
     private void EnsureSessionFlow()
@@ -103,6 +115,7 @@ public class GameManager : MonoBehaviour
     private void OnDisable()
     {
         sessionFlow?.Cancel();
+        battleGroundHud?.Configure(false, null);
         if (sessionCoroutine != null)
         {
             StopCoroutine(sessionCoroutine);

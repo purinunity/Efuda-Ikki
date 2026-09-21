@@ -17,6 +17,28 @@ public class TitleUIManager : MonoBehaviour
         ShowTitleScreen();
     }
 
+    private void Update()
+    {
+        if (!IsTitleScreenVisible()) return;
+
+        bool control = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+        bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+        if (control && shift && Input.GetKeyDown(KeyCode.U))
+        {
+            GameProgressStore.UnlockAllProgress();
+            GameModeManager.ResetGameModeData();
+            currentGameModeData = null;
+            Debug.Log("Debug command accepted: all modes, stages, and special cards unlocked.");
+        }
+    }
+
+    private bool IsTitleScreenVisible()
+    {
+        return titleScreenPanel != null &&
+               titleScreenPanel.alpha > 0.99f &&
+               titleScreenPanel.interactable;
+    }
+
     private void SetPanelActive(CanvasGroup panel, bool isActive)
     {
         if (panel == null)

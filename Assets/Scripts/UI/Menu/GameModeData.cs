@@ -82,4 +82,14 @@ public class GameModeData
     {
         SelectedSpecialCardDatas.Clear();
     }
+
+    public void ReplaceSpecialCards(IEnumerable<CardData> cards, int maxCount = 4)
+    {
+        SelectedSpecialCardDatas.Clear();
+        if (cards == null) return;
+        foreach (CardData card in cards)
+        {
+            AddSpecialCard(card, maxCount);
+        }
+    }
 }
