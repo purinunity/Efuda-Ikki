@@ -54,9 +54,9 @@ public sealed class RoleListPanelController : MonoBehaviour
             transform,
             openButtonSprite,
             openButtonHighlightedSprite,
-            new Vector2(1f, 1f),
-            new Vector2(-204f, -460f),
-            new Vector2(280f, 80f));
+            new Vector2(0f, 1f),
+            new Vector2(44f, -210f),
+            new Vector2(72f, 240f));
         openButton.onClick.AddListener(Open);
 
         panelRoot = new GameObject(

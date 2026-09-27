@@ -8,6 +8,25 @@ public sealed class FlowSafetyTests
 {
     private readonly List<Object> createdObjects = new List<Object>();
 
+    [TestCase(0, 1)]
+    [TestCase(1, 0)]
+    public void InitialParent_DeterminesFirstPlayer_ThenAlternatesNextRound(
+        int initialParent,
+        int nextParent)
+    {
+        GameState gameState = CreateGameState();
+
+        gameState.SetInitialParent(initialParent);
+
+        Assert.That(gameState.CurrentParentIndex, Is.EqualTo(initialParent));
+        Assert.That(gameState.CurrentPlayerIndex, Is.EqualTo(initialParent));
+
+        gameState.NextRound();
+
+        Assert.That(gameState.CurrentParentIndex, Is.EqualTo(nextParent));
+        Assert.That(gameState.CurrentPlayerIndex, Is.EqualTo(nextParent));
+    }
+
     [TearDown]
     public void TearDown()
     {

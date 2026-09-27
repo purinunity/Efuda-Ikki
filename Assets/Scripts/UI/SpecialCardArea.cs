@@ -14,7 +14,7 @@ public class SpecialCardArea : CardArea
     [SerializeField] private float topSwitchMoveDuration = 0.28f;
     [SerializeField] private float stackSettleMoveDuration = 0.22f;
     [SerializeField] private float topSwitchArcLift = 32f;
-    [SerializeField] private Color usedSpecialCardTint = new Color(0.45f, 0.45f, 0.45f, 0.65f);
+    [SerializeField] private Color usedSpecialCardTint = new Color(0.45f, 0.45f, 0.45f, 1f);
     [SerializeField] private Color normalSpecialCardTint = Color.white;
 
     private readonly Dictionary<Card, UnityAction> clickHandlers = new Dictionary<Card, UnityAction>();
@@ -506,15 +506,25 @@ public class SpecialCardArea : CardArea
         Image image = card.GetComponent<Image>();
         if (image != null)
         {
-            image.color = used ? usedSpecialCardTint : normalSpecialCardTint;
+            // シーン側の古い設定にアルファ値が残っていても、山札の下のカードが
+            // 透けないように使用状態の色は常に完全不透明で適用する。
+            Color cardTint = used ? usedSpecialCardTint : normalSpecialCardTint;
+            cardTint.a = 1f;
+            image.color = cardTint;
+            image.raycastTarget = inputEnabled;
         }
 
         Button cardButton = card.GetComponent<Button>();
         if (cardButton != null)
         {
-            // 見た目と入力可否は SwitchTopCard 側で管理する。
-            // 使用済み札が山の一番上でも、クリックで次の札へ送れるようにする。
-            cardButton.interactable = true;
+            // CPU側など入力無効の山札は、見た目だけを残してポインター入力を受けない。
+            // プレイヤー側は入力可能な間だけ、使用済み札を送る操作も許可する。
+            // Button の Disabled 色も Image に乗算されるため、ここが半透明だと
+            // 下に積まれた特殊札が見えてしまう。無効時も不透明な白を使う。
+            ColorBlock colors = cardButton.colors;
+            colors.disabledColor = Color.white;
+            cardButton.colors = colors;
+            cardButton.interactable = inputEnabled;
         }
     }
 

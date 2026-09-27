@@ -13,6 +13,9 @@ public class MainMenuPanel : MonoBehaviour
     [SerializeField] private Sprite ikkiModeButtonSprite;
     [SerializeField] private Sprite kachinukiModeButtonSprite;
     [SerializeField] private Sprite settingsButtonSprite;
+    [SerializeField] private Sprite ikkiModeButtonHoverSprite;
+    [SerializeField] private Sprite kachinukiModeButtonHoverSprite;
+    [SerializeField] private Sprite settingsButtonHoverSprite;
     [SerializeField] private bool hideButtonTextLabels = true;
     [SerializeField] private Color lockedBattleGroundColor = new Color(0.18f, 0.18f, 0.18f, 1f);
 
@@ -130,12 +133,12 @@ public class MainMenuPanel : MonoBehaviour
 
     private void ApplyModeButtonImages()
     {
-        ApplyButtonImage(kinouAriButton, ikkiModeButtonSprite);
-        ApplyButtonImage(battleGroundButton, kachinukiModeButtonSprite);
-        ApplyButtonImage(settingsButton, settingsButtonSprite);
+        ApplyButtonImage(kinouAriButton, ikkiModeButtonSprite, ikkiModeButtonHoverSprite);
+        ApplyButtonImage(battleGroundButton, kachinukiModeButtonSprite, kachinukiModeButtonHoverSprite);
+        ApplyButtonImage(settingsButton, settingsButtonSprite, settingsButtonHoverSprite);
     }
 
-    private void ApplyButtonImage(Button button, Sprite sprite)
+    private void ApplyButtonImage(Button button, Sprite sprite, Sprite hoverSprite)
     {
         if (button == null)
         {
@@ -155,6 +158,16 @@ public class MainMenuPanel : MonoBehaviour
             image.preserveAspect = true;
             image.color = Color.white;
             button.targetGraphic = image;
+        }
+
+        if (hoverSprite != null)
+        {
+            SpriteState state = button.spriteState;
+            state.highlightedSprite = hoverSprite;
+            state.pressedSprite = hoverSprite;
+            state.selectedSprite = hoverSprite;
+            button.spriteState = state;
+            button.transition = Selectable.Transition.SpriteSwap;
         }
 
         SetTextLabelsActive(button.transform, !hideButtonTextLabels);

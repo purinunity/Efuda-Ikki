@@ -26,12 +26,14 @@ public class SpecialCardSelectPanel : MonoBehaviour
     private Button subscribedStartGameButton;
     private Button subscribedBackButton;
     private bool started;
+    private readonly List<Image> selectedDisplayImages = new List<Image>();
 
     private void Start()
     {
         started = true;
         SubscribePanelButtons();
         CreateSpecialCardUI();
+        CreateSelectedDisplayImages();
         ConfigureSelectionLimiter();
         ResetSelectionForOpen();
     }
@@ -125,8 +127,6 @@ public class SpecialCardSelectPanel : MonoBehaviour
 
         Rect rect = selectionCardArea.areaRect.rect;
         int columns = Mathf.Clamp(gridColumnCount, 1, cards.Count);
-        int selectedIndex = 0;
-
         for (int index = 0; index < cards.Count; index++)
         {
             Card card = cards[index];
@@ -137,30 +137,111 @@ public class SpecialCardSelectPanel : MonoBehaviour
 
             float x;
             float y;
-            if (card.IsSelected)
-            {
-                // Exact centers of the four 48x64 black selected-card slots.
-                x = rect.xMin + rect.width * ((664f + 80f * selectedIndex) / 1024f);
-                y = rect.yMin + rect.height * (400f / 576f);
-                selectedIndex++;
-                card.DisplayScale = selectedCardScale;
-            }
-            else
-            {
-                int column = index % columns;
-                int row = index / columns;
-                // Exact centers of the 96x128 black card slots in the
-                // 1024x576 background (left-to-right, bottom-to-top).
-                x = rect.xMin + rect.width * ((112f + 128f * column) / 1024f);
-                y = rect.yMin + rect.height * ((128f + 160f * row) / 576f);
-                card.DisplayScale = gridCardScale;
-            }
+            int column = index % columns;
+            int row = index / columns;
+            // Keep every selectable card in the left grid. The top-right slots
+            // are display-only copies and never receive pointer input.
+            x = rect.xMin + rect.width * ((112f + 128f * column) / 1024f);
+            y = rect.yMin + rect.height * ((128f + 160f * row) / 576f);
+            card.DisplayScale = gridCardScale;
 
             card.transform.SetParent(selectionCardArea.areaRect, false);
             card.UseSelectedYOffset = false;
             card.TargetPosition = new Vector2(x, y);
             card.SnapToTargetPosition();
         }
+
+        RefreshSelectionVisuals(cards);
+    }
+
+    private void CreateSelectedDisplayImages()
+    {
+        if (selectionCardArea == null || selectionCardArea.areaRect == null || selectedDisplayImages.Count > 0)
+        {
+            return;
+        }
+
+        Rect rect = selectionCardArea.areaRect.rect;
+        for (int i = 0; i < maxSelectableSpecialCards; i++)
+        {
+            var display = new GameObject($"SelectedSpecialCard{i + 1}", typeof(RectTransform), typeof(Image));
+            display.transform.SetParent(selectionCardArea.areaRect, false);
+            RectTransform displayRect = display.GetComponent<RectTransform>();
+            displayRect.anchorMin = displayRect.anchorMax = new Vector2(0.5f, 0.5f);
+            displayRect.pivot = new Vector2(0.5f, 0.5f);
+            displayRect.anchoredPosition = new Vector2(
+                rect.xMin + rect.width * ((664f + 80f * i) / 1024f),
+                rect.yMin + rect.height * (400f / 576f));
+            Image image = display.GetComponent<Image>();
+            image.color = Color.clear;
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            selectedDisplayImages.Add(image);
+        }
+    }
+
+    private void RefreshSelectionVisuals(IReadOnlyList<Card> cards)
+    {
+        int displayIndex = 0;
+        if (cards != null)
+        {
+            foreach (Card card in cards)
+            {
+                if (card == null || card.CardData == null) continue;
+                Image cardImage = card.GetComponent<Image>();
+                if (cardImage != null && card.IsFaceUp)
+                {
+                    Sprite selectedSprite = card.IsSelected
+                        ? GetSelectedCardSprite(card.CardData)
+                        : null;
+                    cardImage.sprite = selectedSprite != null
+                        ? selectedSprite
+                        : BattleGroundVisualTheme.ResolveFace(card.CardData);
+                    cardImage.color = Color.white;
+                }
+
+                if (!card.IsSelected || displayIndex >= selectedDisplayImages.Count) continue;
+                Image displayImage = selectedDisplayImages[displayIndex++];
+                displayImage.sprite = BattleGroundVisualTheme.ResolveFace(card.CardData);
+                displayImage.SetNativeSize();
+                displayImage.rectTransform.localScale = Vector3.one * selectedCardScale;
+                displayImage.color = Color.white;
+            }
+        }
+
+        for (int i = displayIndex; i < selectedDisplayImages.Count; i++)
+        {
+            selectedDisplayImages[i].sprite = null;
+            selectedDisplayImages[i].color = Color.clear;
+        }
+    }
+
+    private static Sprite GetSelectedCardSprite(CardData cardData)
+    {
+        if (!SpecialCardResolver.TryGetSpecialCardId(cardData, out SpecialCardResolver.SpecialCardId id))
+        {
+            return null;
+        }
+
+        string fileName;
+        switch (id)
+        {
+            case SpecialCardResolver.SpecialCardId.Aiko: fileName = "aiko_s"; break;
+            case SpecialCardResolver.SpecialCardId.Seal: fileName = "seal_s"; break;
+            case SpecialCardResolver.SpecialCardId.Bonus5: fileName = "bonus_05_s"; break;
+            case SpecialCardResolver.SpecialCardId.Curse: fileName = "curse_s"; break;
+            case SpecialCardResolver.SpecialCardId.Bonus10: fileName = "bonus_10_s"; break;
+            case SpecialCardResolver.SpecialCardId.Bonus15: fileName = "bonus_15_s"; break;
+            case SpecialCardResolver.SpecialCardId.DoubleScore: fileName = "double_score_s"; break;
+            case SpecialCardResolver.SpecialCardId.Bet: fileName = "bet_s"; break;
+            case SpecialCardResolver.SpecialCardId.Rain: fileName = "rain_s"; break;
+            case SpecialCardResolver.SpecialCardId.Festival: fileName = "festival_s"; break;
+            case SpecialCardResolver.SpecialCardId.Sunny: fileName = "sunny_s"; break;
+            case SpecialCardResolver.SpecialCardId.Swap: fileName = "swap_s"; break;
+            default: return null;
+        }
+
+        return Resources.Load<Sprite>("SpecialCardSelection/" + fileName);
     }
 
     private void SubscribeDisplayedCards()

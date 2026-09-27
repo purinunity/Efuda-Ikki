@@ -76,9 +76,6 @@ public class StageSelectPanel : MonoBehaviour
     [SerializeField] private Sprite[] clearedHoverCharacterSprites = new Sprite[9];
     [Tooltip("Preferred ID-based bindings. Existing scenes continue to use the legacy arrays as a fallback.")]
     [SerializeField] private CharacterBinding[] characterBindings = Array.Empty<CharacterBinding>();
-    [SerializeField] private Vector2 backButtonTopLeftOffset = new Vector2(48f, -40f);
-    [SerializeField] private Vector2 backButtonSize = new Vector2(200f, 80f);
-
     private Sprite[] unlockedCharacterSprites;
     private CharacterBinding[] activeCharacterBindings;
     private ShowdownCutInAssetSet sharedAssetSet;
@@ -98,7 +95,6 @@ public class StageSelectPanel : MonoBehaviour
     private void Start()
     {
         ApplyCharacterFrameLayout();
-        ApplyBackButtonLayout();
         HideLegacyTextLabels();
         RefreshProgression();
 
@@ -271,34 +267,7 @@ public class StageSelectPanel : MonoBehaviour
         CacheUnlockedCharacterSprites();
         BuildActiveCharacterBindings();
         ApplyCharacterFrameLayout();
-        ApplyBackButtonLayout();
         HideLegacyTextLabels();
-    }
-
-    private void ApplyBackButtonLayout()
-    {
-        if (backButton == null)
-        {
-            return;
-        }
-
-        RectTransform rectTransform = backButton.GetComponent<RectTransform>();
-        if (rectTransform == null)
-        {
-            return;
-        }
-
-        if (rectTransform.parent != transform)
-        {
-            rectTransform.SetParent(transform, false);
-        }
-
-        rectTransform.anchorMin = new Vector2(0f, 1f);
-        rectTransform.anchorMax = new Vector2(0f, 1f);
-        rectTransform.pivot = new Vector2(0f, 1f);
-        rectTransform.anchoredPosition = backButtonTopLeftOffset;
-        rectTransform.sizeDelta = backButtonSize;
-        rectTransform.SetAsLastSibling();
     }
 
     private void ApplyCharacterFrameLayout()

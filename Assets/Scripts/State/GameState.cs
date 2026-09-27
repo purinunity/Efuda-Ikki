@@ -85,6 +85,18 @@ public class GameState
         CurrentPlayerIndex = (CurrentPlayerIndex + 1) % PlayerStates.Count;
     }
 
+    public void SetInitialParent(int playerIndex)
+    {
+        if (playerIndex < 0 || playerIndex >= PlayerStates.Count)
+        {
+            Debug.LogWarning($"Invalid parent player index: {playerIndex}");
+            return;
+        }
+
+        CurrentParentIndex = playerIndex;
+        CurrentPlayerIndex = playerIndex;
+    }
+
     // ラウンド終了処理：ラウンド番号と親プレイヤーを進め、手札交換の使用回数をリセットする。
     public void NextRound()
     {

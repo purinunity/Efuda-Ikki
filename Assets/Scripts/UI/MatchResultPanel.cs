@@ -155,6 +155,7 @@ public sealed class MatchResultPanel : MonoBehaviour
         string summaryOverride = null)
     {
         Initialize();
+        RefreshCommonSpecialCardLayout();
         Populate(cpuLevel, results, playerWon, buttonLabel, summaryOverride);
         gameObject.SetActive(true);
         transform.SetAsLastSibling();
@@ -226,12 +227,14 @@ public sealed class MatchResultPanel : MonoBehaviour
         summaryText.fontSizeMin = 14f;
         summaryText.fontSizeMax = 21f;
 
-        // Keep portraits inside the character frames with matching inset on
-        // both rows. PreserveAspect then centers each portrait in this area.
-        playerCharacterImage = CreateArtworkImage("PlayerCharacter", 0.115f, 0.228f, 0.369f, 0.601f);
-        cpuCharacterImage = CreateArtworkImage("CpuCharacter", 0.115f, 0.228f, 0.092f, 0.296f);
-        CreateCardRow("Player", 0.403f, 0.571f, playerHandImages, playerCommonImages, out playerSpecialImage);
-        CreateCardRow("Cpu", 0.097f, 0.264f, cpuHandImages, cpuCommonImages, out cpuSpecialImage);
+        // Pixel-accurate inner bounds of the 112x112 portrait openings in the
+        // 1024x576 result artwork. Keep the black 16px border visible.
+        playerCharacterImage = CreateArtworkImage(
+            "PlayerCharacter", 0.125f, 0.234375f, 0.388889f, 0.583333f, preserveAspect: true);
+        cpuCharacterImage = CreateArtworkImage(
+            "CpuCharacter", 0.125f, 0.234375f, 0.083333f, 0.277778f, preserveAspect: true);
+        CreateCardRow("Player", 232f / 576f, 328f / 576f, playerHandImages, playerCommonImages, out playerSpecialImage);
+        CreateCardRow("Cpu", 56f / 576f, 152f / 576f, cpuHandImages, cpuCommonImages, out cpuSpecialImage);
     }
 
     private void CreateCardRow(
@@ -242,50 +245,152 @@ public sealed class MatchResultPanel : MonoBehaviour
         List<Image> commonImages,
         out Image specialImage)
     {
-        const float handStart = 0.286f;
-        const float handWidth = 0.061f;
-        const float handGap = 0.003f;
+        // Every result card uses the same 66x88 size. The 336px hand opening
+        // holds five cards with 1px outer margins and 1px gaps.
+        const float handFrameMin = 288f / 1024f;
+        const float handPadding = 1f / 1024f;
+        const float handWidth = 66f / 1024f;
+        const float handStep = 67f / 1024f;
+        float handMinY = minY + 4f / 576f;
+        float handMaxY = maxY - 4f / 576f;
         for (int i = 0; i < 5; i++)
         {
-            float minX = handStart + i * (handWidth + handGap);
-            handImages.Add(CreateArtworkImage($"{prefix}Hand{i + 1}", minX, minX + handWidth, minY, maxY));
+            float minX = handFrameMin + handPadding + i * handStep;
+            handImages.Add(CreateArtworkImage(
+                $"{prefix}Hand{i + 1}",
+                minX,
+                minX + handWidth,
+                handMinY,
+                handMaxY));
         }
 
-        // The right white frame spans x=0.641..0.891. Divide it into three
-        // equal card slots with identical outer margins and gaps.
-        const float rightFrameMin = 0.641f;
-        const float rightPadding = 0.014f;
-        const float rightGap = 0.014f;
-        const float rightCardWidth = 0.06467f;
-        float rightMinY = minY + 0.007f;
-        float rightMaxY = maxY - 0.007f;
+        // Keep these three cards inside a transform matching the white opening.
+        // Their coordinates are local to the opening, so scaling the result panel
+        // cannot introduce a separate horizontal or vertical offset.
+        RectTransform rightFrame = CreateRect($"{prefix}CommonSpecialFrame", panel);
+        SetAnchoredBand(rightFrame, 656f / 1024f, 912f / 1024f, minY, maxY);
+        GetOrAdd<RectMask2D>(rightFrame.gameObject);
+
+        const float rightCardWidth = 66f / 256f;
+        const float rightMinY = 4f / 96f;
+        const float rightMaxY = 92f / 96f;
         for (int i = 0; i < 2; i++)
         {
-            float minX = rightFrameMin + rightPadding + i * (rightCardWidth + rightGap);
+            // The artwork's common-card opening is x=656..800 (144px).
+            // Two 66px cards fit with equal 4px left, middle, and right gaps.
+            float minX = (4f + i * 70f) / 256f;
             commonImages.Add(CreateArtworkImage(
                 $"{prefix}Common{i + 1}",
+                rightFrame,
                 minX,
                 minX + rightCardWidth,
                 rightMinY,
-                rightMaxY));
+                rightMaxY,
+                preserveAspect: true));
         }
 
-        float specialMinX = rightFrameMin + rightPadding + 2f * (rightCardWidth + rightGap);
+        // The separate special-card opening is x=832..912 (80px), leaving
+        // 7px on both sides of a 66px card.
+        float specialMinX = 183f / 256f;
         specialImage = CreateArtworkImage(
             $"{prefix}Special",
+            rightFrame,
             specialMinX,
             specialMinX + rightCardWidth,
             rightMinY,
-            rightMaxY);
+            rightMaxY,
+            preserveAspect: true);
     }
 
-    private Image CreateArtworkImage(string name, float minX, float maxX, float minY, float maxY)
+    private void RefreshCommonSpecialCardLayout()
     {
-        RectTransform rect = CreateRect(name, panel);
+        RefreshCommonSpecialCardRow(
+            "Player",
+            232f / 576f,
+            328f / 576f,
+            playerCommonImages,
+            playerSpecialImage);
+        RefreshCommonSpecialCardRow(
+            "Cpu",
+            56f / 576f,
+            152f / 576f,
+            cpuCommonImages,
+            cpuSpecialImage);
+    }
+
+    private void RefreshCommonSpecialCardRow(
+        string prefix,
+        float minY,
+        float maxY,
+        IReadOnlyList<Image> commonImages,
+        Image specialImage)
+    {
+        if (panel == null) return;
+
+        Transform existing = panel.Find($"{prefix}CommonSpecialFrame");
+        RectTransform frame = existing as RectTransform;
+        if (frame == null)
+        {
+            frame = CreateRect($"{prefix}CommonSpecialFrame", panel);
+        }
+
+        SetAnchoredBand(frame, 656f / 1024f, 912f / 1024f, minY, maxY);
+        GetOrAdd<RectMask2D>(frame.gameObject);
+
+        const float width = 66f / 256f;
+        for (int i = 0; i < 2; i++)
+        {
+            Image image = commonImages != null && i < commonImages.Count ? commonImages[i] : null;
+            float minX = (4f + i * 70f) / 256f;
+            PlaceCommonSpecialCard(image, frame, minX, width);
+        }
+
+        float specialMinX = 183f / 256f;
+        PlaceCommonSpecialCard(specialImage, frame, specialMinX, width);
+    }
+
+    private static void PlaceCommonSpecialCard(
+        Image image,
+        RectTransform frame,
+        float minX,
+        float width)
+    {
+        if (image == null || frame == null) return;
+        image.rectTransform.SetParent(frame, false);
+        RuntimeUiFactory.SetAnchoredBand(
+            image.rectTransform,
+            minX,
+            minX + width,
+            4f / 96f,
+            92f / 96f);
+        image.preserveAspect = true;
+    }
+
+    private Image CreateArtworkImage(
+        string name,
+        float minX,
+        float maxX,
+        float minY,
+        float maxY,
+        bool preserveAspect = true)
+    {
+        return CreateArtworkImage(name, panel, minX, maxX, minY, maxY, preserveAspect);
+    }
+
+    private Image CreateArtworkImage(
+        string name,
+        RectTransform parent,
+        float minX,
+        float maxX,
+        float minY,
+        float maxY,
+        bool preserveAspect = true)
+    {
+        RectTransform rect = CreateRect(name, parent);
         SetAnchoredBand(rect, minX, maxX, minY, maxY);
         Image image = GetOrAdd<Image>(rect.gameObject);
         image.color = Color.clear;
-        image.preserveAspect = true;
+        image.preserveAspect = preserveAspect;
         image.raycastTarget = false;
         return image;
     }

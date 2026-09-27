@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7f21b763ed1541cf8f94bb4ee9f955cb, type: 3}
   m_Name: ShowdownCutInAssets
   m_EditorClassIdentifier: 
-  cutInBackground: {fileID: 21300000, guid: c77149a29b7ac7949ae902e2a9b58992, type: 3}
+  cutInBackground: {fileID: 21300000, guid: 2b6f4ad0af9656d4a9cbc7fa0ef896ec, type: 3}
   characterBase: {fileID: 21300000, guid: a4edca6d2bfb8c24580bc0c13635a60d, type: 3}
   roleFrame: {fileID: 21300000, guid: fe2a869f8ddd80541a3279ff6b5cb8b8, type: 3}
   winResult: {fileID: 21300000, guid: 98e38505e6eaca34591c9472f562cf1f, type: 3}
