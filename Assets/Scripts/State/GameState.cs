@@ -19,6 +19,8 @@ public class GameState
     public List<PlayerState> PlayerStates { get; private set; } = new List<PlayerState>(); // プレイヤー状態リスト
     public int CurrentPlayerIndex { get; private set; } = 0; // 現在のターンプレイヤー
     public int CurrentParentIndex { get; private set; } = 0; // 現在の親プレイヤー
+    public bool IsWaitingForHandReveal { get; private set; }
+    public bool IsSpecialCardSelectionLocked { get; private set; }
     public int RoundNumber { get; private set; } = 1; // 現在のラウンド数
     public List<Card> deckCards { get; private set; } = new List<Card>(); // デッキのカード
     public List<Card> commonCards { get; private set; } = new List<Card>(); // 共通カード
@@ -70,6 +72,8 @@ public class GameState
         CurrentPlayerIndex = 0;
         CurrentParentIndex = 0;
         RoundNumber = 1;
+        IsWaitingForHandReveal = false;
+        IsSpecialCardSelectionLocked = false;
         InitializePlayerStates();
     }
 
@@ -101,12 +105,24 @@ public class GameState
     public void NextRound()
     {
         RoundNumber++;
+        IsWaitingForHandReveal = false;
+        IsSpecialCardSelectionLocked = false;
         CurrentParentIndex = (CurrentParentIndex + 1) % PlayerStates.Count;
         CurrentPlayerIndex = CurrentParentIndex; // 親プレイヤーからスタート
         foreach (var playerState in PlayerStates)
         {
             playerState.ResetHandTrashTurnsUsed();
         }
+    }
+
+    public void SetWaitingForHandReveal(bool waiting)
+    {
+        IsWaitingForHandReveal = waiting;
+    }
+
+    public void LockSpecialCardSelection()
+    {
+        IsSpecialCardSelectionLocked = true;
     }
 
     // プレイヤー状態リストの初期化

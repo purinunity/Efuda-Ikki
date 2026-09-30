@@ -1763,7 +1763,7 @@ MonoBehaviour:
   decisionButton: {fileID: 0}
   decisionButtonImage: {fileID: 0}
   decisionButtonNormalColor: {r: 1, g: 1, b: 1, a: 1}
-  decisionButtonPressedSprite: {fileID: 21300000, guid: 769ce6a61e5c6594abb0553ed50edc46, type: 3}
+  decisionButtonPressedSprite: {fileID: 21300000, guid: ccb69d02071c01844aecc90dcda4ddae, type: 3}
 --- !u!4 &265672680
 Transform:
   m_ObjectHideFlags: 0
@@ -4681,6 +4681,7 @@ MonoBehaviour:
   settingsButtonSprite: {fileID: 21300000, guid: 4ff552871de543b45acc91a834dbf1fc, type: 3}
   ikkiModeButtonHoverSprite: {fileID: 21300000, guid: 61c625edaeed37a4abf6d8783cad11fe, type: 3}
   kachinukiModeButtonHoverSprite: {fileID: 21300000, guid: 55077a91ce9a42a40b92d0c76c6462bc, type: 3}
+  lockedBattleGroundButtonSprite: {fileID: 21300000, guid: cc40eb1b5f4b96848ad073b20c28a042, type: 3}
   settingsButtonHoverSprite: {fileID: 21300000, guid: 3ea1b8acd5a71b44bae1f6ca4620e449, type: 3}
   hideButtonTextLabels: 1
   lockedBattleGroundColor: {r: 0.18, g: 0.18, b: 0.18, a: 1}

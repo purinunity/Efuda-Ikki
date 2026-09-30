@@ -182,7 +182,11 @@ public class PopupPreviewCardArea : CardArea
             return;
         }
 
-        ConfigureCloseButtonColors(subscribedCloseButton);
+        ShowdownCutInAssetSet assets = Resources.Load<ShowdownCutInAssetSet>("ShowdownCutInAssets");
+        CloseButtonStyle.Apply(
+            subscribedCloseButton,
+            assets != null ? assets.closeButton : null,
+            assets != null ? assets.closeButtonHighlighted : null);
         subscribedCloseButton.onClick.AddListener(ClosePopup);
         subscribedCloseButton.transform.SetAsLastSibling();
     }

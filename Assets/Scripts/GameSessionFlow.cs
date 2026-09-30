@@ -38,6 +38,7 @@ public sealed class GameSessionFlow
     private MatchResultPanel matchResultPanel;
     private BattleGroundRewardPanel battleGroundRewardPanel;
     private CoinTossPanel coinTossPanel;
+    private HandRevealPanel handRevealPanel;
     private BattleGroundRunState battleGroundRun;
     private BattleGroundRewardService battleGroundRewards;
     private BattleGroundOpponentSelector battleGroundOpponents;
@@ -92,6 +93,7 @@ public sealed class GameSessionFlow
         currentMatchWinnerIndex = 1;
         if (playerController != null) playerController.CancelPendingInput();
         if (uiManager != null) uiManager.SetPlayerSpecialCardInputEnabled(false);
+        handRevealPanel?.CancelDisplay();
     }
 
     public bool TryStart(GameModeData modeData, out IEnumerator routine)
@@ -133,6 +135,8 @@ public sealed class GameSessionFlow
         if (matchResultPanel != null) matchResultPanel.CancelDisplay();
         if (battleGroundRewardPanel != null) battleGroundRewardPanel.CancelDisplay();
         if (coinTossPanel != null) coinTossPanel.CancelDisplay();
+        if (handRevealPanel != null) handRevealPanel.CancelDisplay();
+        gameState.SetWaitingForHandReveal(false);
         BattleGroundVisualTheme.Deactivate(characterManager);
         if (showdownCutInPopup != null) showdownCutInPopup.CancelDisplay();
         ShowdownCutInPopup currentPopup = showdownPresentationService?.CurrentPopup;
@@ -350,6 +354,22 @@ public sealed class GameSessionFlow
             {
                 break;
             }
+
+            gameState.SetWaitingForHandReveal(true);
+            uiManager?.SetPlayerSpecialCardInputEnabled(true);
+            yield return uiUpdateService.WaitForUpdate(0f);
+            handRevealPanel = HandRevealPanel.GetOrCreate(uiManager, owner);
+            if (handRevealPanel != null)
+            {
+                yield return handRevealPanel.WaitForConfirmation();
+                if (!IsRunning || gameOver || !handRevealPanel.WasConfirmed)
+                {
+                    yield break;
+                }
+            }
+            gameState.SetWaitingForHandReveal(false);
+            gameState.LockSpecialCardSelection();
+            uiManager?.SetPlayerSpecialCardInputEnabled(false);
 
             yield return RunShowdown();
             if (!gameOver)
@@ -647,7 +667,7 @@ public sealed class CoinTossPanel : MonoBehaviour
             coinImage.rectTransform.localRotation = Quaternion.identity;
             coinImage.rectTransform.localScale = Vector3.one;
             coinImage.rectTransform.anchoredPosition = Vector2.zero;
-            resultText.text = parentPlayerIndex == 0 ? "あなたが親（先手）" : "CPUが親（先手）";
+            resultText.text = parentPlayerIndex == 0 ? "あなたが親" : "CPUが親";
 
             float resultElapsed = 0f;
             while (!cancelled && resultElapsed < ResultDuration)
@@ -707,7 +727,7 @@ public sealed class CoinTossPanel : MonoBehaviour
             34,
             FontStyles.Bold,
             TextAlignmentOptions.Center,
-            Color.white);
+            Color.black);
         resultText.rectTransform.anchorMin = new Vector2(0.3f, 0.12f);
         resultText.rectTransform.anchorMax = new Vector2(0.7f, 0.24f);
         resultText.rectTransform.offsetMin = resultText.rectTransform.offsetMax = Vector2.zero;

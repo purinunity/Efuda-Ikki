@@ -79,14 +79,8 @@ public class PlayerController : Controller
         IsInputReceived = true;
         SetDecisionButtonPressed(true, false);
 
-        if (isFinalTrashTurnThisAct)
-        {
-            UIManager uiManager = FindObjectOfType<UIManager>();
-            if (uiManager != null)
-            {
-                uiManager.SetPlayerSpecialCardInputEnabled(false);
-            }
-        }
+        // Special-card selection remains available until the separate hand-reveal
+        // confirmation is pressed after both players finish their final exchange.
     }
 
     public void CancelPendingInput()

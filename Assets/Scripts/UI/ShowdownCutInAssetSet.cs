@@ -14,6 +14,12 @@ public class ShowdownCutInAssetSet : ScriptableObject
     public Sprite specialActivation;
     public Sprite closeButton;
     public Sprite closeButtonHighlighted;
+    public Sprite handRevealButton;
+    public Sprite handRevealButtonPressed;
+    public Sprite parentMarker;
+    public Sprite lifeDeductionFrame;
+    public Sprite characterSelectButton;
+    public Sprite characterSelectButtonPressed;
     public Sprite[] clearedCharacterSprites = new Sprite[9];
     public Sprite[] clearedHoverCharacterSprites = new Sprite[9];
     public Sprite[] specialCardTooltipSprites = new Sprite[13];

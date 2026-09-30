@@ -227,12 +227,22 @@ public sealed class MatchResultPanel : MonoBehaviour
         summaryText.fontSizeMin = 14f;
         summaryText.fontSizeMax = 21f;
 
-        // Pixel-accurate inner bounds of the 112x112 portrait openings in the
-        // 1024x576 result artwork. Keep the black 16px border visible.
+        // Fill the complete 144x144 character frames in the 1024x576 artwork.
+        // Character portraits intentionally stretch to these bounds.
         playerCharacterImage = CreateArtworkImage(
-            "PlayerCharacter", 0.125f, 0.234375f, 0.388889f, 0.583333f, preserveAspect: true);
+            "PlayerCharacter",
+            112f / 1024f,
+            256f / 1024f,
+            207f / 576f,
+            352f / 576f,
+            preserveAspect: false);
         cpuCharacterImage = CreateArtworkImage(
-            "CpuCharacter", 0.125f, 0.234375f, 0.083333f, 0.277778f, preserveAspect: true);
+            "CpuCharacter",
+            112f / 1024f,
+            256f / 1024f,
+            32f / 576f,
+            176f / 576f,
+            preserveAspect: false);
         CreateCardRow("Player", 232f / 576f, 328f / 576f, playerHandImages, playerCommonImages, out playerSpecialImage);
         CreateCardRow("Cpu", 56f / 576f, 152f / 576f, cpuHandImages, cpuCommonImages, out cpuSpecialImage);
     }
@@ -568,6 +578,7 @@ public sealed class MatchResultPanel : MonoBehaviour
                 ? $"今回 {modeData.CurrentWinStreak}人抜き　最高 {GameProgressStore.BestBattleGroundStreak}人抜き"
                 : $"CPUレベル {cpuLevel}　全{roundCount}局";
         continueButtonText.text = buttonLabel;
+        ConfigureContinueButtonVisual(buttonLabel);
         MatchRoundResult playerBest = FindBestResult(results, true);
         MatchRoundResult cpuBest = FindBestResult(results, false);
         CharacterManager characters = Object.FindObjectOfType<CharacterManager>(true);
@@ -575,6 +586,33 @@ public sealed class MatchResultPanel : MonoBehaviour
         SetArtworkSprite(cpuCharacterImage, characters != null ? characters.GetCpuSprite() : null);
         PopulateCardRow(playerBest, true, playerHandImages, playerCommonImages, playerSpecialImage);
         PopulateCardRow(cpuBest, false, cpuHandImages, cpuCommonImages, cpuSpecialImage);
+    }
+
+    private void ConfigureContinueButtonVisual(string buttonLabel)
+    {
+        Image image = continueButton != null ? continueButton.GetComponent<Image>() : null;
+        bool characterSelect = !string.IsNullOrEmpty(buttonLabel) && buttonLabel.Contains("キャラクター選択");
+        ShowdownCutInAssetSet assets = Resources.Load<ShowdownCutInAssetSet>("ShowdownCutInAssets");
+        Sprite normal = characterSelect && assets != null ? assets.characterSelectButton : null;
+        Sprite pressed = characterSelect && assets != null ? assets.characterSelectButtonPressed : null;
+        if (image != null)
+        {
+            image.sprite = normal;
+            image.color = normal != null ? Color.white : AccentColor;
+            image.preserveAspect = normal != null;
+        }
+        if (continueButton != null)
+        {
+            SpriteState state = continueButton.spriteState;
+            state.highlightedSprite = pressed;
+            state.pressedSprite = pressed;
+            state.selectedSprite = pressed;
+            continueButton.spriteState = state;
+            continueButton.transition = pressed != null
+                ? Selectable.Transition.SpriteSwap
+                : Selectable.Transition.ColorTint;
+        }
+        if (continueButtonText != null) continueButtonText.gameObject.SetActive(!characterSelect);
     }
 
     private static void PopulateCardRow(

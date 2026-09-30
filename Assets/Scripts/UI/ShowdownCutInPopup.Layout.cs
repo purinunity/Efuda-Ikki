@@ -23,7 +23,9 @@ public partial class ShowdownCutInPopup
     private static readonly Vector4 CpuSpecialCardSlotRect = new Vector4(208f, 16f, 96f, 128f);
     private static readonly Vector4 PlayerSpecialCardSlotRect = new Vector4(720f, 432f, 96f, 128f);
     private static readonly Vector2 ScoreTextSize = new Vector2(176f, 72f);
-    private static readonly Vector4 SpecialCallBackdropRect = new Vector4(304f, 224f, 416f, 128f);
+    // showdown_role.png is 1024x448. Preserve that aspect while keeping the
+    // existing text region centered inside the panel.
+    private static readonly Vector4 SpecialCallBackdropRect = new Vector4(304f, 197f, 416f, 182f);
     private static readonly Vector4 SpecialActivationRect = new Vector4(152f, 113f, 720f, 350f);
     private static readonly Vector4 ResultBackdropRect = new Vector4(304f, 208f, 416f, 160f);
     private static readonly Vector4 CpuResultStampRect = new Vector4(64f, 32f, 96f, 96f);
@@ -31,7 +33,7 @@ public partial class ShowdownCutInPopup
     private static readonly Vector4 SpecialCallTextRect = new Vector4(320f, 240f, 384f, 96f);
     private static readonly Vector4 ResultTextRect = new Vector4(320f, 224f, 384f, 64f);
     private static readonly Vector4 DamageTextRect = new Vector4(320f, 296f, 384f, 48f);
-    private static readonly Vector4 CloseButtonRect = new Vector4(976f, 16f, 40f, 40f);
+    private static readonly Vector4 CloseButtonRect = new Vector4(962f, 0f, 62f, 62f);
 
     private static void Stretch(RectTransform rectTransform)
     {

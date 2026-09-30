@@ -37,6 +37,8 @@ public partial class ShowdownCutInPopup : MonoBehaviour
     [SerializeField] private TextMeshProUGUI cpuScoreText;
     [SerializeField] private TextMeshProUGUI playerLifeDeductionText;
     [SerializeField] private TextMeshProUGUI cpuLifeDeductionText;
+    private Image playerLifeDeductionFrameImage;
+    private Image cpuLifeDeductionFrameImage;
     [SerializeField] private Image specialActivationImage;
     [SerializeField] private Image specialCallBackdropImage;
     [SerializeField] private Image resultBackdropImage;
@@ -342,8 +344,8 @@ public partial class ShowdownCutInPopup : MonoBehaviour
         SetActive(resultBackdropImage, false);
         SetActive(resultStampImage, false);
         SetActive(cpuResultStampImage, false);
-        SetTextActive(playerLifeDeductionText, false);
-        SetTextActive(cpuLifeDeductionText, false);
+        SetLifeDeductionActive(playerLifeDeductionText, false);
+        SetLifeDeductionActive(cpuLifeDeductionText, false);
 
         gameObject.SetActive(false);
     }

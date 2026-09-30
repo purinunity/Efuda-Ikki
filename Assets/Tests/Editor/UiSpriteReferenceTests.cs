@@ -43,7 +43,7 @@ public sealed class UiSpriteReferenceTests
                 .SelectMany(root => root.GetComponentsInChildren<RoleListPanelController>(true))
                 .Single();
             var serialized = new SerializedObject(panel);
-            AssertSprite(serialized, "openButtonSprite", "ui/buttons/common/show_role_list.png");
+            AssertSprite(serialized, "openButtonSprite", "ui/buttons/common/show_role_list2.png");
             AssertSprite(serialized, "firstPageSprite", "ui/reference/roles/page_01.png");
             AssertSprite(serialized, "secondPageSprite", "ui/reference/roles/page_02.png");
             AssertSprite(serialized, "closeButtonSprite", "ui/buttons/common/close.png");

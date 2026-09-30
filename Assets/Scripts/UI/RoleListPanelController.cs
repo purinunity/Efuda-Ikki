@@ -55,8 +55,10 @@ public sealed class RoleListPanelController : MonoBehaviour
             openButtonSprite,
             openButtonHighlightedSprite,
             new Vector2(0f, 1f),
-            new Vector2(44f, -210f),
+            new Vector2(20f, -100f),
             new Vector2(72f, 240f));
+        RectTransform openRect = openButton.GetComponent<RectTransform>();
+        openRect.pivot = new Vector2(0f, 1f);
         openButton.onClick.AddListener(Open);
 
         panelRoot = new GameObject(
@@ -81,8 +83,9 @@ public sealed class RoleListPanelController : MonoBehaviour
             closeButtonSprite,
             closeButtonHighlightedSprite,
             new Vector2(1f, 1f),
-            new Vector2(-76f, -58f),
-            new Vector2(112f, 80f));
+            Vector2.zero,
+            new Vector2(124f, 124f));
+        CloseButtonStyle.Apply(closeButton, closeButtonSprite, closeButtonHighlightedSprite);
         closeButton.onClick.AddListener(Close);
         closeButton.transform.SetAsLastSibling();
     }

@@ -15,6 +15,7 @@ public class MainMenuPanel : MonoBehaviour
     [SerializeField] private Sprite settingsButtonSprite;
     [SerializeField] private Sprite ikkiModeButtonHoverSprite;
     [SerializeField] private Sprite kachinukiModeButtonHoverSprite;
+    [SerializeField] private Sprite lockedBattleGroundButtonSprite;
     [SerializeField] private Sprite settingsButtonHoverSprite;
     [SerializeField] private bool hideButtonTextLabels = true;
     [SerializeField] private Color lockedBattleGroundColor = new Color(0.18f, 0.18f, 0.18f, 1f);
@@ -113,7 +114,11 @@ public class MainMenuPanel : MonoBehaviour
 
         if (image != null)
         {
-            image.color = unlocked ? Color.white : lockedBattleGroundColor;
+            image.sprite = !unlocked && lockedBattleGroundButtonSprite != null
+                ? lockedBattleGroundButtonSprite
+                : kachinukiModeButtonSprite;
+            image.color = Color.white;
+            image.preserveAspect = true;
         }
 
         ColorBlock colors = battleGroundButton.colors;
@@ -125,10 +130,19 @@ public class MainMenuPanel : MonoBehaviour
         {
             statusLabel.text = unlocked
                 ? $"最高連勝 {GameProgressStore.BestBattleGroundStreak}"
-                : "未解放\n最終ボス撃破で解放";
+                : string.Empty;
             ConfigureStatusLabelRect(statusLabel.rectTransform, unlocked);
             statusLabel.gameObject.SetActive(true);
         }
+
+        SpriteState state = battleGroundButton.spriteState;
+        Sprite lockedOrHover = unlocked
+            ? kachinukiModeButtonHoverSprite
+            : lockedBattleGroundButtonSprite;
+        state.highlightedSprite = lockedOrHover;
+        state.pressedSprite = lockedOrHover;
+        state.selectedSprite = lockedOrHover;
+        battleGroundButton.spriteState = state;
     }
 
     private void ApplyModeButtonImages()

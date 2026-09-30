@@ -101,8 +101,8 @@ public partial class ShowdownCutInPopup
         specialCallText.gameObject.SetActive(false);
         resultText.gameObject.SetActive(false);
         damageText.gameObject.SetActive(false);
-        SetTextActive(playerLifeDeductionText, false);
-        SetTextActive(cpuLifeDeductionText, false);
+        SetLifeDeductionActive(playerLifeDeductionText, false);
+        SetLifeDeductionActive(cpuLifeDeductionText, false);
         closeButton.gameObject.SetActive(false);
     }
 
@@ -118,8 +118,8 @@ public partial class ShowdownCutInPopup
         specialCallText.gameObject.SetActive(false);
         resultText.gameObject.SetActive(false);
         damageText.gameObject.SetActive(false);
-        SetTextActive(playerLifeDeductionText, false);
-        SetTextActive(cpuLifeDeductionText, false);
+        SetLifeDeductionActive(playerLifeDeductionText, false);
+        SetLifeDeductionActive(cpuLifeDeductionText, false);
         closeButton.gameObject.SetActive(false);
 
         if (specialActivationImage == null || activationSprite == null)
@@ -176,8 +176,8 @@ public partial class ShowdownCutInPopup
         specialCallText.gameObject.SetActive(true);
         resultText.gameObject.SetActive(false);
         damageText.gameObject.SetActive(false);
-        SetTextActive(playerLifeDeductionText, false);
-        SetTextActive(cpuLifeDeductionText, false);
+        SetLifeDeductionActive(playerLifeDeductionText, false);
+        SetLifeDeductionActive(cpuLifeDeductionText, false);
         closeButton.gameObject.SetActive(false);
         yield return AnimateScoresTo(step.PlayerScore, step.CpuScore);
     }
@@ -196,8 +196,8 @@ public partial class ShowdownCutInPopup
         specialCallText.gameObject.SetActive(false);
         resultText.gameObject.SetActive(false);
         damageText.gameObject.SetActive(false);
-        SetTextActive(playerLifeDeductionText, false);
-        SetTextActive(cpuLifeDeductionText, false);
+        SetLifeDeductionActive(playerLifeDeductionText, false);
+        SetLifeDeductionActive(cpuLifeDeductionText, false);
         closeButton.gameObject.SetActive(false);
         yield return AnimateScoresTo(data.PlayerFinalScore, data.CpuFinalScore);
         yield return ShowLifeDeduction(data);
@@ -337,7 +337,7 @@ public partial class ShowdownCutInPopup
         }
 
         deductionText.text = $"-{data.Damage}点";
-        SetTextActive(deductionText, true);
+        SetLifeDeductionActive(deductionText, true);
 
         RectTransform deductionRect = deductionText.rectTransform;
         Vector3 startScale = Vector3.one * 0.72f;

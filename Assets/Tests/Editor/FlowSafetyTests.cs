@@ -27,6 +27,26 @@ public sealed class FlowSafetyTests
         Assert.That(gameState.CurrentPlayerIndex, Is.EqualTo(nextParent));
     }
 
+    [Test]
+    public void HandRevealState_KeepsSpecialSelectionOpenUntilExplicitLock()
+    {
+        GameState gameState = CreateGameState();
+        gameState.SetWaitingForHandReveal(true);
+
+        GameUiSnapshot waiting = new GameUiPresenter().CreateSnapshot(gameState);
+        Assert.That(waiting.IsWaitingForHandReveal, Is.True);
+        Assert.That(waiting.PlayerCanSelectSpecialCard, Is.True);
+
+        gameState.SetWaitingForHandReveal(false);
+        gameState.LockSpecialCardSelection();
+        GameUiSnapshot confirmed = new GameUiPresenter().CreateSnapshot(gameState);
+        Assert.That(confirmed.IsWaitingForHandReveal, Is.False);
+        Assert.That(confirmed.PlayerCanSelectSpecialCard, Is.False);
+
+        gameState.NextRound();
+        Assert.That(new GameUiPresenter().CreateSnapshot(gameState).PlayerCanSelectSpecialCard, Is.True);
+    }
+
     [TearDown]
     public void TearDown()
     {

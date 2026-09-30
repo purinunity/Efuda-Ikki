@@ -14,6 +14,8 @@ public sealed class GameUiSnapshot
     public int RemainingTrashTurns { get; }
     public int MaxHandTrashCount { get; }
     public bool PlayerCanSelectSpecialCard { get; }
+    public int CurrentParentIndex { get; }
+    public bool IsWaitingForHandReveal { get; }
     public List<Card> DeckCards { get; }
     public List<Card> CommonCards { get; }
     public List<Card> TrashCards { get; }
@@ -32,6 +34,8 @@ public sealed class GameUiSnapshot
         int remainingTrashTurns,
         int maxHandTrashCount,
         bool playerCanSelectSpecialCard,
+        int currentParentIndex,
+        bool isWaitingForHandReveal,
         List<Card> deckCards,
         List<Card> commonCards,
         List<Card> trashCards,
@@ -49,6 +53,8 @@ public sealed class GameUiSnapshot
         RemainingTrashTurns = remainingTrashTurns;
         MaxHandTrashCount = maxHandTrashCount;
         PlayerCanSelectSpecialCard = playerCanSelectSpecialCard;
+        CurrentParentIndex = currentParentIndex;
+        IsWaitingForHandReveal = isWaitingForHandReveal;
         DeckCards = deckCards ?? new List<Card>();
         CommonCards = commonCards ?? new List<Card>();
         TrashCards = trashCards ?? new List<Card>();

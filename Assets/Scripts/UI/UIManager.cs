@@ -31,6 +31,8 @@ public class UIManager : MonoBehaviour
     private Coroutine uiUpdateCoroutine;
     private readonly HashSet<Card> recoveryCards = new HashSet<Card>();
     private readonly GameUiPresenter presenter = new GameUiPresenter();
+    private Image playerParentMarker;
+    private Image cpuParentMarker;
 
     private void Awake()
     {
@@ -75,6 +77,7 @@ public class UIManager : MonoBehaviour
         }
         L1.text = snapshot.PlayerLifePoints.ToString();
         L2.text = snapshot.CpuLifePoints.ToString();
+        UpdateParentMarkers(snapshot.CurrentParentIndex);
 
         H.SetRole(snapshot.PlayerRoleName, duration);
         playerRemainTrashCount.UpdateRemainTrashCount(snapshot.RemainingTrashTurns);
@@ -133,6 +136,52 @@ public class UIManager : MonoBehaviour
         {
             r.text = Mathf.Max(0, defeatedOpponents) + "人抜き";
         }
+    }
+
+    private void UpdateParentMarkers(int parentIndex)
+    {
+        EnsureParentMarkers();
+        if (playerParentMarker != null) playerParentMarker.gameObject.SetActive(parentIndex == 0);
+        if (cpuParentMarker != null) cpuParentMarker.gameObject.SetActive(parentIndex == 1);
+    }
+
+    private void EnsureParentMarkers()
+    {
+        if (playerParentMarker != null && cpuParentMarker != null) return;
+        CharacterManager characters = FindObjectOfType<CharacterManager>(true);
+        RectTransform playerRect = characters != null && characters.Player != null
+            ? characters.Player.GetComponent<RectTransform>()
+            : null;
+        RectTransform cpuRect = characters != null && characters.CPU != null
+            ? characters.CPU.GetComponent<RectTransform>()
+            : null;
+        if (playerRect == null || cpuRect == null) return;
+        ShowdownCutInAssetSet assets = Resources.Load<ShowdownCutInAssetSet>("ShowdownCutInAssets");
+        Sprite sprite = assets != null ? assets.parentMarker : null;
+        playerParentMarker = CreateParentMarker("PlayerParentMarker", playerRect, sprite);
+        cpuParentMarker = CreateParentMarker("CpuParentMarker", cpuRect, sprite);
+    }
+
+    private static Image CreateParentMarker(
+        string name, RectTransform characterRect, Sprite sprite)
+    {
+        Transform existing = characterRect.Find(name);
+        GameObject target = existing != null ? existing.gameObject : new GameObject(
+            name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        if (existing == null) target.transform.SetParent(characterRect, false);
+        RectTransform rect = target.GetComponent<RectTransform>();
+        rect.anchorMin = rect.anchorMax = Vector2.zero;
+        rect.pivot = Vector2.zero;
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = new Vector2(3.15f, 3.15f);
+        rect.localScale = Vector3.one;
+        Image image = target.GetComponent<Image>();
+        image.sprite = sprite;
+        image.color = Color.white;
+        image.preserveAspect = true;
+        image.raycastTarget = false;
+        target.transform.SetAsLastSibling();
+        return image;
     }
 
     private void UpdateSpecialCardArea(GameUiSnapshot snapshot, int playerId, CardArea targetArea, Cards sourceDeck)

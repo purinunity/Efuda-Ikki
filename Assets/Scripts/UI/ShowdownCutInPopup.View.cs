@@ -9,6 +9,7 @@ public partial class ShowdownCutInPopup
     private void ConfigureUiReferences()
     {
         ApplyRuntimeLayout();
+        ConfigureRequestedFrames();
 
         if (screenFillImage != null)
         {
@@ -62,6 +63,58 @@ public partial class ShowdownCutInPopup
         ApplyStageSiblingOrder();
     }
 
+    private void ConfigureRequestedFrames()
+    {
+        if (assetSet == null) return;
+        if (specialCallBackdropImage != null && assetSet.roleFrame != null)
+        {
+            specialCallBackdropImage.sprite = assetSet.roleFrame;
+            specialCallBackdropImage.color = Color.white;
+            specialCallBackdropImage.preserveAspect = true;
+        }
+        playerLifeDeductionFrameImage = CreateLifeDeductionFrame(
+            "PlayerLifeDeductionFrame",
+            playerLifeDeductionFrameImage,
+            playerLifeDeductionText,
+            assetSet.lifeDeductionFrame,
+            PlayerLifeDeductionRect);
+        cpuLifeDeductionFrameImage = CreateLifeDeductionFrame(
+            "CpuLifeDeductionFrame",
+            cpuLifeDeductionFrameImage,
+            cpuLifeDeductionText,
+            assetSet.lifeDeductionFrame,
+            CpuLifeDeductionRect);
+    }
+
+    private Image CreateLifeDeductionFrame(
+        string objectName,
+        Image current,
+        TextMeshProUGUI text,
+        Sprite sprite,
+        Vector4 referenceRect)
+    {
+        if (stage == null || text == null || sprite == null) return current;
+
+        Image image = current;
+        if (image == null)
+        {
+            Transform existing = stage.Find(objectName);
+            GameObject frame = existing != null
+                ? existing.gameObject
+                : new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            if (existing == null) frame.transform.SetParent(stage, false);
+            image = frame.GetComponent<Image>();
+        }
+
+        image.sprite = sprite;
+        image.color = Color.white;
+        image.preserveAspect = true;
+        image.raycastTarget = false;
+        SetReferencePixelRect(image.rectTransform, referenceRect);
+        PlaceFrameBehindText(image, text);
+        return image;
+    }
+
     private void ApplyRuntimeLayout()
     {
         if (stage == null)
@@ -112,6 +165,8 @@ public partial class ShowdownCutInPopup
         SetReferencePixelRect(playerCharacterImage, PlayerCharacterRect);
         SetReferencePixelRect(cpuLifeDeductionText, CpuLifeDeductionRect);
         SetReferencePixelRect(playerLifeDeductionText, PlayerLifeDeductionRect);
+        SetReferencePixelRect(cpuLifeDeductionFrameImage, CpuLifeDeductionRect);
+        SetReferencePixelRect(playerLifeDeductionFrameImage, PlayerLifeDeductionRect);
 
         if (cpuRoleImage != null)
         {
@@ -409,7 +464,9 @@ public partial class ShowdownCutInPopup
         SetAsLastSibling(playerSpecialCardImage);
         SetAsLastSibling(cpuScoreText);
         SetAsLastSibling(playerScoreText);
+        SetAsLastSibling(cpuLifeDeductionFrameImage);
         SetAsLastSibling(cpuLifeDeductionText);
+        SetAsLastSibling(playerLifeDeductionFrameImage);
         SetAsLastSibling(playerLifeDeductionText);
         SetAsLastSibling(specialActivationImage);
         SetAsLastSibling(specialCallBackdropImage);
@@ -420,6 +477,27 @@ public partial class ShowdownCutInPopup
         SetAsLastSibling(resultText);
         SetAsLastSibling(damageText);
         SetAsLastSibling(closeButton);
+    }
+
+    private static void PlaceFrameBehindText(Image frame, TextMeshProUGUI text)
+    {
+        if (frame == null || text == null) return;
+        frame.transform.SetSiblingIndex(text.transform.GetSiblingIndex());
+        text.transform.SetSiblingIndex(frame.transform.GetSiblingIndex() + 1);
+    }
+
+    private void SetLifeDeductionActive(TextMeshProUGUI text, bool active)
+    {
+        SetTextActive(text, active);
+        Image frame = text == playerLifeDeductionText
+            ? playerLifeDeductionFrameImage
+            : text == cpuLifeDeductionText ? cpuLifeDeductionFrameImage : null;
+        SetActive(frame, active);
+        if (active)
+        {
+            SetAsLastSibling(frame);
+            SetAsLastSibling(text);
+        }
     }
 
     private static void SetAsLastSibling(Component component)
@@ -747,7 +825,10 @@ public partial class ShowdownCutInPopup
             labelText.gameObject.SetActive(false);
         }
 
-        SetReferencePixelRect(closeButton.GetComponent<RectTransform>(), CloseButtonRect);
+        CloseButtonStyle.Apply(
+            closeButton,
+            assetSet != null ? assetSet.closeButton : null,
+            highlightedSprite);
     }
 
     private static string BuildWinnerText(Data data)
