@@ -111,6 +111,35 @@ public sealed class UiEventSubscriptionTests
             "Clicking the top gameplay special card must cycle it behind the stack after rebinding.");
     }
 
+    [Test]
+    public void SpecialCardArea_ClickDuringLayoutAnimation_IsNotDiscarded()
+    {
+        GameObject areaObject = CreateObject("Special Card Area", typeof(RectTransform));
+        SpecialCardArea area = areaObject.AddComponent<SpecialCardArea>();
+        area.areaRect = areaObject.GetComponent<RectTransform>();
+        Card first = CreateCard("First Special Card");
+        Card second = CreateCard("Second Special Card");
+        area.cardsInArea.Add(first);
+        area.cardsInArea.Add(second);
+
+        MethodInfo setupHandler = typeof(SpecialCardArea).GetMethod(
+            "SetupCardClickHandler",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        PropertyInfo moveComplete = typeof(Card).GetProperty(
+            nameof(Card.MoveComplete),
+            BindingFlags.Instance | BindingFlags.Public);
+        Assert.That(setupHandler, Is.Not.Null);
+        Assert.That(moveComplete?.GetSetMethod(true), Is.Not.Null);
+        setupHandler.Invoke(area, new object[] { first });
+        setupHandler.Invoke(area, new object[] { second });
+        moveComplete.GetSetMethod(true).Invoke(second, new object[] { false });
+
+        second.GetComponent<Button>().onClick.Invoke();
+
+        Assert.That(area.cardsInArea[0], Is.SameAs(second),
+            "A click received before the standalone layout animation finishes must still switch the special card.");
+    }
+
     private TitleUIManager CreateTitleUiManager()
     {
         GameObject managerObject = CreateObject("Title UI Manager");

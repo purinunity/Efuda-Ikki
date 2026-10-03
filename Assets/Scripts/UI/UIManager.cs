@@ -110,9 +110,11 @@ public class UIManager : MonoBehaviour
                 if (card != null) card.IsSelectable = false;
             }
         }
+        bool canSelectHandCards = snapshot.RemainingTrashTurns > 0 &&
+                                  !snapshot.IsWaitingForHandReveal;
         foreach (var card in player1.cardsInArea)
         {
-            card.IsSelectable = true;
+            card.IsSelectable = canSelectHandCards;
         }
         if (player1 != null)
         {

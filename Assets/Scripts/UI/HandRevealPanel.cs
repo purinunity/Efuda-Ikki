@@ -52,6 +52,7 @@ public sealed class HandRevealPanel : MonoBehaviour
         rect.sizeDelta = attachedToControlPanel
             ? new Vector2(7.7f, 2.2f)
             : new Vector2(250f, 72f);
+        AlignWithDecisionButton(rect);
 
         image = GetComponent<Image>();
         image.sprite = assets != null ? assets.handRevealButton : null;
@@ -78,6 +79,7 @@ public sealed class HandRevealPanel : MonoBehaviour
         Initialize();
         confirmed = false;
         cancelled = false;
+        AlignWithDecisionButton(GetComponent<RectTransform>());
         ResetVisualState();
         button.interactable = true;
         gameObject.SetActive(true);
@@ -116,6 +118,28 @@ public sealed class HandRevealPanel : MonoBehaviour
         {
             eventSystem.SetSelectedGameObject(null);
         }
+    }
+
+    private void AlignWithDecisionButton(RectTransform target)
+    {
+        if (target == null || transform.parent == null)
+        {
+            return;
+        }
+
+        RectTransform decisionRect = transform.parent.Find("D_button") as RectTransform;
+        if (decisionRect == null)
+        {
+            return;
+        }
+
+        target.anchorMin = decisionRect.anchorMin;
+        target.anchorMax = decisionRect.anchorMax;
+        target.pivot = decisionRect.pivot;
+        target.anchoredPosition3D = decisionRect.anchoredPosition3D;
+        target.sizeDelta = decisionRect.sizeDelta;
+        target.localRotation = decisionRect.localRotation;
+        target.localScale = decisionRect.localScale;
     }
 
     private void OnDestroy()

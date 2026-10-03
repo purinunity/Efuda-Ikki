@@ -77,6 +77,7 @@ public class PlayerController : Controller
             trash = trash.GetRange(0, maxTrashCountThisTurn);
         }
         IsInputReceived = true;
+        SetHandInputEnabled(false);
         SetDecisionButtonPressed(true, false);
 
         // Special-card selection remains available until the separate hand-reveal
@@ -196,6 +197,22 @@ public class PlayerController : Controller
         if (decisionButton != null)
         {
             decisionButton.interactable = interactable;
+        }
+    }
+
+    private void SetHandInputEnabled(bool enabled)
+    {
+        if (playerHands == null || playerHands.cardsInArea == null)
+        {
+            return;
+        }
+
+        foreach (Card card in playerHands.cardsInArea)
+        {
+            if (card != null)
+            {
+                card.IsSelectable = enabled;
+            }
         }
     }
 }

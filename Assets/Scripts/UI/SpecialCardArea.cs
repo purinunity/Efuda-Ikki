@@ -75,6 +75,9 @@ public class SpecialCardArea : CardArea
     {
         if (inputEnabled == enabled)
         {
+            // Reapply the actual Button/Image state after scene activation or a
+            // platform-specific UI rebuild even when the logical flag is unchanged.
+            ApplyUsedVisualState();
             return;
         }
 
@@ -303,7 +306,14 @@ public class SpecialCardArea : CardArea
     {
         if (selectedCard == null || !cardsInArea.Contains(selectedCard)) return;
         if (!inputEnabled) return;
-        if (topSwitchCoroutine != null || !AreStackCardsMoveComplete()) return;
+
+        // Standalone builds can receive the click before the initial stack
+        // animation finishes. Complete that layout instead of discarding the
+        // input, otherwise the special card appears intermittently unusable.
+        if (topSwitchCoroutine != null || !AreStackCardsMoveComplete())
+        {
+            StopTopSwitchAndRecoverLayout();
+        }
 
         int topIndex = cardsInArea.Count - 1;
         int selectedIndex = cardsInArea.IndexOf(selectedCard);
