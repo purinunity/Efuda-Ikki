@@ -140,6 +140,98 @@ public sealed class UiEventSubscriptionTests
             "A click received before the standalone layout animation finishes must still switch the special card.");
     }
 
+    [Test]
+    public void SpecialCardArea_NewMatch_ClearsUsageSelectionAndRestoresDeckOrder()
+    {
+        GameObject areaObject = CreateObject("Special Card Area", typeof(RectTransform));
+        SpecialCardArea area = areaObject.AddComponent<SpecialCardArea>();
+        area.areaRect = areaObject.GetComponent<RectTransform>();
+        Card first = CreateCard("First Special Card");
+        Card second = CreateCard("Second Special Card");
+        first.Initialize();
+        second.Initialize();
+        var originalOrder = new List<Card> { first, second };
+
+        MethodInfo rebuild = typeof(SpecialCardArea).GetMethod(
+            "RebuildCardsInAreaKeepingSelection",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        MethodInfo switchTop = typeof(SpecialCardArea).GetMethod(
+            "SwitchTopCard",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(rebuild, Is.Not.Null);
+        Assert.That(switchTop, Is.Not.Null);
+        rebuild.Invoke(area, new object[] { originalOrder });
+        switchTop.Invoke(area, new object[] { second });
+        Assert.That(first.IsSelected, Is.True);
+
+        area.SetUsedCards(new[] { second });
+        area.SetInputEnabled(false);
+        area.ResetForNewMatch(enableInput: true);
+        rebuild.Invoke(area, new object[] { originalOrder });
+
+        Assert.That(area.cardsInArea, Is.EqualTo(originalOrder));
+        Assert.That(first.IsSelected, Is.False);
+        Assert.That(second.IsSelected, Is.True,
+            "A new match must choose from the restored deck order instead of retaining the previous match's top card.");
+        Assert.That(first.GetComponent<Button>().interactable, Is.True);
+        Assert.That(second.GetComponent<Button>().interactable, Is.True);
+    }
+
+    [Test]
+    public void SpecialCardArea_TooltipIsEnabledOnlyForTopCard()
+    {
+        GameObject areaObject = CreateObject("Special Card Area", typeof(RectTransform));
+        SpecialCardArea area = areaObject.AddComponent<SpecialCardArea>();
+        area.areaRect = areaObject.GetComponent<RectTransform>();
+        Card first = CreateCard("First Special Card");
+        Card second = CreateCard("Second Special Card");
+        first.Initialize();
+        second.Initialize();
+
+        MethodInfo rebuild = typeof(SpecialCardArea).GetMethod(
+            "RebuildCardsInAreaKeepingSelection",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        MethodInfo switchTop = typeof(SpecialCardArea).GetMethod(
+            "SwitchTopCard",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        FieldInfo tooltipEnabled = typeof(SpecialCardTooltipTarget).GetField(
+            "tooltipEnabled",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(rebuild, Is.Not.Null);
+        Assert.That(switchTop, Is.Not.Null);
+        Assert.That(tooltipEnabled, Is.Not.Null);
+
+        rebuild.Invoke(area, new object[] { new List<Card> { first, second } });
+        area.SetTooltipsEnabled(true);
+        SpecialCardTooltipTarget firstTooltip = first.GetComponent<SpecialCardTooltipTarget>();
+        SpecialCardTooltipTarget secondTooltip = second.GetComponent<SpecialCardTooltipTarget>();
+        Assert.That(firstTooltip, Is.Not.Null);
+        Assert.That(secondTooltip, Is.Not.Null);
+        Assert.That(tooltipEnabled.GetValue(firstTooltip), Is.False);
+        Assert.That(tooltipEnabled.GetValue(secondTooltip), Is.True);
+
+        switchTop.Invoke(area, new object[] { second });
+        Assert.That(tooltipEnabled.GetValue(firstTooltip), Is.True);
+        Assert.That(tooltipEnabled.GetValue(secondTooltip), Is.False);
+    }
+
+    [Test]
+    public void HandCardArea_InputLockSurvivesSelectionLimitRefresh()
+    {
+        GameObject areaObject = CreateObject("Player Hand", typeof(RectTransform));
+        LimitedSelectableCardArea area = areaObject.AddComponent<LimitedSelectableCardArea>();
+        area.areaRect = areaObject.GetComponent<RectTransform>();
+        Card card = CreateCard("Hand Card");
+        area.cardsInArea.Add(card);
+
+        area.SetInputEnabled(false);
+        area.SetMaxSelectableCount(5);
+
+        Assert.That(card.IsSelectable, Is.False);
+        Assert.That(area.TryToggleSelection(card), Is.False);
+        Assert.That(card.IsSelected, Is.False);
+    }
+
     private TitleUIManager CreateTitleUiManager()
     {
         GameObject managerObject = CreateObject("Title UI Manager");

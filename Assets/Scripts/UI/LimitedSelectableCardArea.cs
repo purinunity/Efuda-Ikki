@@ -10,6 +10,7 @@ public class LimitedSelectableCardArea : CardArea
     [SerializeField] private TextMeshProUGUI selectionCountText;
     [SerializeField] private int maxSelectableCount = 1;
     [SerializeField] private float selectMoveDuration = 0.3f;
+    private bool inputEnabled = true;
     private readonly HashSet<Card> managedCards = new HashSet<Card>();
     private readonly HashSet<Card> unavailableCards = new HashSet<Card>();
     private readonly HashSet<Card> currentAreaCards = new HashSet<Card>();
@@ -29,6 +30,12 @@ public class LimitedSelectableCardArea : CardArea
     public void SetMaxSelectableCount(int maxCount)
     {
         maxSelectableCount = Mathf.Max(0, maxCount);
+        RefreshSelectionState();
+    }
+
+    public void SetInputEnabled(bool enabled)
+    {
+        inputEnabled = enabled;
         RefreshSelectionState();
     }
 
@@ -61,7 +68,7 @@ public class LimitedSelectableCardArea : CardArea
 
     public bool CanSelect(Card card)
     {
-        if (card == null || !ContainsCard(card))
+        if (!inputEnabled || card == null || !ContainsCard(card))
         {
             return false;
         }
@@ -76,7 +83,7 @@ public class LimitedSelectableCardArea : CardArea
 
     public bool TryToggleSelection(Card card)
     {
-        if (card == null || !ContainsCard(card))
+        if (!inputEnabled || card == null || !ContainsCard(card))
         {
             return false;
         }
@@ -116,7 +123,7 @@ public class LimitedSelectableCardArea : CardArea
             if (card == null) continue;
             currentAreaCards.Add(card);
             managedCards.Add(card);
-            card.IsSelectable = !unavailableCards.Contains(card);
+            card.IsSelectable = inputEnabled && !unavailableCards.Contains(card);
         }
 
         foreach (var card in managedCards)

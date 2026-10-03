@@ -23,6 +23,8 @@ public class SpecialCardArea : CardArea
     private Card selectedTopCard;
     private Coroutine topSwitchCoroutine;
     private bool inputEnabled = true;
+    private bool resetOrderOnNextSetCards;
+    private bool tooltipsEnabled = true;
 
     private void OnEnable()
     {
@@ -38,6 +40,7 @@ public class SpecialCardArea : CardArea
                 SetupCardClickHandler(card);
             }
         }
+        RefreshTooltipTargets();
     }
 
     private void OnDisable()
@@ -69,6 +72,25 @@ public class SpecialCardArea : CardArea
         EnsureSelectedTopCard();
         ApplyTopSelection();
         ApplyUsedVisualState();
+        RefreshTooltipTargets();
+    }
+
+    public void ResetForNewMatch(bool enableInput)
+    {
+        StopTopSwitchAndRecoverLayout();
+        usedCards.Clear();
+        selectedTopCard = null;
+        inputEnabled = enableInput;
+        resetOrderOnNextSetCards = true;
+        CardSelectionUtility.ClearSelections(cardsInArea);
+        ApplyUsedVisualState();
+        RefreshTooltipTargets();
+    }
+
+    public void SetTooltipsEnabled(bool enabled)
+    {
+        tooltipsEnabled = enabled;
+        RefreshTooltipTargets();
     }
 
     public void SetInputEnabled(bool enabled)
@@ -95,6 +117,7 @@ public class SpecialCardArea : CardArea
         }
         ApplyUsedVisualState();
         CardsStackedPositionUpdate(totalDuration);
+        RefreshTooltipTargets();
     }
 
     public override void SetCardsBySpeed(List<Card> cards, float moveSpeed, float turnSpeed)
@@ -107,6 +130,7 @@ public class SpecialCardArea : CardArea
         }
         ApplyUsedVisualState();
         CardsStackedPositionUpdateBySpeed(moveSpeed, turnSpeed);
+        RefreshTooltipTargets();
     }
 
     private void RebuildCardsInAreaKeepingSelection(List<Card> cards)
@@ -127,19 +151,28 @@ public class SpecialCardArea : CardArea
         }
 
         var nextCards = new List<Card>();
-        foreach (var card in cardsInArea)
+        if (resetOrderOnNextSetCards)
         {
-            if (card != null && incomingSet.Remove(card))
-            {
-                nextCards.Add(card);
-            }
+            nextCards.AddRange(incomingCards);
+            incomingSet.Clear();
+            resetOrderOnNextSetCards = false;
         }
-
-        foreach (var card in incomingCards)
+        else
         {
-            if (incomingSet.Contains(card))
+            foreach (var card in cardsInArea)
             {
-                nextCards.Add(card);
+                if (card != null && incomingSet.Remove(card))
+                {
+                    nextCards.Add(card);
+                }
+            }
+
+            foreach (var card in incomingCards)
+            {
+                if (incomingSet.Contains(card))
+                {
+                    nextCards.Add(card);
+                }
             }
         }
 
@@ -181,6 +214,7 @@ public class SpecialCardArea : CardArea
 
         EnsureSelectedTopCard();
         ApplyTopSelection();
+        RefreshTooltipTargets();
     }
 
     private void CardsStackedPositionUpdate(float totalDuration = 1.0f)
@@ -346,6 +380,7 @@ public class SpecialCardArea : CardArea
         EnsureSelectedTopCard();
         ApplyTopSelection();
         ApplyStackTargetsAndSiblingOrder();
+        RefreshTooltipTargets();
 
         if (topSwitchCoroutine != null)
         {
@@ -362,6 +397,29 @@ public class SpecialCardArea : CardArea
             if (card == null) continue;
             card.UseSelectedYOffset = false;
             card.IsSelected = card == selectedTopCard && IsCardAvailable(card);
+        }
+    }
+
+    private void RefreshTooltipTargets()
+    {
+        Card topCard = cardsInArea != null && cardsInArea.Count > 0
+            ? cardsInArea[cardsInArea.Count - 1]
+            : null;
+
+        if (cardsInArea == null)
+        {
+            return;
+        }
+
+        foreach (Card card in cardsInArea)
+        {
+            if (card == null) continue;
+            SpecialCardTooltipTarget tooltipTarget =
+                card.GetComponent<SpecialCardTooltipTarget>();
+            if (tooltipTarget != null)
+            {
+                tooltipTarget.SetTooltipEnabled(tooltipsEnabled && card == topCard);
+            }
         }
     }
 

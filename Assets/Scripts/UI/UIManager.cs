@@ -90,11 +90,11 @@ public class UIManager : MonoBehaviour
         common.SetCardsBySpeed(snapshot.CommonCards, cardMoveSpeed, cardTurnSpeed);
         trash.SetCardsBySpeed(snapshot.TrashCards, cardMoveSpeed, cardTurnSpeed);
 
-        if (snapshot.PlayerHandCards.Count == 5)
+        if (snapshot.PlayerHandCards.Count == 0 || snapshot.PlayerHandCards.Count == 5)
         {
             player1.SetCardsBySpeed(snapshot.PlayerHandCards, cardMoveSpeed, cardTurnSpeed);
         }
-        if (snapshot.CpuHandCards.Count == 5)
+        if (snapshot.CpuHandCards.Count == 0 || snapshot.CpuHandCards.Count == 5)
         {
             player2.SetCardsBySpeed(snapshot.CpuHandCards, cardMoveSpeed, cardTurnSpeed);
         }
@@ -112,13 +112,10 @@ public class UIManager : MonoBehaviour
         }
         bool canSelectHandCards = snapshot.RemainingTrashTurns > 0 &&
                                   !snapshot.IsWaitingForHandReveal;
-        foreach (var card in player1.cardsInArea)
-        {
-            card.IsSelectable = canSelectHandCards;
-        }
         if (player1 != null)
         {
             player1.SetMaxSelectableCount(snapshot.MaxHandTrashCount);
+            player1.SetInputEnabled(canSelectHandCards);
         }
 
         uiUpdateCoroutine = StartCoroutine(CheckUIUpdateComplete());
@@ -129,6 +126,19 @@ public class UIManager : MonoBehaviour
         if (player1Special is SpecialCardArea specialCardArea)
         {
             specialCardArea.SetInputEnabled(enabled);
+        }
+    }
+
+    public void ResetSpecialCardAreasForNewMatch()
+    {
+        if (player1Special is SpecialCardArea playerArea)
+        {
+            playerArea.ResetForNewMatch(enableInput: true);
+        }
+
+        if (player2Special is SpecialCardArea cpuArea)
+        {
+            cpuArea.ResetForNewMatch(enableInput: false);
         }
     }
 
@@ -201,6 +211,7 @@ public class UIManager : MonoBehaviour
         {
             bool canSelectSpecialCard = playerId == 0 && snapshot.PlayerCanSelectSpecialCard;
             specialCardArea.SetInputEnabled(canSelectSpecialCard);
+            specialCardArea.SetTooltipsEnabled(playerId == 0);
             specialCardArea.SetUsedCards(usedSpecialCards);
         }
 
@@ -220,7 +231,10 @@ public class UIManager : MonoBehaviour
                 cards,
                 sourceDeck,
                 includeNoUseCard: playerId == 0);
-            SetSpecialCardTooltipsEnabled(displayCards, playerId == 0);
+            if (!(targetArea is SpecialCardArea))
+            {
+                SetSpecialCardTooltipsEnabled(displayCards, playerId == 0);
+            }
             targetArea.SetCardsBySpeed(displayCards, cardMoveSpeed, cardTurnSpeed);
         }
         else

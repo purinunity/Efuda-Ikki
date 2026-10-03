@@ -298,6 +298,7 @@ public sealed class GameSessionFlow
         currentMatchResults.Clear();
 
         gameState.ResetForNewMatch();
+        uiManager?.ResetSpecialCardAreasForNewMatch();
         CpuSetupService cpuSetupService = CreateCpuSetupService();
         cpuSetupService.ApplyLevelSettings(modeData.CurrentLevel);
         if (battleGroundRun != null && gameState.PlayerStates.Count >= 2)
@@ -314,6 +315,13 @@ public sealed class GameSessionFlow
 
         int initialParentIndex = randomRange(0, gameState.playerCount);
         gameState.SetInitialParent(initialParentIndex);
+        PrepareMatchUiForCoinToss();
+        uiUpdateService.UpdateImmediately();
+        if (!IsRunning)
+        {
+            yield break;
+        }
+
         coinTossPanel = CoinTossPanel.GetOrCreate(uiManager, owner);
         if (coinTossPanel != null)
         {
@@ -382,6 +390,24 @@ public sealed class GameSessionFlow
         {
             currentMatchWinnerIndex = DetermineMatchWinnerIndex();
         }
+    }
+
+    private void PrepareMatchUiForCoinToss()
+    {
+        if (gameState == null || allCards == null || allCards.cardList == null)
+        {
+            return;
+        }
+
+        // A new match reuses the scene's Card objects. Return every card to the
+        // deck before rendering so the coin-toss background cannot show the
+        // previous opponent's hand, common cards, trash, or score state.
+        foreach (Card card in allCards.cardList)
+        {
+            gameState.AddCardToDeck(card);
+        }
+
+        gameState.CardReset();
     }
 
     private CpuSetupService CreateCpuSetupService()

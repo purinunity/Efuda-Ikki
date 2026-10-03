@@ -48,4 +48,17 @@ public sealed class GameUiUpdateService
 
         Debug.Log("UI update completed.");
     }
+
+    public void UpdateImmediately()
+    {
+        if (uiManager == null)
+        {
+            Debug.LogWarning("UIManager is not assigned.");
+            return;
+        }
+
+        updateVersion++;
+        uiManager.Render(presenter.CreateSnapshot(gameState), 0f);
+        uiManager.RecoverFromStalledUpdate();
+    }
 }
