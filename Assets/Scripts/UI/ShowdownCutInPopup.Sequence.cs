@@ -16,6 +16,10 @@ public partial class ShowdownCutInPopup
         closeRequested = false;
 
         ShowBaseResult(data);
+        if (data != null)
+        {
+            PlayRoleEffects(data.PlayerBaseRoleRank, data.CpuBaseRoleRank);
+        }
         yield return AnimateRoleFrameIn();
         yield return WaitForAdvanceInput();
 
@@ -34,6 +38,13 @@ public partial class ShowdownCutInPopup
         yield return ShowFinalResult(data);
         if (data != null && data.IsMatchDecided)
         {
+            // Keep the decisive final cut-in on screen until the player gives
+            // one new input. The match-result panel is shown only after this
+            // coroutine returns, so it cannot replace the cut-in automatically.
+            ConfigureCloseButtonVisual(true);
+            closeButton.gameObject.SetActive(true);
+            closeButton.Select();
+            yield return WaitForAdvanceInput();
             HideImmediately();
             yield break;
         }

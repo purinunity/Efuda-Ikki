@@ -11,6 +11,7 @@ public sealed class RoleListPanelController : MonoBehaviour
     [SerializeField] private Sprite openButtonHighlightedSprite;
     [SerializeField] private Sprite firstPageSprite;
     [SerializeField] private Sprite secondPageSprite;
+    [SerializeField] private Sprite combinedRoleSprite;
     [SerializeField] private Sprite closeButtonSprite;
     [SerializeField] private Sprite closeButtonHighlightedSprite;
 
@@ -74,8 +75,15 @@ public sealed class RoleListPanelController : MonoBehaviour
         dimmer.color = new Color(0f, 0f, 0f, 0.82f);
         dimmer.raycastTarget = true;
 
-        CreatePage("RoleListPage1", firstPageSprite, new Vector2(-382f, -6f));
-        CreatePage("RoleListPage2", secondPageSprite, new Vector2(382f, -6f));
+        if (combinedRoleSprite != null)
+        {
+            CreatePage("RoleListPage", combinedRoleSprite, new Vector2(0f, -6f), new Vector2(1520f, 656f));
+        }
+        else
+        {
+            CreatePage("RoleListPage1", firstPageSprite, new Vector2(-382f, -6f), new Vector2(720f, 615f));
+            CreatePage("RoleListPage2", secondPageSprite, new Vector2(382f, -6f), new Vector2(720f, 615f));
+        }
 
         closeButton = CreateButton(
             "RoleListCloseButton",
@@ -90,7 +98,7 @@ public sealed class RoleListPanelController : MonoBehaviour
         closeButton.transform.SetAsLastSibling();
     }
 
-    private void CreatePage(string objectName, Sprite sprite, Vector2 anchoredPosition)
+    private void CreatePage(string objectName, Sprite sprite, Vector2 anchoredPosition, Vector2 size)
     {
         GameObject page = new GameObject(
             objectName,
@@ -102,7 +110,7 @@ public sealed class RoleListPanelController : MonoBehaviour
         rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = anchoredPosition;
-        rect.sizeDelta = new Vector2(720f, 615f);
+        rect.sizeDelta = size;
 
         Image image = page.GetComponent<Image>();
         image.sprite = sprite;

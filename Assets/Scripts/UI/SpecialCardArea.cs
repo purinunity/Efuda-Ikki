@@ -25,6 +25,7 @@ public class SpecialCardArea : CardArea
     private bool inputEnabled = true;
     private bool resetOrderOnNextSetCards;
     private bool tooltipsEnabled = true;
+    private bool dimUsedCards = true;
 
     private void OnEnable()
     {
@@ -91,6 +92,17 @@ public class SpecialCardArea : CardArea
     {
         tooltipsEnabled = enabled;
         RefreshTooltipTargets();
+    }
+
+    public void SetUsedCardDimmingEnabled(bool enabled)
+    {
+        if (dimUsedCards == enabled)
+        {
+            return;
+        }
+
+        dimUsedCards = enabled;
+        ApplyUsedVisualState();
     }
 
     public void SetInputEnabled(bool enabled)
@@ -576,7 +588,7 @@ public class SpecialCardArea : CardArea
         {
             // シーン側の古い設定にアルファ値が残っていても、山札の下のカードが
             // 透けないように使用状態の色は常に完全不透明で適用する。
-            Color cardTint = used ? usedSpecialCardTint : normalSpecialCardTint;
+            Color cardTint = used && dimUsedCards ? usedSpecialCardTint : normalSpecialCardTint;
             cardTint.a = 1f;
             image.color = cardTint;
             image.raycastTarget = inputEnabled;
@@ -591,8 +603,23 @@ public class SpecialCardArea : CardArea
             // 下に積まれた特殊札が見えてしまう。無効時も不透明な白を使う。
             ColorBlock colors = cardButton.colors;
             colors.disabledColor = Color.white;
+            if (!dimUsedCards)
+            {
+                colors.normalColor = Color.white;
+                colors.highlightedColor = Color.white;
+                colors.pressedColor = Color.white;
+                colors.selectedColor = Color.white;
+                colors.colorMultiplier = 1f;
+            }
             cardButton.colors = colors;
-            cardButton.interactable = inputEnabled;
+            // Input is blocked by the Image raycast flag and SwitchTopCard guard.
+            // Keeping Button enabled prevents Unity's Disabled tint from darkening
+            // the opponent deck in standalone builds.
+            cardButton.interactable = true;
+            if (!inputEnabled)
+            {
+                cardButton.navigation = new Navigation { mode = Navigation.Mode.None };
+            }
         }
     }
 

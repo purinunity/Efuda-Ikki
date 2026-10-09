@@ -212,6 +212,9 @@ public class UIManager : MonoBehaviour
             bool canSelectSpecialCard = playerId == 0 && snapshot.PlayerCanSelectSpecialCard;
             specialCardArea.SetInputEnabled(canSelectSpecialCard);
             specialCardArea.SetTooltipsEnabled(playerId == 0);
+            // CPU cards always show their opaque back at the original brightness.
+            // The used-card tint is useful only for the player's selectable stack.
+            specialCardArea.SetUsedCardDimmingEnabled(playerId == 0);
             specialCardArea.SetUsedCards(usedSpecialCards);
         }
 

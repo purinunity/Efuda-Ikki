@@ -145,7 +145,7 @@ namespace EfudaIkki.Core.Tests
         [TestCase(HandRole.Sanju, 3, "三珠", 20)]
         [TestCase(HandRole.Hikari, 4, "光", 30)]
         [TestCase(HandRole.Suzi, 5, "筋", 35)]
-        [TestCase(HandRole.Yonju, 6, "四珠", 40)]
+        [TestCase(HandRole.Yonju, 6, "四珠", 45)]
         [TestCase(HandRole.Tenshu, 7, "天守", 45)]
         [TestCase(HandRole.Nanahikari, 8, "七光", 60)]
         [TestCase(HandRole.Nanasuzi, 9, "七筋", 70)]

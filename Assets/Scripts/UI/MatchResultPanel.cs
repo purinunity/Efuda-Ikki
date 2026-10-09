@@ -243,8 +243,8 @@ public sealed class MatchResultPanel : MonoBehaviour
             32f / 576f,
             176f / 576f,
             preserveAspect: false);
-        CreateCardRow("Player", 232f / 576f, 328f / 576f, playerHandImages, playerCommonImages, out playerSpecialImage);
-        CreateCardRow("Cpu", 56f / 576f, 152f / 576f, cpuHandImages, cpuCommonImages, out cpuSpecialImage);
+        CreateCardRow("Player", 216f / 576f, 280f / 576f, playerHandImages, playerCommonImages, out playerSpecialImage);
+        CreateCardRow("Cpu", 40f / 576f, 104f / 576f, cpuHandImages, cpuCommonImages, out cpuSpecialImage);
     }
 
     private void CreateCardRow(
@@ -255,60 +255,50 @@ public sealed class MatchResultPanel : MonoBehaviour
         List<Image> commonImages,
         out Image specialImage)
     {
-        // Every result card uses the same 66x88 size. The 336px hand opening
-        // holds five cards with 1px outer margins and 1px gaps.
-        const float handFrameMin = 288f / 1024f;
-        const float handPadding = 1f / 1024f;
-        const float handWidth = 66f / 1024f;
-        const float handStep = 67f / 1024f;
-        float handMinY = minY + 4f / 576f;
-        float handMaxY = maxY - 4f / 576f;
+        // Updated result artwork has five 48x64 white openings.
+        const float handFrameMin = 312f / 1024f;
+        const float handWidth = 48f / 1024f;
+        const float handStep = 56f / 1024f;
         for (int i = 0; i < 5; i++)
         {
-            float minX = handFrameMin + handPadding + i * handStep;
+            float minX = handFrameMin + i * handStep;
             handImages.Add(CreateArtworkImage(
                 $"{prefix}Hand{i + 1}",
                 minX,
                 minX + handWidth,
-                handMinY,
-                handMaxY));
+                minY,
+                maxY));
         }
 
         // Keep these three cards inside a transform matching the white opening.
         // Their coordinates are local to the opening, so scaling the result panel
         // cannot introduce a separate horizontal or vertical offset.
         RectTransform rightFrame = CreateRect($"{prefix}CommonSpecialFrame", panel);
-        SetAnchoredBand(rightFrame, 656f / 1024f, 912f / 1024f, minY, maxY);
+        SetAnchoredBand(rightFrame, 640f / 1024f, 872f / 1024f, minY, maxY);
         GetOrAdd<RectMask2D>(rightFrame.gameObject);
 
-        const float rightCardWidth = 66f / 256f;
-        const float rightMinY = 4f / 96f;
-        const float rightMaxY = 92f / 96f;
+        const float rightCardWidth = 48f / 232f;
         for (int i = 0; i < 2; i++)
         {
-            // The artwork's common-card opening is x=656..800 (144px).
-            // Two 66px cards fit with equal 4px left, middle, and right gaps.
-            float minX = (4f + i * 70f) / 256f;
+            float minX = (8f + i * 56f) / 232f;
             commonImages.Add(CreateArtworkImage(
                 $"{prefix}Common{i + 1}",
                 rightFrame,
                 minX,
                 minX + rightCardWidth,
-                rightMinY,
-                rightMaxY,
+                0f,
+                1f,
                 preserveAspect: true));
         }
 
-        // The separate special-card opening is x=832..912 (80px), leaving
-        // 7px on both sides of a 66px card.
-        float specialMinX = 183f / 256f;
+        float specialMinX = 176f / 232f;
         specialImage = CreateArtworkImage(
             $"{prefix}Special",
             rightFrame,
             specialMinX,
             specialMinX + rightCardWidth,
-            rightMinY,
-            rightMaxY,
+            0f,
+            1f,
             preserveAspect: true);
     }
 
@@ -316,14 +306,14 @@ public sealed class MatchResultPanel : MonoBehaviour
     {
         RefreshCommonSpecialCardRow(
             "Player",
-            232f / 576f,
-            328f / 576f,
+            216f / 576f,
+            280f / 576f,
             playerCommonImages,
             playerSpecialImage);
         RefreshCommonSpecialCardRow(
             "Cpu",
-            56f / 576f,
-            152f / 576f,
+            40f / 576f,
+            104f / 576f,
             cpuCommonImages,
             cpuSpecialImage);
     }
@@ -344,18 +334,18 @@ public sealed class MatchResultPanel : MonoBehaviour
             frame = CreateRect($"{prefix}CommonSpecialFrame", panel);
         }
 
-        SetAnchoredBand(frame, 656f / 1024f, 912f / 1024f, minY, maxY);
+        SetAnchoredBand(frame, 640f / 1024f, 872f / 1024f, minY, maxY);
         GetOrAdd<RectMask2D>(frame.gameObject);
 
-        const float width = 66f / 256f;
+        const float width = 48f / 232f;
         for (int i = 0; i < 2; i++)
         {
             Image image = commonImages != null && i < commonImages.Count ? commonImages[i] : null;
-            float minX = (4f + i * 70f) / 256f;
+            float minX = (8f + i * 56f) / 232f;
             PlaceCommonSpecialCard(image, frame, minX, width);
         }
 
-        float specialMinX = 183f / 256f;
+        float specialMinX = 176f / 232f;
         PlaceCommonSpecialCard(specialImage, frame, specialMinX, width);
     }
 
@@ -371,8 +361,8 @@ public sealed class MatchResultPanel : MonoBehaviour
             image.rectTransform,
             minX,
             minX + width,
-            4f / 96f,
-            92f / 96f);
+            0f,
+            1f);
         image.preserveAspect = true;
     }
 
@@ -504,8 +494,10 @@ public sealed class MatchResultPanel : MonoBehaviour
     {
         continueButton = RuntimeUiFactory.CreateButton("ContinueButton", panel);
         RectTransform buttonRect = continueButton.GetComponent<RectTransform>();
-        buttonRect.anchorMin = new Vector2(0.76f, 0.01f);
-        buttonRect.anchorMax = new Vector2(0.97f, 0.085f);
+        // Keep the transition button in the lower-right margin beside the
+        // special-card slot.
+        buttonRect.anchorMin = new Vector2(0.86f, 0.01f);
+        buttonRect.anchorMax = new Vector2(0.99f, 0.085f);
         buttonRect.offsetMin = Vector2.zero;
         buttonRect.offsetMax = Vector2.zero;
 

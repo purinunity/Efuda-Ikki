@@ -26,6 +26,8 @@ public class ShowdownCutInAssetSet : ScriptableObject
     [Tooltip("Preferred CardData/ID/tooltip bindings. The existing enum-indexed array remains the compatibility fallback.")]
     [SerializeField] private SpecialCardCatalog.AssetBinding[] specialCardBindings;
     public TMP_FontAsset textFont;
+    [Tooltip("Role particle prefabs indexed by HandRank (Miezu through Tenshukaku).")]
+    public GameObject[] roleEffectPrefabs = new GameObject[11];
 
     private void OnEnable()
     {
@@ -114,5 +116,13 @@ public class ShowdownCutInAssetSet : ScriptableObject
             default:
                 return isPlayer ? playerMiezu : cpuMiezu;
         }
+    }
+
+    public GameObject GetRoleEffectPrefab(HandRank roleRank)
+    {
+        int index = (int)roleRank;
+        return roleEffectPrefabs != null && index >= 0 && index < roleEffectPrefabs.Length
+            ? roleEffectPrefabs[index]
+            : null;
     }
 }

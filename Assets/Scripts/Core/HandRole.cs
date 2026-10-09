@@ -27,7 +27,7 @@ namespace EfudaIkki.Core
                 case HandRole.Sanju: return 20;
                 case HandRole.Hikari: return 30;
                 case HandRole.Suzi: return 35;
-                case HandRole.Yonju: return 40;
+                case HandRole.Yonju: return 45;
                 case HandRole.Tenshu: return 45;
                 case HandRole.Nanahikari: return 60;
                 case HandRole.Nanasuzi: return 70;

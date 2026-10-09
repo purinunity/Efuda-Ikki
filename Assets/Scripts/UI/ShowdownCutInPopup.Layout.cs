@@ -30,7 +30,8 @@ public partial class ShowdownCutInPopup
     private static readonly Vector4 ResultBackdropRect = new Vector4(304f, 208f, 416f, 160f);
     private static readonly Vector4 CpuResultStampRect = new Vector4(64f, 32f, 96f, 96f);
     private static readonly Vector4 PlayerResultStampRect = new Vector4(864f, 448f, 96f, 96f);
-    private static readonly Vector4 SpecialCallTextRect = new Vector4(320f, 240f, 384f, 96f);
+    // Inner white opening of 汎用panel.png.
+    private static readonly Vector4 SpecialCallTextRect = new Vector4(350f, 240f, 324f, 96f);
     private static readonly Vector4 ResultTextRect = new Vector4(320f, 224f, 384f, 64f);
     private static readonly Vector4 DamageTextRect = new Vector4(320f, 296f, 384f, 48f);
     private static readonly Vector4 CloseButtonRect = new Vector4(962f, 0f, 62f, 62f);

@@ -63,6 +63,7 @@ public partial class ShowdownCutInPopup : MonoBehaviour
     private Color closeButtonDefaultColor;
     private Selectable.Transition closeButtonDefaultTransition;
     private ColorBlock closeButtonDefaultColors;
+    private readonly List<GameObject> activeRoleEffects = new List<GameObject>();
 
     private void Awake()
     {
@@ -86,11 +87,13 @@ public partial class ShowdownCutInPopup : MonoBehaviour
     private void OnDisable()
     {
         UnwireCloseButton();
+        ClearRoleEffects();
     }
 
     private void OnDestroy()
     {
         UnwireCloseButton();
+        ClearRoleEffects();
     }
 
     public static ShowdownCutInPopup Create(Transform parent, ShowdownCutInAssetSet assets = null)
@@ -327,6 +330,7 @@ public partial class ShowdownCutInPopup : MonoBehaviour
 
     private void HideImmediately()
     {
+        ClearRoleEffects();
         if (canvasGroup != null)
         {
             canvasGroup.alpha = 0f;
@@ -348,6 +352,64 @@ public partial class ShowdownCutInPopup : MonoBehaviour
         SetLifeDeductionActive(cpuLifeDeductionText, false);
 
         gameObject.SetActive(false);
+    }
+
+    private void PlayRoleEffects(HandRank playerRank, HandRank cpuRank)
+    {
+        ClearRoleEffects();
+        SpawnRoleEffect(playerRank, playerRoleImage != null ? playerRoleImage.rectTransform : null);
+        SpawnRoleEffect(cpuRank, cpuRoleImage != null ? cpuRoleImage.rectTransform : null);
+    }
+
+    private void SpawnRoleEffect(HandRank rank, RectTransform target)
+    {
+        if (assetSet == null || stage == null || target == null)
+        {
+            return;
+        }
+
+        GameObject prefab = assetSet.GetRoleEffectPrefab(rank);
+        if (prefab == null)
+        {
+            return;
+        }
+
+        GameObject effect = Instantiate(prefab);
+        effect.name = $"{rank}CutInEffect";
+
+        Canvas canvas = GetParentCanvas();
+        Camera renderCamera = canvas != null && canvas.worldCamera != null
+            ? canvas.worldCamera
+            : Camera.main;
+        if (renderCamera != null)
+        {
+            Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(renderCamera, target.position);
+            float distance = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
+                ? Mathf.Max(renderCamera.nearClipPlane + 0.01f, canvas.planeDistance - 1f)
+                : Mathf.Max(renderCamera.nearClipPlane + 0.01f, 10f);
+            effect.transform.position = renderCamera.ScreenToWorldPoint(
+                new Vector3(screenPoint.x, screenPoint.y, distance));
+        }
+
+        // Keep the prefab's authored rotation and world-unit scale. Parenting it
+        // below the Canvas scales its particles into a huge, invisible bounds.
+        foreach (ParticleSystemRenderer renderer in effect.GetComponentsInChildren<ParticleSystemRenderer>(true))
+        {
+            renderer.sortingOrder = 32760;
+        }
+        activeRoleEffects.Add(effect);
+    }
+
+    private void ClearRoleEffects()
+    {
+        foreach (GameObject effect in activeRoleEffects)
+        {
+            if (effect != null)
+            {
+                Destroy(effect);
+            }
+        }
+        activeRoleEffects.Clear();
     }
 
 }

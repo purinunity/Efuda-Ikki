@@ -39,7 +39,7 @@ public partial class ShowdownCutInPopup
         ConfigureImage(specialActivationImage, preserveAspect: true);
         ConfigureImage(resultStampImage, preserveAspect: true);
         ConfigureImage(cpuResultStampImage, preserveAspect: true);
-        ConfigureTextBackdrop(specialCallBackdropImage);
+        ConfigureSpecialCallPanel();
         ConfigureTextBackdrop(resultBackdropImage);
         PlaceBackdropBehindText(specialCallBackdropImage, specialCallText);
         PlaceBackdropBehindText(resultBackdropImage, resultText);
@@ -57,7 +57,7 @@ public partial class ShowdownCutInPopup
         ConfigureScoreText(playerScoreText);
         ConfigureLifeDeductionText(cpuLifeDeductionText);
         ConfigureLifeDeductionText(playerLifeDeductionText);
-        ApplyReadableOverlayText(specialCallText, new Color(1f, 0.9f, 0.35f, 1f));
+        ConfigureSpecialCallText();
         ApplyReadableOverlayText(resultText, Color.white);
         ApplyReadableOverlayText(damageText, new Color(1f, 0.92f, 0.72f, 1f));
         ApplyStageSiblingOrder();
@@ -84,6 +84,49 @@ public partial class ShowdownCutInPopup
             cpuLifeDeductionText,
             assetSet.lifeDeductionFrame,
             CpuLifeDeductionRect);
+    }
+
+    private void ConfigureSpecialCallPanel()
+    {
+        if (specialCallBackdropImage == null)
+        {
+            return;
+        }
+
+        if (assetSet != null && assetSet.roleFrame != null)
+        {
+            // 汎用panelは色や縦横比を加工せず、素材本来の表示を使用する。
+            specialCallBackdropImage.sprite = assetSet.roleFrame;
+            specialCallBackdropImage.color = Color.white;
+            specialCallBackdropImage.preserveAspect = true;
+            specialCallBackdropImage.type = Image.Type.Simple;
+            specialCallBackdropImage.raycastTarget = false;
+            return;
+        }
+
+        ConfigureTextBackdrop(specialCallBackdropImage);
+    }
+
+    private void ConfigureSpecialCallText()
+    {
+        if (specialCallText == null)
+        {
+            return;
+        }
+
+        if (assetSet != null && assetSet.roleFrame != null)
+        {
+            specialCallText.color = Color.black;
+            specialCallText.fontStyle = FontStyles.Bold;
+            specialCallText.alignment = TextAlignmentOptions.Center;
+            specialCallText.enableAutoSizing = true;
+            specialCallText.fontSizeMin = 24f;
+            specialCallText.fontSizeMax = 52f;
+            RuntimeUiFactory.SetTextOutline(specialCallText, Color.black, 0f);
+            return;
+        }
+
+        ApplyReadableOverlayText(specialCallText, new Color(1f, 0.9f, 0.35f, 1f));
     }
 
     private Image CreateLifeDeductionFrame(
@@ -207,7 +250,17 @@ public partial class ShowdownCutInPopup
             SetReferencePixelRect(cpuResultStampImage.rectTransform, CpuResultStampRect);
         }
 
-        SetReferencePixelRect(specialCallText, SpecialCallTextRect);
+        if (specialCallText != null && specialCallBackdropImage != null &&
+            specialCallText.transform.parent == specialCallBackdropImage.transform)
+        {
+            Stretch(specialCallText.rectTransform);
+            specialCallText.rectTransform.offsetMin = new Vector2(56f, 42f);
+            specialCallText.rectTransform.offsetMax = new Vector2(-56f, -42f);
+        }
+        else
+        {
+            SetReferencePixelRect(specialCallText, SpecialCallTextRect);
+        }
         SetReferencePixelRect(resultText, ResultTextRect);
         SetReferencePixelRect(damageText, DamageTextRect);
 

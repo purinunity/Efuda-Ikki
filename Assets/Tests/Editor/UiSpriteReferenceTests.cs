@@ -2,13 +2,29 @@ using System.Linq;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;
+using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public sealed class UiSpriteReferenceTests
 {
-    [TestCase("StageSelectPanel", "ui/backgrounds/character_select.png")]
-    [TestCase("SpecialCardSelectPanel", "ui/backgrounds/card_select.png")]
+    [Test]
+    public void UpdatedCutInAndResultAssetsResolveToRequestedProductionFiles()
+    {
+        ShowdownCutInAssetSet cutIn = Resources.Load<ShowdownCutInAssetSet>("ShowdownCutInAssets");
+        MatchResultVisualAssets result = Resources.Load<MatchResultVisualAssets>("MatchResultVisualAssets");
+
+        Assert.That(AssetDatabase.GetAssetPath(cutIn.cutInBackground), Does.EndWith("/ui/backgrounds/新/cut_in.png"));
+        Assert.That(AssetDatabase.GetAssetPath(cutIn.roleFrame), Does.EndWith("/ui/frames/汎用panel.png"));
+        Assert.That(AssetDatabase.GetAssetPath(cutIn.lifeDeductionFrame), Does.EndWith("/ui/frames/minus2.png"));
+        Assert.That(AssetDatabase.GetAssetPath(result.winBackground), Does.EndWith("/ui/backgrounds/results/新/win_background.png"));
+        Assert.That(AssetDatabase.GetAssetPath(result.loseBackground), Does.EndWith("/ui/backgrounds/results/新/lose_background.png"));
+        Assert.That(cutIn.roleEffectPrefabs, Has.Length.EqualTo(11));
+        Assert.That(cutIn.roleEffectPrefabs, Has.All.Not.Null);
+    }
+
+    [TestCase("StageSelectPanel", "ui/backgrounds/新/character_select.png")]
+    [TestCase("SpecialCardSelectPanel", "ui/backgrounds/新/card_select.png")]
     [TestCase("D_button", "ui/buttons/common/confirm_discard.png")]
     [TestCase("StartButton", "ui/buttons/common/confirm_special.png")]
     public void LatestScene_RequiredImageResolvesToProductionSprite(string objectName, string spritePath)
@@ -44,8 +60,7 @@ public sealed class UiSpriteReferenceTests
                 .Single();
             var serialized = new SerializedObject(panel);
             AssertSprite(serialized, "openButtonSprite", "ui/buttons/common/show_role_list2.png");
-            AssertSprite(serialized, "firstPageSprite", "ui/reference/roles/page_01.png");
-            AssertSprite(serialized, "secondPageSprite", "ui/reference/roles/page_02.png");
+            AssertSprite(serialized, "combinedRoleSprite", "ui/reference/roles/役一覧.png");
             AssertSprite(serialized, "closeButtonSprite", "ui/buttons/common/close.png");
         }
         finally

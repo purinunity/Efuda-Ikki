@@ -11,7 +11,9 @@ public static class CloseButtonStyle
         rect.pivot = Vector2.one;
         rect.anchoredPosition = Vector2.zero;
         rect.sizeDelta = new Vector2(124f, 124f);
-        rect.localScale = new Vector3(0.5f, 0.5f, 1f);
+        // All close buttons share this helper. Keep their top-right corner fixed
+        // while increasing the visible size to 150% of the previous 62px size.
+        rect.localScale = new Vector3(0.75f, 0.75f, 1f);
 
         Image image = button.targetGraphic as Image ?? button.GetComponent<Image>();
         if (image != null)

@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7f21b763ed1541cf8f94bb4ee9f955cb, type: 3}
   m_Name: ShowdownCutInAssets
   m_EditorClassIdentifier: 
-  cutInBackground: {fileID: 21300000, guid: 2b6f4ad0af9656d4a9cbc7fa0ef896ec, type: 3}
+  cutInBackground: {fileID: 21300000, guid: e88d5e77bc5422d49b971c12ba3943be, type: 3}
   characterBase: {fileID: 21300000, guid: a4edca6d2bfb8c24580bc0c13635a60d, type: 3}
-  roleFrame: {fileID: 21300000, guid: fe2a869f8ddd80541a3279ff6b5cb8b8, type: 3}
+  roleFrame: {fileID: 21300000, guid: 85082908618350d42bdd4a5c8cfbdae2, type: 3}
   winResult: {fileID: 21300000, guid: 98e38505e6eaca34591c9472f562cf1f, type: 3}
   loseResult: {fileID: 21300000, guid: ef1376ecc7873b149a4635886a0ee0ac, type: 3}
   drawResult: {fileID: 21300000, guid: 85cfd8ef5c7ea4f4e9751a2eaecabfbc, type: 3}
@@ -24,7 +24,7 @@ MonoBehaviour:
   handRevealButton: {fileID: 21300000, guid: 2bee4d97473a96949b7355e55ee4964f, type: 3}
   handRevealButtonPressed: {fileID: 21300000, guid: ab50473debdc92c4299def6fbe70e061, type: 3}
   parentMarker: {fileID: 21300000, guid: 49c67df3bbbbddd44bf874019cc8f82c, type: 3}
-  lifeDeductionFrame: {fileID: 21300000, guid: c651028e605de0042a80ce61c0903026, type: 3}
+  lifeDeductionFrame: {fileID: 21300000, guid: 33b8e77580deaa34887d73801d3c6d60, type: 3}
   characterSelectButton: {fileID: 21300000, guid: a836f7017ea9260468367290725d544c, type: 3}
   characterSelectButtonPressed: {fileID: 21300000, guid: ce7c67d69f65b3845b04f7f6a4c63772, type: 3}
   clearedCharacterSprites:
@@ -102,6 +102,18 @@ MonoBehaviour:
     cardData: {fileID: 11400000, guid: d810d82037ae42d58cc80edcbcf7f406, type: 2}
     tooltipSprite: {fileID: 0}
   textFont: {fileID: 11400000, guid: 2a7b3e5085dcef945861217a568646fa, type: 2}
+  roleEffectPrefabs:
+  - {fileID: 7733584723531775731, guid: 2b472be926c8cb241940afa896284db7, type: 3}
+  - {fileID: 7475653084440418117, guid: 279738b84b835244983abd884f24a44f, type: 3}
+  - {fileID: 7889277435092219292, guid: dcaa98d8167dd4d4e9e135098b742e03, type: 3}
+  - {fileID: 5710636142536851966, guid: f3f627e168bc6de4e8aa2425412340e0, type: 3}
+  - {fileID: 4786621354531367999, guid: cbdc1f37d05f0dd4e9f534379f370cc7, type: 3}
+  - {fileID: 4565731477893214273, guid: 8e8f70c1ea7e3e149a3806cc44549ee8, type: 3}
+  - {fileID: 4534501841343474356, guid: 39a64d67e111571408294a152e387702, type: 3}
+  - {fileID: 1056361038772468610, guid: 877ac0b86e651404bbc6e73765ddb7fc, type: 3}
+  - {fileID: 7961676182132107341, guid: 46c4df3dd67ad9d4cbe5fe2c3b894925, type: 3}
+  - {fileID: 6189243256172190134, guid: 29ef6ca20a76b614d92afadaeaf61225, type: 3}
+  - {fileID: 1190526853842186652, guid: 1361b169691ab1d4a97f26ed0c50790a, type: 3}
   cpuRoleSpriteRect: {x: 328, y: 176, z: 416, w: 82}
   playerRoleSpriteRect: {x: 280, y: 318, z: 416, w: 82}
   playerMiezu: {fileID: 21300000, guid: bf46f5b3261fe164b81349c31adc8140, type: 3}

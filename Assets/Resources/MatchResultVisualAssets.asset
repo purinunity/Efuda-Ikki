@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7bdb70fd9e058fc408c56e4b603efd38, type: 3}
   m_Name: MatchResultVisualAssets
   m_EditorClassIdentifier: 
-  winBackground: {fileID: 21300000, guid: 5d9d44376fa669d4fbd66156c581d7aa, type: 3}
-  loseBackground: {fileID: 21300000, guid: d74c16704253d45479febd51bd668e6c, type: 3}
+  winBackground: {fileID: 21300000, guid: 8906fb7ac4a3dd647b69802313827fec, type: 3}
+  loseBackground: {fileID: 21300000, guid: f9684c9f86d1f4b4098d0112f24c6265, type: 3}
 
