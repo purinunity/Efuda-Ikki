@@ -494,12 +494,13 @@ public sealed class MatchResultPanel : MonoBehaviour
     {
         continueButton = RuntimeUiFactory.CreateButton("ContinueButton", panel);
         RectTransform buttonRect = continueButton.GetComponent<RectTransform>();
-        // Keep the transition button in the lower-right margin beside the
-        // special-card slot.
-        buttonRect.anchorMin = new Vector2(0.86f, 0.01f);
-        buttonRect.anchorMax = new Vector2(0.99f, 0.085f);
-        buttonRect.offsetMin = Vector2.zero;
-        buttonRect.offsetMax = Vector2.zero;
+        buttonRect.anchorMin = new Vector2(0.5f, 0.5f);
+        buttonRect.anchorMax = new Vector2(0.5f, 0.5f);
+        buttonRect.pivot = new Vector2(0f, 1f);
+        buttonRect.anchoredPosition3D = new Vector3(660f, 520f, 0f);
+        buttonRect.sizeDelta = new Vector2(350f, 100f);
+        buttonRect.localScale = new Vector3(0.8f, 0.8f, 1f);
+        buttonRect.localRotation = Quaternion.identity;
 
         Image image = continueButton.GetComponent<Image>();
         image.color = AccentColor;
@@ -561,14 +562,14 @@ public sealed class MatchResultPanel : MonoBehaviour
                 : null;
             resultBackground.color = resultBackground.sprite != null ? Color.white : BackdropColor;
         }
-        int roundCount = results != null ? results.Count : 0;
         GameModeData modeData = GameModeManager.GetGameModeData();
         bool battleGround = modeData != null && modeData.Mode == GameModeData.GameMode.BattleGroundMode;
         summaryText.text = !string.IsNullOrEmpty(summaryOverride)
             ? summaryOverride
             : battleGround
                 ? $"今回 {modeData.CurrentWinStreak}人抜き　最高 {GameProgressStore.BestBattleGroundStreak}人抜き"
-                : $"CPUレベル {cpuLevel}　全{roundCount}局";
+                : string.Empty;
+        summaryText.gameObject.SetActive(!string.IsNullOrEmpty(summaryText.text));
         continueButtonText.text = buttonLabel;
         ConfigureContinueButtonVisual(buttonLabel);
         MatchRoundResult playerBest = FindBestResult(results, true);

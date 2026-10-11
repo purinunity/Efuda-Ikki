@@ -33,6 +33,8 @@ public class UIManager : MonoBehaviour
     private readonly GameUiPresenter presenter = new GameUiPresenter();
     private Image playerParentMarker;
     private Image cpuParentMarker;
+    private bool parentMarkerVisible = true;
+    private int lastRenderedParentIndex = -1;
 
     private void Awake()
     {
@@ -77,7 +79,8 @@ public class UIManager : MonoBehaviour
         }
         L1.text = snapshot.PlayerLifePoints.ToString();
         L2.text = snapshot.CpuLifePoints.ToString();
-        UpdateParentMarkers(snapshot.CurrentParentIndex);
+        lastRenderedParentIndex = snapshot.CurrentParentIndex;
+        UpdateParentMarkers(parentMarkerVisible ? lastRenderedParentIndex : -1);
 
         H.SetRole(snapshot.PlayerRoleName, duration);
         playerRemainTrashCount.UpdateRemainTrashCount(snapshot.RemainingTrashTurns);
@@ -148,6 +151,12 @@ public class UIManager : MonoBehaviour
         {
             r.text = Mathf.Max(0, defeatedOpponents) + "人抜き";
         }
+    }
+
+    public void SetParentMarkerVisible(bool visible)
+    {
+        parentMarkerVisible = visible;
+        UpdateParentMarkers(visible ? lastRenderedParentIndex : -1);
     }
 
     private void UpdateParentMarkers(int parentIndex)

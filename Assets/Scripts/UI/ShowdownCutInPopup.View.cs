@@ -117,11 +117,15 @@ public partial class ShowdownCutInPopup
         if (assetSet != null && assetSet.roleFrame != null)
         {
             specialCallText.color = Color.black;
-            specialCallText.fontStyle = FontStyles.Bold;
+            // The supplied 4096px SDF atlas is clearest without synthetic bold.
+            // Give the glyphs enough room so auto-size does not downsample them.
+            specialCallText.fontStyle = FontStyles.Normal;
             specialCallText.alignment = TextAlignmentOptions.Center;
             specialCallText.enableAutoSizing = true;
-            specialCallText.fontSizeMin = 24f;
-            specialCallText.fontSizeMax = 52f;
+            specialCallText.fontSizeMin = 30f;
+            specialCallText.fontSizeMax = 60f;
+            specialCallText.extraPadding = true;
+            specialCallText.characterSpacing = 1f;
             RuntimeUiFactory.SetTextOutline(specialCallText, Color.black, 0f);
             return;
         }
@@ -494,8 +498,8 @@ public partial class ShowdownCutInPopup
 
         text.alignment = TextAlignmentOptions.Center;
         text.enableAutoSizing = true;
-        text.fontSizeMin = 30f;
-        text.fontSizeMax = 52f;
+        text.fontSizeMin = 15f;
+        text.fontSizeMax = 26f;
         text.color = LifeDeductionColor;
         text.fontStyle = FontStyles.Bold;
         RuntimeUiFactory.SetTextOutline(text, Color.black, 0.24f);

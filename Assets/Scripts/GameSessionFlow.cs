@@ -315,6 +315,7 @@ public sealed class GameSessionFlow
 
         int initialParentIndex = randomRange(0, gameState.playerCount);
         gameState.SetInitialParent(initialParentIndex);
+        uiManager?.SetParentMarkerVisible(false);
         PrepareMatchUiForCoinToss();
         uiUpdateService.UpdateImmediately();
         if (!IsRunning)
@@ -331,6 +332,8 @@ public sealed class GameSessionFlow
                 yield break;
             }
         }
+
+        uiManager?.SetParentMarkerVisible(true);
 
         Debug.Log($"{modeData.Mode} match started. CPU level {modeData.CurrentLevel}.");
 

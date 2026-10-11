@@ -12,10 +12,12 @@ public partial class ShowdownCutInPopup
     private static readonly Color LifeDeductionColor = new Color32(0xB4, 0x24, 0x34, 0xFF);
     private static readonly Vector4 CpuCharacterBaseRect = new Vector4(848f, 16f, 128f, 128f);
     private static readonly Vector4 CpuCharacterRect = new Vector4(852f, 20f, 120f, 120f);
-    private static readonly Vector4 CpuLifeDeductionRect = new Vector4(824f, 128f, 176f, 56f);
+    // The 1010 review requested the complete deduction display at half size.
+    // Keep the original centers while halving both dimensions.
+    private static readonly Vector4 CpuLifeDeductionRect = new Vector4(868f, 142f, 88f, 28f);
     private static readonly Vector4 PlayerCharacterBaseRect = new Vector4(48f, 432f, 128f, 128f);
     private static readonly Vector4 PlayerCharacterRect = new Vector4(52f, 436f, 120f, 120f);
-    private static readonly Vector4 PlayerLifeDeductionRect = new Vector4(24f, 392f, 176f, 56f);
+    private static readonly Vector4 PlayerLifeDeductionRect = new Vector4(68f, 406f, 88f, 28f);
     private static readonly Vector4 CpuHandFrameRect = new Vector4(336f, 16f, 480f, 128f);
     private static readonly Vector4 PlayerHandFrameRect = new Vector4(208f, 432f, 480f, 128f);
     private static readonly Vector4 CpuCommonFrameRect = new Vector4(112f, 160f, 192f, 128f);
