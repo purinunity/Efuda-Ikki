@@ -60,45 +60,45 @@ public sealed class MatchRoundResult
     }
 }
 
+/// <summary>
+/// Displays match results using slots authored in latest.unity. Layout belongs
+/// to the scene; runtime code changes content and visibility only.
+/// </summary>
 public sealed class MatchResultPanel : MonoBehaviour
 {
     private static readonly Color BackdropColor = new Color(0.03f, 0.035f, 0.04f, 0.92f);
-    private static readonly Color PanelColor = new Color(0.1f, 0.11f, 0.12f, 1f);
-    private static readonly Color HeaderColor = new Color(0.32f, 0.12f, 0.09f, 1f);
-    private static readonly Color RowColor = new Color(0.16f, 0.17f, 0.18f, 1f);
-    private static readonly Color AlternateRowColor = new Color(0.2f, 0.21f, 0.22f, 1f);
     private static readonly Color AccentColor = new Color(0.88f, 0.72f, 0.32f, 1f);
 
-    private RectTransform panel;
-    private RectTransform content;
-    private TextMeshProUGUI titleText;
-    private TextMeshProUGUI summaryText;
-    private Button continueButton;
-    private TextMeshProUGUI continueButtonText;
-    private Button subscribedContinueButton;
-    private TMP_FontAsset font;
-    private bool isWaiting;
-    private Image resultBackground;
-    private MatchResultVisualAssets visualAssets;
-    private TextMeshProUGUI playerNameText;
-    private TextMeshProUGUI playerRoleText;
-    private TextMeshProUGUI playerScoreText;
-    private TextMeshProUGUI cpuNameText;
-    private TextMeshProUGUI cpuRoleText;
-    private TextMeshProUGUI cpuScoreText;
-    private Image playerCharacterImage;
-    private Image cpuCharacterImage;
-    private readonly List<Image> playerHandImages = new List<Image>();
-    private readonly List<Image> cpuHandImages = new List<Image>();
-    private readonly List<Image> playerCommonImages = new List<Image>();
-    private readonly List<Image> cpuCommonImages = new List<Image>();
-    private Image playerSpecialImage;
-    private Image cpuSpecialImage;
+    [Header("Scene References")]
+    [SerializeField] private RectTransform panel;
+    [SerializeField] private TextMeshProUGUI titleText;
+    [SerializeField] private TextMeshProUGUI summaryText;
+    [SerializeField] private Button continueButton;
+    [SerializeField] private TextMeshProUGUI continueButtonText;
+    [SerializeField] private Image resultBackground;
+    [SerializeField] private MatchResultVisualAssets visualAssets;
+    [SerializeField] private TextMeshProUGUI playerNameText;
+    [SerializeField] private TextMeshProUGUI playerRoleText;
+    [SerializeField] private TextMeshProUGUI playerScoreText;
+    [SerializeField] private TextMeshProUGUI cpuNameText;
+    [SerializeField] private TextMeshProUGUI cpuRoleText;
+    [SerializeField] private TextMeshProUGUI cpuScoreText;
+    [SerializeField] private Image playerCharacterImage;
+    [SerializeField] private Image cpuCharacterImage;
+    [SerializeField] private List<Image> playerHandImages = new List<Image>();
+    [SerializeField] private List<Image> cpuHandImages = new List<Image>();
+    [SerializeField] private List<Image> playerCommonImages = new List<Image>();
+    [SerializeField] private List<Image> cpuCommonImages = new List<Image>();
+    [SerializeField] private Image playerSpecialImage;
+    [SerializeField] private Image cpuSpecialImage;
 
-    private void OnEnable()
-    {
-        WireContinueButton();
-    }
+    private Button subscribedContinueButton;
+    private Sprite playerCharacterSprite;
+    private Sprite cpuCharacterSprite;
+    private bool isWaiting;
+    private bool initialized;
+
+    private void OnEnable() => WireContinueButton();
 
     private void OnDisable()
     {
@@ -106,45 +106,12 @@ public sealed class MatchResultPanel : MonoBehaviour
         isWaiting = false;
     }
 
-    private void OnDestroy()
+    private void OnDestroy() => UnwireContinueButton();
+
+    public void SetCharacterSprites(Sprite playerSprite, Sprite cpuSprite)
     {
-        UnwireContinueButton();
-    }
-
-    public static MatchResultPanel GetOrCreate(
-        MatchResultPanel current,
-        UIManager uiManager,
-        MonoBehaviour owner)
-    {
-        if (current != null)
-        {
-            current.Initialize();
-            return current;
-        }
-
-        MatchResultPanel existing = Object.FindObjectOfType<MatchResultPanel>(true);
-        if (existing != null)
-        {
-            existing.Initialize();
-            return existing;
-        }
-
-        Canvas canvas = FindGameCanvas(uiManager, owner);
-        if (canvas == null)
-        {
-            Debug.LogWarning("A Canvas was not found for the match result panel.");
-            return null;
-        }
-
-        GameObject root = new GameObject(
-            "MatchResultPanel",
-            typeof(RectTransform),
-            typeof(CanvasGroup),
-            typeof(MatchResultPanel));
-        root.transform.SetParent(canvas.transform, false);
-        MatchResultPanel result = root.GetComponent<MatchResultPanel>();
-        result.Initialize();
-        return result;
+        playerCharacterSprite = playerSprite;
+        cpuCharacterSprite = cpuSprite;
     }
 
     public IEnumerator Show(
@@ -155,18 +122,14 @@ public sealed class MatchResultPanel : MonoBehaviour
         string summaryOverride = null)
     {
         Initialize();
-        RefreshCommonSpecialCardLayout();
-        Populate(cpuLevel, results, playerWon, buttonLabel, summaryOverride);
-        gameObject.SetActive(true);
-        transform.SetAsLastSibling();
-        isWaiting = true;
-
-        Canvas.ForceUpdateCanvases();
-        ScrollRect scrollRect = GetComponentInChildren<ScrollRect>(true);
-        if (scrollRect != null)
+        if (!initialized)
         {
-            scrollRect.verticalNormalizedPosition = 1f;
+            yield break;
         }
+
+        Populate(results, playerWon, buttonLabel, summaryOverride);
+        gameObject.SetActive(true);
+        isWaiting = true;
 
         while (isWaiting)
         {
@@ -176,10 +139,6 @@ public sealed class MatchResultPanel : MonoBehaviour
         gameObject.SetActive(false);
     }
 
-    /// <summary>
-    /// Releases a pending result wait when the owning game session is cancelled.
-    /// Safe to call when the panel has not been initialized or is already hidden.
-    /// </summary>
     public void CancelDisplay()
     {
         isWaiting = false;
@@ -191,377 +150,74 @@ public sealed class MatchResultPanel : MonoBehaviour
 
     private void Initialize()
     {
-        if (panel != null)
+        if (initialized) return;
+        if (visualAssets == null)
         {
+            visualAssets = Resources.Load<MatchResultVisualAssets>("MatchResultVisualAssets");
+        }
+
+        if (!HasRequiredSceneReferences())
+        {
+            Debug.LogError("MatchResultPanel: scene references are incomplete.", this);
             return;
         }
 
-        ResolveFont();
-        RectTransform root = GetComponent<RectTransform>();
-        Stretch(root);
-
-        resultBackground = GetOrAdd<Image>(gameObject);
-        resultBackground.color = Color.white;
-        resultBackground.raycastTarget = true;
-        resultBackground.preserveAspect = false;
-        visualAssets = Resources.Load<MatchResultVisualAssets>("MatchResultVisualAssets");
-
-        panel = CreateRect("Panel", root);
-        panel.anchorMin = Vector2.zero;
-        panel.anchorMax = Vector2.one;
-        panel.offsetMin = Vector2.zero;
-        panel.offsetMax = Vector2.zero;
-        GetOrAdd<Image>(panel.gameObject).color = Color.clear;
-
-        CreateArtworkFields();
-        CreateContinueButton();
-        gameObject.SetActive(false);
-    }
-
-    private void CreateArtworkFields()
-    {
-        summaryText = CreateText("Summary", panel, 21, FontStyles.Bold, TextAlignmentOptions.Center);
-        SetAnchoredBand(summaryText.rectTransform, 0.2f, 0.8f, 0.60f, 0.66f);
-        summaryText.color = Color.black;
-        summaryText.enableAutoSizing = true;
-        summaryText.fontSizeMin = 14f;
-        summaryText.fontSizeMax = 21f;
-
-        // Fill the complete 144x144 character frames in the 1024x576 artwork.
-        // Character portraits intentionally stretch to these bounds.
-        playerCharacterImage = CreateArtworkImage(
-            "PlayerCharacter",
-            112f / 1024f,
-            256f / 1024f,
-            207f / 576f,
-            352f / 576f,
-            preserveAspect: false);
-        cpuCharacterImage = CreateArtworkImage(
-            "CpuCharacter",
-            112f / 1024f,
-            256f / 1024f,
-            32f / 576f,
-            176f / 576f,
-            preserveAspect: false);
-        CreateCardRow("Player", 216f / 576f, 280f / 576f, playerHandImages, playerCommonImages, out playerSpecialImage);
-        CreateCardRow("Cpu", 40f / 576f, 104f / 576f, cpuHandImages, cpuCommonImages, out cpuSpecialImage);
-    }
-
-    private void CreateCardRow(
-        string prefix,
-        float minY,
-        float maxY,
-        List<Image> handImages,
-        List<Image> commonImages,
-        out Image specialImage)
-    {
-        // Updated result artwork has five 48x64 white openings.
-        const float handFrameMin = 312f / 1024f;
-        const float handWidth = 48f / 1024f;
-        const float handStep = 56f / 1024f;
-        for (int i = 0; i < 5; i++)
-        {
-            float minX = handFrameMin + i * handStep;
-            handImages.Add(CreateArtworkImage(
-                $"{prefix}Hand{i + 1}",
-                minX,
-                minX + handWidth,
-                minY,
-                maxY));
-        }
-
-        // Keep these three cards inside a transform matching the white opening.
-        // Their coordinates are local to the opening, so scaling the result panel
-        // cannot introduce a separate horizontal or vertical offset.
-        RectTransform rightFrame = CreateRect($"{prefix}CommonSpecialFrame", panel);
-        SetAnchoredBand(rightFrame, 640f / 1024f, 872f / 1024f, minY, maxY);
-        GetOrAdd<RectMask2D>(rightFrame.gameObject);
-
-        const float rightCardWidth = 48f / 232f;
-        for (int i = 0; i < 2; i++)
-        {
-            float minX = (8f + i * 56f) / 232f;
-            commonImages.Add(CreateArtworkImage(
-                $"{prefix}Common{i + 1}",
-                rightFrame,
-                minX,
-                minX + rightCardWidth,
-                0f,
-                1f,
-                preserveAspect: true));
-        }
-
-        float specialMinX = 176f / 232f;
-        specialImage = CreateArtworkImage(
-            $"{prefix}Special",
-            rightFrame,
-            specialMinX,
-            specialMinX + rightCardWidth,
-            0f,
-            1f,
-            preserveAspect: true);
-    }
-
-    private void RefreshCommonSpecialCardLayout()
-    {
-        RefreshCommonSpecialCardRow(
-            "Player",
-            216f / 576f,
-            280f / 576f,
-            playerCommonImages,
-            playerSpecialImage);
-        RefreshCommonSpecialCardRow(
-            "Cpu",
-            40f / 576f,
-            104f / 576f,
-            cpuCommonImages,
-            cpuSpecialImage);
-    }
-
-    private void RefreshCommonSpecialCardRow(
-        string prefix,
-        float minY,
-        float maxY,
-        IReadOnlyList<Image> commonImages,
-        Image specialImage)
-    {
-        if (panel == null) return;
-
-        Transform existing = panel.Find($"{prefix}CommonSpecialFrame");
-        RectTransform frame = existing as RectTransform;
-        if (frame == null)
-        {
-            frame = CreateRect($"{prefix}CommonSpecialFrame", panel);
-        }
-
-        SetAnchoredBand(frame, 640f / 1024f, 872f / 1024f, minY, maxY);
-        GetOrAdd<RectMask2D>(frame.gameObject);
-
-        const float width = 48f / 232f;
-        for (int i = 0; i < 2; i++)
-        {
-            Image image = commonImages != null && i < commonImages.Count ? commonImages[i] : null;
-            float minX = (8f + i * 56f) / 232f;
-            PlaceCommonSpecialCard(image, frame, minX, width);
-        }
-
-        float specialMinX = 176f / 232f;
-        PlaceCommonSpecialCard(specialImage, frame, specialMinX, width);
-    }
-
-    private static void PlaceCommonSpecialCard(
-        Image image,
-        RectTransform frame,
-        float minX,
-        float width)
-    {
-        if (image == null || frame == null) return;
-        image.rectTransform.SetParent(frame, false);
-        RuntimeUiFactory.SetAnchoredBand(
-            image.rectTransform,
-            minX,
-            minX + width,
-            0f,
-            1f);
-        image.preserveAspect = true;
-    }
-
-    private Image CreateArtworkImage(
-        string name,
-        float minX,
-        float maxX,
-        float minY,
-        float maxY,
-        bool preserveAspect = true)
-    {
-        return CreateArtworkImage(name, panel, minX, maxX, minY, maxY, preserveAspect);
-    }
-
-    private Image CreateArtworkImage(
-        string name,
-        RectTransform parent,
-        float minX,
-        float maxX,
-        float minY,
-        float maxY,
-        bool preserveAspect = true)
-    {
-        RectTransform rect = CreateRect(name, parent);
-        SetAnchoredBand(rect, minX, maxX, minY, maxY);
-        Image image = GetOrAdd<Image>(rect.gameObject);
-        image.color = Color.clear;
-        image.preserveAspect = preserveAspect;
-        image.raycastTarget = false;
-        return image;
-    }
-
-    private TextMeshProUGUI CreateArtworkText(
-        string name, float minX, float maxX, float minY, float maxY, int maxSize)
-    {
-        TextMeshProUGUI text = CreateText(name, panel, maxSize, FontStyles.Bold, TextAlignmentOptions.Center);
-        SetAnchoredBand(text.rectTransform, minX, maxX, minY, maxY);
-        text.color = Color.black;
-        text.enableWordWrapping = false;
-        text.enableAutoSizing = true;
-        text.fontSizeMin = 15f;
-        text.fontSizeMax = maxSize;
-        text.margin = new Vector4(8f, 4f, 8f, 4f);
-        return text;
-    }
-
-    private void CreateColumnHeader()
-    {
-        RectTransform header = CreateRect("ColumnHeader", panel);
-        SetAnchoredBand(header, 0.05f, 0.95f, 0.68f, 0.76f);
-        GetOrAdd<Image>(header.gameObject).color = new Color(0.09f, 0.085f, 0.075f, 1f);
-        AddHorizontalLayout(header.gameObject, 12, 16);
-
-        CreateCell("局", header, 90, 0);
-        CreateCell("結果", header, 90, 0);
-        CreateCell("ダメージ", header, 150, 0);
-        CreateCell("体力の推移", header, 0, 1);
-    }
-
-    private void CreateScrollArea()
-    {
-        RectTransform scrollRoot = CreateRect("RoundResults", panel);
-        SetAnchoredBand(scrollRoot, 0.05f, 0.95f, 0.18f, 0.68f);
-        Image scrollBackground = GetOrAdd<Image>(scrollRoot.gameObject);
-        scrollBackground.color = new Color(0.07f, 0.065f, 0.06f, 1f);
-
-        ScrollRect scrollRect = GetOrAdd<ScrollRect>(scrollRoot.gameObject);
-        scrollRect.horizontal = false;
-        scrollRect.vertical = true;
-        scrollRect.movementType = ScrollRect.MovementType.Clamped;
-        scrollRect.scrollSensitivity = 32f;
-
-        RectTransform viewport = CreateRect("Viewport", scrollRoot);
-        Stretch(viewport);
-        viewport.offsetMax = new Vector2(-20f, 0f);
-        GetOrAdd<RectMask2D>(viewport.gameObject);
-
-        content = CreateRect("Content", viewport);
-        content.anchorMin = new Vector2(0f, 1f);
-        content.anchorMax = new Vector2(1f, 1f);
-        content.pivot = new Vector2(0.5f, 1f);
-        content.offsetMin = Vector2.zero;
-        content.offsetMax = Vector2.zero;
-
-        VerticalLayoutGroup verticalLayout = GetOrAdd<VerticalLayoutGroup>(content.gameObject);
-        verticalLayout.spacing = 2f;
-        verticalLayout.childControlWidth = true;
-        verticalLayout.childControlHeight = true;
-        verticalLayout.childForceExpandWidth = true;
-        verticalLayout.childForceExpandHeight = false;
-
-        ContentSizeFitter fitter = GetOrAdd<ContentSizeFitter>(content.gameObject);
-        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        scrollRect.viewport = viewport;
-        scrollRect.content = content;
-
-        CreateScrollbar(scrollRoot, scrollRect);
-    }
-
-    private void CreateScrollbar(RectTransform parent, ScrollRect scrollRect)
-    {
-        RectTransform bar = CreateRect("Scrollbar", parent);
-        bar.anchorMin = new Vector2(1f, 0f);
-        bar.anchorMax = new Vector2(1f, 1f);
-        bar.pivot = new Vector2(1f, 0.5f);
-        bar.sizeDelta = new Vector2(14f, 0f);
-        bar.anchoredPosition = Vector2.zero;
-        GetOrAdd<Image>(bar.gameObject).color = new Color(0.15f, 0.14f, 0.12f, 1f);
-
-        Scrollbar scrollbar = GetOrAdd<Scrollbar>(bar.gameObject);
-        scrollbar.direction = Scrollbar.Direction.BottomToTop;
-
-        RectTransform slidingArea = CreateRect("SlidingArea", bar);
-        Stretch(slidingArea);
-        slidingArea.offsetMin = new Vector2(2f, 2f);
-        slidingArea.offsetMax = new Vector2(-2f, -2f);
-
-        RectTransform handle = CreateRect("Handle", slidingArea);
-        Stretch(handle);
-        GetOrAdd<Image>(handle.gameObject).color = AccentColor;
-        scrollbar.handleRect = handle;
-        scrollbar.targetGraphic = handle.GetComponent<Image>();
-        scrollRect.verticalScrollbar = scrollbar;
-        scrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
-        scrollRect.verticalScrollbarSpacing = 6f;
-    }
-
-    private void CreateContinueButton()
-    {
-        continueButton = RuntimeUiFactory.CreateButton("ContinueButton", panel);
-        RectTransform buttonRect = continueButton.GetComponent<RectTransform>();
-        buttonRect.anchorMin = new Vector2(0.5f, 0.5f);
-        buttonRect.anchorMax = new Vector2(0.5f, 0.5f);
-        buttonRect.pivot = new Vector2(0f, 1f);
-        buttonRect.anchoredPosition3D = new Vector3(660f, 520f, 0f);
-        buttonRect.sizeDelta = new Vector2(350f, 100f);
-        buttonRect.localScale = new Vector3(0.8f, 0.8f, 1f);
-        buttonRect.localRotation = Quaternion.identity;
-
-        Image image = continueButton.GetComponent<Image>();
-        image.color = AccentColor;
-        continueButton.targetGraphic = image;
+        initialized = true;
         WireContinueButton();
-
-        continueButtonText = CreateText(
-            "Label",
-            buttonRect,
-            25,
-            FontStyles.Bold,
-            TextAlignmentOptions.Center);
-        continueButtonText.color = Color.black;
-        continueButtonText.enableAutoSizing = true;
-        continueButtonText.fontSizeMin = 18f;
-        continueButtonText.fontSizeMax = 25f;
-        continueButtonText.margin = new Vector4(8f, 0f, 8f, 0f);
-        Stretch(continueButtonText.rectTransform);
     }
 
-    private void WireContinueButton()
+#if UNITY_EDITOR
+    public void ApplyEditorPreview()
     {
-        UnwireContinueButton();
-        if (continueButton == null)
+        if (visualAssets == null)
         {
-            return;
+            visualAssets = Resources.Load<MatchResultVisualAssets>("MatchResultVisualAssets");
         }
 
-        subscribedContinueButton = continueButton;
-        continueButton.onClick.AddListener(HandleContinueClicked);
-    }
-
-    private void UnwireContinueButton()
-    {
-        if (subscribedContinueButton != null)
+        if (resultBackground != null)
         {
-            subscribedContinueButton.onClick.RemoveListener(HandleContinueClicked);
+            resultBackground.sprite = visualAssets != null ? visualAssets.winBackground : null;
+            resultBackground.color = resultBackground.sprite != null ? Color.white : BackdropColor;
         }
-
-        subscribedContinueButton = null;
+        if (titleText != null) titleText.text = "勝利";
+        if (summaryText != null) summaryText.text = "対戦結果";
+        if (playerNameText != null) playerNameText.text = "プレイヤー";
+        if (cpuNameText != null) cpuNameText.text = "CPU";
+        if (playerRoleText != null) playerRoleText.text = "最高得点役";
+        if (cpuRoleText != null) cpuRoleText.text = "最高得点役";
+        if (playerScoreText != null) playerScoreText.text = "0点";
+        if (cpuScoreText != null) cpuScoreText.text = "0点";
+        if (continueButtonText != null)
+        {
+            continueButtonText.text = "キャラクター選択へ";
+            continueButtonText.gameObject.SetActive(true);
+        }
     }
+#endif
 
-    private void HandleContinueClicked()
+    private bool HasRequiredSceneReferences()
     {
-        isWaiting = false;
+        return panel != null && resultBackground != null && summaryText != null &&
+               continueButton != null && continueButtonText != null &&
+               playerCharacterImage != null && cpuCharacterImage != null &&
+               playerHandImages != null && playerHandImages.Count == 5 &&
+               cpuHandImages != null && cpuHandImages.Count == 5 &&
+               playerCommonImages != null && playerCommonImages.Count == 2 &&
+               cpuCommonImages != null && cpuCommonImages.Count == 2 &&
+               playerSpecialImage != null && cpuSpecialImage != null;
     }
 
     private void Populate(
-        int cpuLevel,
         IReadOnlyList<MatchRoundResult> results,
         bool playerWon,
         string buttonLabel,
         string summaryOverride)
     {
-        if (resultBackground != null)
-        {
-            resultBackground.sprite = visualAssets != null
-                ? (playerWon ? visualAssets.winBackground : visualAssets.loseBackground)
-                : null;
-            resultBackground.color = resultBackground.sprite != null ? Color.white : BackdropColor;
-        }
+        resultBackground.sprite = visualAssets != null
+            ? (playerWon ? visualAssets.winBackground : visualAssets.loseBackground)
+            : null;
+        resultBackground.color = resultBackground.sprite != null ? Color.white : BackdropColor;
+
         GameModeData modeData = GameModeManager.GetGameModeData();
         bool battleGround = modeData != null && modeData.Mode == GameModeData.GameMode.BattleGroundMode;
         summaryText.text = !string.IsNullOrEmpty(summaryOverride)
@@ -570,49 +226,68 @@ public sealed class MatchResultPanel : MonoBehaviour
                 ? $"今回 {modeData.CurrentWinStreak}人抜き　最高 {GameProgressStore.BestBattleGroundStreak}人抜き"
                 : string.Empty;
         summaryText.gameObject.SetActive(!string.IsNullOrEmpty(summaryText.text));
+
         continueButtonText.text = buttonLabel;
         ConfigureContinueButtonVisual(buttonLabel);
+
         MatchRoundResult playerBest = FindBestResult(results, true);
         MatchRoundResult cpuBest = FindBestResult(results, false);
-        CharacterManager characters = Object.FindObjectOfType<CharacterManager>(true);
-        SetArtworkSprite(playerCharacterImage, characters != null ? characters.GetPlayerSprite() : null);
-        SetArtworkSprite(cpuCharacterImage, characters != null ? characters.GetCpuSprite() : null);
+        SetArtworkSprite(playerCharacterImage, playerCharacterSprite);
+        SetArtworkSprite(cpuCharacterImage, cpuCharacterSprite);
         PopulateCardRow(playerBest, true, playerHandImages, playerCommonImages, playerSpecialImage);
         PopulateCardRow(cpuBest, false, cpuHandImages, cpuCommonImages, cpuSpecialImage);
     }
 
     private void ConfigureContinueButtonVisual(string buttonLabel)
     {
-        Image image = continueButton != null ? continueButton.GetComponent<Image>() : null;
+        Image image = continueButton.GetComponent<Image>();
         bool characterSelect = !string.IsNullOrEmpty(buttonLabel) && buttonLabel.Contains("キャラクター選択");
         ShowdownCutInAssetSet assets = Resources.Load<ShowdownCutInAssetSet>("ShowdownCutInAssets");
         Sprite normal = characterSelect && assets != null ? assets.characterSelectButton : null;
         Sprite pressed = characterSelect && assets != null ? assets.characterSelectButtonPressed : null;
+
         if (image != null)
         {
             image.sprite = normal;
             image.color = normal != null ? Color.white : AccentColor;
             image.preserveAspect = normal != null;
         }
-        if (continueButton != null)
-        {
-            SpriteState state = continueButton.spriteState;
-            state.highlightedSprite = pressed;
-            state.pressedSprite = pressed;
-            state.selectedSprite = pressed;
-            continueButton.spriteState = state;
-            continueButton.transition = pressed != null
-                ? Selectable.Transition.SpriteSwap
-                : Selectable.Transition.ColorTint;
-        }
-        if (continueButtonText != null) continueButtonText.gameObject.SetActive(!characterSelect);
+
+        SpriteState state = continueButton.spriteState;
+        state.highlightedSprite = pressed;
+        state.pressedSprite = pressed;
+        state.selectedSprite = pressed;
+        continueButton.spriteState = state;
+        continueButton.transition = pressed != null
+            ? Selectable.Transition.SpriteSwap
+            : Selectable.Transition.ColorTint;
+        continueButtonText.gameObject.SetActive(!characterSelect);
     }
+
+    private void WireContinueButton()
+    {
+        UnwireContinueButton();
+        if (continueButton == null) return;
+        subscribedContinueButton = continueButton;
+        subscribedContinueButton.onClick.AddListener(HandleContinueClicked);
+    }
+
+    private void UnwireContinueButton()
+    {
+        if (subscribedContinueButton != null)
+        {
+            subscribedContinueButton.onClick.RemoveListener(HandleContinueClicked);
+        }
+        subscribedContinueButton = null;
+    }
+
+    private void HandleContinueClicked() => isWaiting = false;
 
     private static void PopulateCardRow(
         MatchRoundResult result,
         bool player,
-        List<Image> handImages,
-        List<Image> commonImages,
+        IReadOnlyList<Image> handImages,
+        IReadOnlyList<Image> commonImages,
         Image specialImage)
     {
         SetArtworkSprites(handImages, result != null
@@ -626,6 +301,7 @@ public sealed class MatchResultPanel : MonoBehaviour
 
     private static void SetArtworkSprites(IReadOnlyList<Image> images, IReadOnlyList<Sprite> sprites)
     {
+        if (images == null) return;
         for (int i = 0; i < images.Count; i++)
         {
             SetArtworkSprite(images[i], sprites != null && i < sprites.Count ? sprites[i] : null);
@@ -653,147 +329,12 @@ public sealed class MatchResultPanel : MonoBehaviour
         return best;
     }
 
-    private void CreateResultRow(MatchRoundResult result, int index)
+    private void OnValidate()
     {
-        RectTransform row = CreateRect($"Round{result.RoundNumber}", content);
-        Image background = GetOrAdd<Image>(row.gameObject);
-        background.color = index % 2 == 0 ? RowColor : AlternateRowColor;
-
-        LayoutElement rowLayout = GetOrAdd<LayoutElement>(row.gameObject);
-        rowLayout.minHeight = 60f;
-        rowLayout.preferredHeight = 60f;
-        AddHorizontalLayout(row.gameObject, 12, 16);
-
-        CreateCell($"第{result.RoundNumber}局", row, 90, 0);
-        CreateCell(GetResultLabel(result.WinnerIndex), row, 90, 0);
-        CreateCell(result.WinnerIndex < 0 ? "なし" : $"{result.Damage}点", row, 150, 0);
-        CreateCell(BuildLifeTransition(result), row, 0, 1);
-    }
-
-    private TextMeshProUGUI CreateCell(
-        string value,
-        RectTransform parent,
-        float preferredWidth,
-        float flexibleWidth)
-    {
-        TextMeshProUGUI text = CreateText(
-            "Cell",
-            parent,
-            22,
-            FontStyles.Normal,
-            TextAlignmentOptions.Center);
-        text.text = value;
-        text.enableWordWrapping = false;
-        text.overflowMode = TextOverflowModes.Ellipsis;
-
-        LayoutElement layout = GetOrAdd<LayoutElement>(text.gameObject);
-        layout.preferredWidth = preferredWidth;
-        layout.flexibleWidth = flexibleWidth;
-        return text;
-    }
-
-    private static string GetResultLabel(int winnerIndex)
-    {
-        if (winnerIndex == 0)
+        if (Application.isPlaying || !gameObject.scene.IsValid()) return;
+        if (!HasRequiredSceneReferences())
         {
-            return "勝";
+            Debug.LogWarning("MatchResultPanel: assign all fixed result slots in the Inspector.", this);
         }
-
-        return winnerIndex == 1 ? "負" : "分";
-    }
-
-    private static string BuildLifeTransition(MatchRoundResult result)
-    {
-        if (result.WinnerIndex == 0)
-        {
-            return $"CPU　{result.CpuLifeBefore} → {result.CpuLifeAfter}";
-        }
-
-        if (result.WinnerIndex == 1)
-        {
-            return $"プレイヤー　{result.PlayerLifeBefore} → {result.PlayerLifeAfter}";
-        }
-
-        return "変化なし";
-    }
-
-    private void ResolveFont()
-    {
-        TextMeshProUGUI existingText = Object.FindObjectOfType<TextMeshProUGUI>(true);
-        font = existingText != null ? existingText.font : TMP_Settings.defaultFontAsset;
-    }
-
-    private TextMeshProUGUI CreateText(
-        string name,
-        Transform parent,
-        int fontSize,
-        FontStyles fontStyle,
-        TextAlignmentOptions alignment)
-    {
-        TextMeshProUGUI text = RuntimeUiFactory.CreateText(
-            name,
-            parent,
-            font,
-            fontSize,
-            fontStyle,
-            alignment,
-            Color.white);
-        text.font = font;
-        return text;
-    }
-
-    private static RectTransform CreateRect(string name, Transform parent)
-    {
-        return RuntimeUiFactory.CreateRect(name, parent);
-    }
-
-    private static void AddHorizontalLayout(GameObject target, int spacing, int padding)
-    {
-        HorizontalLayoutGroup layout = GetOrAdd<HorizontalLayoutGroup>(target);
-        layout.spacing = spacing;
-        layout.padding = new RectOffset(padding, padding, 0, 0);
-        layout.childAlignment = TextAnchor.MiddleCenter;
-        layout.childControlWidth = true;
-        layout.childControlHeight = true;
-        layout.childForceExpandWidth = false;
-        layout.childForceExpandHeight = true;
-    }
-
-    private static void SetAnchoredBand(
-        RectTransform rect,
-        float minX,
-        float maxX,
-        float minY,
-        float maxY)
-    {
-        RuntimeUiFactory.SetAnchoredBand(rect, minX, maxX, minY, maxY);
-    }
-
-    private static void Stretch(RectTransform rect)
-    {
-        RuntimeUiFactory.Stretch(rect);
-    }
-
-    private static T GetOrAdd<T>(GameObject target) where T : Component
-    {
-        return RuntimeUiFactory.GetOrAdd<T>(target);
-    }
-
-    private static Canvas FindGameCanvas(UIManager uiManager, MonoBehaviour owner)
-    {
-        Canvas canvas =
-            FindCanvas(uiManager != null ? uiManager.deck : null) ??
-            FindCanvas(uiManager != null ? uiManager.common : null) ??
-            FindCanvas(uiManager != null ? uiManager.player1 : null) ??
-            (uiManager != null ? uiManager.GetComponentInParent<Canvas>() : null);
-
-        return canvas != null
-            ? canvas
-            : owner != null ? owner.GetComponentInParent<Canvas>() : null;
-    }
-
-    private static Canvas FindCanvas(Component component)
-    {
-        return component != null ? component.GetComponentInParent<Canvas>() : null;
     }
 }

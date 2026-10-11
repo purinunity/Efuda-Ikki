@@ -113,12 +113,6 @@ public class PopupPreviewCardArea : CardArea
         }
 
         popupRoot.SetActive(true);
-        FitPopupCardAreaToBackground();
-        if (closeButton != null)
-        {
-            closeButton.transform.SetAsLastSibling();
-        }
-
         RebuildPreviewCards(focusedCard);
     }
 
@@ -132,24 +126,35 @@ public class PopupPreviewCardArea : CardArea
 
     private void BindSourceCardClickHandlers()
     {
-        UnbindSourceCardClickHandlers();
-
         if (!isActiveAndEnabled)
         {
+            UnbindSourceCardClickHandlers();
             return;
         }
 
+        var activeButtons = new HashSet<Button>();
         foreach (var source in cardsInArea)
         {
             if (source == null) continue;
 
             Button sourceButton = source.GetComponent<Button>();
             if (sourceButton == null) continue;
+            activeButtons.Add(sourceButton);
+            if (sourceCardClickHandlers.ContainsKey(sourceButton)) continue;
 
             Card captured = source;
             UnityAction action = () => ShowPopup(captured);
             sourceCardClickHandlers[sourceButton] = action;
             sourceButton.onClick.AddListener(action);
+        }
+
+        var staleButtons = sourceCardClickHandlers.Keys
+            .Where(button => button == null || !activeButtons.Contains(button))
+            .ToList();
+        foreach (Button button in staleButtons)
+        {
+            if (button != null) button.onClick.RemoveListener(sourceCardClickHandlers[button]);
+            sourceCardClickHandlers.Remove(button);
         }
     }
 
@@ -188,7 +193,6 @@ public class PopupPreviewCardArea : CardArea
             assets != null ? assets.closeButton : null,
             assets != null ? assets.closeButtonHighlighted : null);
         subscribedCloseButton.onClick.AddListener(ClosePopup);
-        subscribedCloseButton.transform.SetAsLastSibling();
     }
 
     private void UnwireCloseButton()
@@ -393,28 +397,6 @@ public class PopupPreviewCardArea : CardArea
         }
 
         return true;
-    }
-
-    private void FitPopupCardAreaToBackground()
-    {
-        if (popupRoot == null || popupCardArea == null || popupCardArea.areaRect == null)
-        {
-            return;
-        }
-
-        RectTransform popupRootRect = popupRoot.GetComponent<RectTransform>();
-        RectTransform targetArea = popupCardArea.areaRect;
-        if (popupRootRect == null || targetArea.parent != popupRootRect)
-        {
-            return;
-        }
-
-        targetArea.anchorMin = Vector2.zero;
-        targetArea.anchorMax = Vector2.one;
-        targetArea.pivot = new Vector2(0.5f, 0.5f);
-        targetArea.anchoredPosition = Vector2.zero;
-        targetArea.sizeDelta = Vector2.zero;
-        targetArea.localScale = Vector3.one;
     }
 
     private Rect GetScaledDiscardSlot(Rect referenceSlot, Vector2 areaSize)

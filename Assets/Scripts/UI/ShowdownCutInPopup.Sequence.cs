@@ -8,7 +8,6 @@ public partial class ShowdownCutInPopup
     public IEnumerator Play(Data data)
     {
         Initialize();
-        transform.SetAsLastSibling();
         gameObject.SetActive(true);
         canvasGroup.alpha = 1f;
         canvasGroup.blocksRaycasts = true;
@@ -270,7 +269,7 @@ public partial class ShowdownCutInPopup
             return stage.rect.width;
         }
 
-        return ReferenceWidth;
+        return 1024f;
     }
 
     private void SetScoresImmediately(int playerScore, int cpuScore)

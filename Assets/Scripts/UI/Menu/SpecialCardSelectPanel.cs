@@ -15,9 +15,9 @@ public class SpecialCardSelectPanel : MonoBehaviour
     [SerializeField] private Button backButton;
     [SerializeField] private Color unlockedCardColor = Color.white;
     [SerializeField] private Color lockedCardColor = new Color(0.2f, 0.2f, 0.2f, 1f);
-    [SerializeField, Min(1)] private int gridColumnCount = 4;
-    [SerializeField, Range(0.05f, 0.5f)] private float gridCardScale = 0.234375f;
-    [SerializeField, Range(0.05f, 0.5f)] private float selectedCardScale = 0.1171875f;
+    [Header("Scene-authored slots")]
+    [SerializeField] private RectTransform[] selectableCardSlots;
+    [SerializeField] private List<Image> selectedDisplayImages = new List<Image>();
     public TitleUIManager titleUIManager;
 
     private GameModeData currentGameModeData;
@@ -26,14 +26,13 @@ public class SpecialCardSelectPanel : MonoBehaviour
     private Button subscribedStartGameButton;
     private Button subscribedBackButton;
     private bool started;
-    private readonly List<Image> selectedDisplayImages = new List<Image>();
 
     private void Start()
     {
         started = true;
         SubscribePanelButtons();
         CreateSpecialCardUI();
-        CreateSelectedDisplayImages();
+        ValidateDisplaySlots();
         ConfigureSelectionLimiter();
         ResetSelectionForOpen();
     }
@@ -119,14 +118,11 @@ public class SpecialCardSelectPanel : MonoBehaviour
 
     private void LayoutCardsInGrid(IReadOnlyList<Card> cards)
     {
-        if (selectionCardArea == null || selectionCardArea.areaRect == null ||
-            cards == null || cards.Count == 0)
+        if (selectionCardArea == null || cards == null || cards.Count == 0)
         {
             return;
         }
 
-        Rect rect = selectionCardArea.areaRect.rect;
-        int columns = Mathf.Clamp(gridColumnCount, 1, cards.Count);
         for (int index = 0; index < cards.Count; index++)
         {
             Card card = cards[index];
@@ -135,48 +131,64 @@ public class SpecialCardSelectPanel : MonoBehaviour
                 continue;
             }
 
-            float x;
-            float y;
-            int column = index % columns;
-            int row = index / columns;
-            // Keep every selectable card in the left grid. The top-right slots
-            // are display-only copies and never receive pointer input.
-            x = rect.xMin + rect.width * ((112f + 128f * column) / 1024f);
-            y = rect.yMin + rect.height * ((128f + 160f * row) / 576f);
-            card.DisplayScale = gridCardScale;
+            if (selectableCardSlots == null || index >= selectableCardSlots.Length ||
+                selectableCardSlots[index] == null)
+            {
+                Debug.LogError($"SpecialCardSelectPanel: selectable card slot {index + 1} is not assigned.", this);
+                continue;
+            }
 
-            card.transform.SetParent(selectionCardArea.areaRect, false);
+            RectTransform slot = selectableCardSlots[index];
+
+            // The slot owns the layout.  Cards remain runtime content, while their
+            // position, anchor and ordering can be edited directly in the scene.
+            card.transform.SetParent(slot, false);
+            FitCardToSlot(card, slot);
             card.UseSelectedYOffset = false;
-            card.TargetPosition = new Vector2(x, y);
+            card.TargetPosition = Vector2.zero;
             card.SnapToTargetPosition();
         }
 
         RefreshSelectionVisuals(cards);
     }
 
-    private void CreateSelectedDisplayImages()
+    private static void FitCardToSlot(Card card, RectTransform slot)
     {
-        if (selectionCardArea == null || selectionCardArea.areaRect == null || selectedDisplayImages.Count > 0)
+        if (card == null || slot == null)
         {
             return;
         }
 
-        Rect rect = selectionCardArea.areaRect.rect;
-        for (int i = 0; i < maxSelectableSpecialCards; i++)
+        RectTransform cardRect = card.GetComponent<RectTransform>();
+        Image cardImage = card.GetComponent<Image>();
+        if (cardRect == null || cardImage == null || cardImage.sprite == null)
         {
-            var display = new GameObject($"SelectedSpecialCard{i + 1}", typeof(RectTransform), typeof(Image));
-            display.transform.SetParent(selectionCardArea.areaRect, false);
-            RectTransform displayRect = display.GetComponent<RectTransform>();
-            displayRect.anchorMin = displayRect.anchorMax = new Vector2(0.5f, 0.5f);
-            displayRect.pivot = new Vector2(0.5f, 0.5f);
-            displayRect.anchoredPosition = new Vector2(
-                rect.xMin + rect.width * ((664f + 80f * i) / 1024f),
-                rect.yMin + rect.height * (400f / 576f));
-            Image image = display.GetComponent<Image>();
-            image.color = Color.clear;
-            image.preserveAspect = true;
-            image.raycastTarget = false;
-            selectedDisplayImages.Add(image);
+            return;
+        }
+
+        // Card.ForceSetFaceUp uses the sprite's native size.  Derive the scale
+        // from the scene-authored slot so changing a slot in the Inspector is
+        // enough to change both placement and card size.
+        cardImage.SetNativeSize();
+        Vector2 nativeSize = cardRect.rect.size;
+        Vector2 slotSize = slot.rect.size;
+        if (nativeSize.x <= 0f || nativeSize.y <= 0f || slotSize.x <= 0f || slotSize.y <= 0f)
+        {
+            return;
+        }
+
+        float scale = Mathf.Min(slotSize.x / nativeSize.x, slotSize.y / nativeSize.y);
+        card.DisplayScale = scale;
+        cardRect.anchorMin = cardRect.anchorMax = new Vector2(0.5f, 0.5f);
+        cardRect.pivot = new Vector2(0.5f, 0.5f);
+        cardRect.localScale = Vector3.one * scale;
+    }
+
+    private void ValidateDisplaySlots()
+    {
+        if (selectedDisplayImages == null || selectedDisplayImages.Count < maxSelectableSpecialCards)
+        {
+            Debug.LogError("SpecialCardSelectPanel: selected display slots are not assigned.", this);
         }
     }
 
@@ -203,8 +215,6 @@ public class SpecialCardSelectPanel : MonoBehaviour
                 if (!card.IsSelected || displayIndex >= selectedDisplayImages.Count) continue;
                 Image displayImage = selectedDisplayImages[displayIndex++];
                 displayImage.sprite = BattleGroundVisualTheme.ResolveFace(card.CardData);
-                displayImage.SetNativeSize();
-                displayImage.rectTransform.localScale = Vector3.one * selectedCardScale;
                 displayImage.color = Color.white;
             }
         }

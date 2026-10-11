@@ -28,7 +28,7 @@ public sealed class ShowdownPresentationService
     {
         ShowdownCutInPopupProvider popupProvider =
             new ShowdownCutInPopupProvider(owner, uiManager, CurrentPopup);
-        ShowdownCutInPopup popup = popupProvider.GetOrCreate();
+        ShowdownCutInPopup popup = popupProvider.GetScenePopup();
         CurrentPopup = popupProvider.CurrentPopup;
 
         if (popup == null)

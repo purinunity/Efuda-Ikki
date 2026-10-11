@@ -1,9 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 /// <summary>
 /// Owns mode, match, round, and showdown orchestration.
@@ -26,6 +24,7 @@ public sealed class GameSessionFlow
     private readonly Action<ShowdownCutInPopup> popupChanged;
     private readonly Action<MatchResultPanel> resultPanelChanged;
     private readonly Func<int, int, int> randomRange;
+    private readonly GameplayUiReferences uiReferences;
 
     private readonly List<MatchRoundResult> currentMatchResults =
         new List<MatchRoundResult>();
@@ -64,7 +63,8 @@ public sealed class GameSessionFlow
         TitleUIManager titleUIManager,
         Action<ShowdownCutInPopup> popupChanged = null,
         Action<MatchResultPanel> resultPanelChanged = null,
-        Func<int, int, int> randomRange = null)
+        Func<int, int, int> randomRange = null,
+        GameplayUiReferences gameplayUiReferences = null)
     {
         this.owner = owner;
         this.gameState = gameState ?? new GameState();
@@ -83,6 +83,15 @@ public sealed class GameSessionFlow
         this.popupChanged = popupChanged;
         this.resultPanelChanged = resultPanelChanged;
         this.randomRange = randomRange ?? UnityEngine.Random.Range;
+        uiReferences = gameplayUiReferences;
+        if (uiReferences != null)
+        {
+            showdownCutInPopup = uiReferences.ShowdownCutInPopup;
+            matchResultPanel = uiReferences.MatchResultPanel;
+            battleGroundRewardPanel = uiReferences.BattleGroundRewardPanel;
+            coinTossPanel = uiReferences.CoinTossPanel;
+            handRevealPanel = uiReferences.HandRevealPanel;
+        }
         CreateServices();
     }
 
@@ -323,7 +332,7 @@ public sealed class GameSessionFlow
             yield break;
         }
 
-        coinTossPanel = CoinTossPanel.GetOrCreate(uiManager, owner);
+        coinTossPanel = uiReferences != null ? uiReferences.CoinTossPanel : coinTossPanel;
         if (coinTossPanel != null)
         {
             yield return coinTossPanel.Show(initialParentIndex);
@@ -369,7 +378,7 @@ public sealed class GameSessionFlow
             gameState.SetWaitingForHandReveal(true);
             uiManager?.SetPlayerSpecialCardInputEnabled(true);
             yield return uiUpdateService.WaitForUpdate(0f);
-            handRevealPanel = HandRevealPanel.GetOrCreate(uiManager, owner);
+            handRevealPanel = uiReferences != null ? uiReferences.HandRevealPanel : handRevealPanel;
             if (handRevealPanel != null)
             {
                 yield return handRevealPanel.WaitForConfirmation();
@@ -494,10 +503,7 @@ public sealed class GameSessionFlow
         string buttonLabel,
         string summaryOverride = null)
     {
-        matchResultPanel = MatchResultPanel.GetOrCreate(
-            matchResultPanel,
-            uiManager,
-            owner);
+        matchResultPanel = uiReferences != null ? uiReferences.MatchResultPanel : matchResultPanel;
         resultPanelChanged?.Invoke(matchResultPanel);
 
         if (matchResultPanel == null)
@@ -505,6 +511,9 @@ public sealed class GameSessionFlow
             yield break;
         }
 
+        matchResultPanel.SetCharacterSprites(
+            characterManager != null ? characterManager.GetPlayerSprite() : null,
+            characterManager != null ? characterManager.GetCpuSprite() : null);
         yield return matchResultPanel.Show(
             cpuLevel,
             currentMatchResults,
@@ -520,7 +529,9 @@ public sealed class GameSessionFlow
         List<CardData> unlockedCards = GetUnlockedPlayerSpecialCards();
         bool canChooseCard =
             battleGroundRewards.BuildCandidates(battleGroundRun, unlockedCards).Count > 0;
-        battleGroundRewardPanel = BattleGroundRewardPanel.GetOrCreate(uiManager, owner);
+        battleGroundRewardPanel = uiReferences != null
+            ? uiReferences.BattleGroundRewardPanel
+            : battleGroundRewardPanel;
         if (battleGroundRewardPanel == null)
         {
             battleGroundRewards.ApplyHerb(battleGroundRun);
@@ -621,150 +632,5 @@ public sealed class GameSessionFlow
                 Debug.Log($"Player {i} life: {playerState.LifePoints}");
             }
         }
-    }
-}
-
-public sealed class CoinTossPanel : MonoBehaviour
-{
-    private const float SpinDuration = 2.1f;
-    private const float ResultDuration = 0.9f;
-
-    private Image coinImage;
-    private TextMeshProUGUI resultText;
-    private Sprite parentSprite;
-    private Sprite childSprite;
-    private bool cancelled;
-    private bool initialized;
-
-    public static CoinTossPanel GetOrCreate(UIManager uiManager, MonoBehaviour owner)
-    {
-        CoinTossPanel existing = UnityEngine.Object.FindObjectOfType<CoinTossPanel>(true);
-        if (existing != null)
-        {
-            existing.Initialize();
-            return existing;
-        }
-
-        Canvas canvas = uiManager != null && uiManager.deck != null
-            ? uiManager.deck.GetComponentInParent<Canvas>()
-            : uiManager != null ? uiManager.GetComponentInParent<Canvas>() : null;
-        if (canvas == null && owner != null) canvas = owner.GetComponentInParent<Canvas>();
-        if (canvas == null) return null;
-
-        GameObject root = new GameObject(
-            "CoinTossPanel",
-            typeof(RectTransform),
-            typeof(Image),
-            typeof(CanvasGroup),
-            typeof(CoinTossPanel));
-        root.transform.SetParent(canvas.transform, false);
-        RuntimeUiFactory.Stretch(root.GetComponent<RectTransform>());
-        CoinTossPanel panel = root.GetComponent<CoinTossPanel>();
-        panel.Initialize();
-        return panel;
-    }
-
-    public IEnumerator Show(int parentPlayerIndex)
-    {
-        Initialize();
-        cancelled = false;
-        gameObject.SetActive(true);
-        transform.SetAsLastSibling();
-        resultText.text = string.Empty;
-
-        float elapsed = 0f;
-        while (!cancelled && elapsed < SpinDuration)
-        {
-            elapsed += Time.unscaledDeltaTime;
-            float progress = Mathf.Clamp01(elapsed / SpinDuration);
-            float turns = Mathf.Lerp(0f, 7f, 1f - Mathf.Pow(1f - progress, 1.7f));
-            float angle = turns * 360f;
-            float face = Mathf.Cos(angle * Mathf.Deg2Rad);
-            coinImage.sprite = face >= 0f ? parentSprite : childSprite;
-            // Z軸の傾きは演出の終端で必ず0度へ戻す。角度に比例させると
-            // 終了直前に上下逆の状態が残り、確定した面を判別しづらくなる。
-            float roll = Mathf.Sin(progress * Mathf.PI) * 24f;
-            coinImage.rectTransform.localRotation = Quaternion.Euler(0f, angle, roll);
-            float bounce = Mathf.Sin(progress * Mathf.PI) * 48f;
-            coinImage.rectTransform.anchoredPosition = new Vector2(0f, bounce);
-            yield return null;
-        }
-
-        if (!cancelled)
-        {
-            coinImage.sprite = parentPlayerIndex == 0 ? parentSprite : childSprite;
-            coinImage.rectTransform.localRotation = Quaternion.identity;
-            coinImage.rectTransform.localScale = Vector3.one;
-            coinImage.rectTransform.anchoredPosition = Vector2.zero;
-            resultText.text = parentPlayerIndex == 0 ? "あなたが親" : "CPUが親";
-
-            float resultElapsed = 0f;
-            while (!cancelled && resultElapsed < ResultDuration)
-            {
-                resultElapsed += Time.unscaledDeltaTime;
-                yield return null;
-            }
-        }
-
-        gameObject.SetActive(false);
-    }
-
-    public void CancelDisplay()
-    {
-        cancelled = true;
-        if (gameObject.activeSelf) gameObject.SetActive(false);
-    }
-
-    private void Initialize()
-    {
-        if (initialized) return;
-        initialized = true;
-
-        parentSprite = Resources.Load<Sprite>("CoinToss/parent_coin");
-        childSprite = Resources.Load<Sprite>("CoinToss/child_coin");
-        Sprite backgroundSprite = Resources.Load<Sprite>("CoinToss/coin_background");
-
-        Image overlay = GetComponent<Image>();
-        overlay.color = new Color(0f, 0f, 0f, 0.78f);
-        overlay.raycastTarget = true;
-
-        RectTransform frame = RuntimeUiFactory.CreateRect("CoinFrame", transform);
-        frame.anchorMin = new Vector2(0.31f, 0.12f);
-        frame.anchorMax = new Vector2(0.69f, 0.88f);
-        frame.offsetMin = frame.offsetMax = Vector2.zero;
-        Image frameImage = RuntimeUiFactory.GetOrAdd<Image>(frame.gameObject);
-        frameImage.sprite = backgroundSprite;
-        frameImage.color = backgroundSprite != null ? Color.white : new Color(0.18f, 0.18f, 0.18f, 1f);
-        frameImage.preserveAspect = true;
-        frameImage.raycastTarget = false;
-
-        RectTransform coinRect = RuntimeUiFactory.CreateRect("Coin", transform);
-        coinRect.anchorMin = new Vector2(0.42f, 0.25f);
-        coinRect.anchorMax = new Vector2(0.58f, 0.75f);
-        coinRect.offsetMin = coinRect.offsetMax = Vector2.zero;
-        coinImage = RuntimeUiFactory.GetOrAdd<Image>(coinRect.gameObject);
-        coinImage.sprite = parentSprite;
-        coinImage.color = Color.white;
-        coinImage.preserveAspect = true;
-        coinImage.raycastTarget = false;
-
-        TMP_FontAsset font = UnityEngine.Object.FindObjectOfType<TextMeshProUGUI>(true)?.font ?? TMP_Settings.defaultFontAsset;
-        resultText = RuntimeUiFactory.CreateText(
-            "Result",
-            transform,
-            font,
-            34,
-            FontStyles.Bold,
-            TextAlignmentOptions.Center,
-            Color.black);
-        resultText.rectTransform.anchorMin = new Vector2(0.3f, 0.12f);
-        resultText.rectTransform.anchorMax = new Vector2(0.7f, 0.24f);
-        resultText.rectTransform.offsetMin = resultText.rectTransform.offsetMax = Vector2.zero;
-        resultText.enableAutoSizing = true;
-        resultText.fontSizeMin = 20f;
-        resultText.fontSizeMax = 34f;
-        resultText.raycastTarget = false;
-
-        gameObject.SetActive(false);
     }
 }

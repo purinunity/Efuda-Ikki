@@ -23,6 +23,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private MatchResultPanel matchResultPanel;
     [SerializeField] private TitleUIManager titleUIManager;
     [SerializeField] private CharacterManager characterManager;
+    [SerializeField] private GameplayUiReferences gameplayUiReferences;
 
     [Header("Special Card Decks")]
     [SerializeField] private Cards specialCardsDeck1;
@@ -53,7 +54,13 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        battleGroundHud = BattleGroundHud.GetOrCreate(uiManager, this);
+        battleGroundHud = gameplayUiReferences != null
+            ? gameplayUiReferences.BattleGroundHud
+            : null;
+        if (battleGroundHud == null)
+        {
+            Debug.LogError("GameManager: BattleGroundHud is not assigned in GameplayUiReferences.", this);
+        }
         battleGroundHud?.Configure(
             modeData.Mode == GameModeData.GameMode.BattleGroundMode,
             RequestBattleGroundSurrender);
@@ -109,7 +116,8 @@ public class GameManager : MonoBehaviour
             matchResultPanel,
             titleUIManager,
             popup => showdownCutInPopup = popup,
-            panel => matchResultPanel = panel);
+            panel => matchResultPanel = panel,
+            gameplayUiReferences: gameplayUiReferences);
     }
 
     private void OnDisable()

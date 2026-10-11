@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
@@ -9,12 +11,14 @@ public sealed class UiEventSubscriptionTests
 {
     private readonly List<GameObject> createdObjects = new List<GameObject>();
     private EfudaIkki.Core.IProgressRepository originalProgressRepository;
+    private Scene testScene;
 
     [SetUp]
     public void SetUp()
     {
         originalProgressRepository = GameProgressStore.Repository;
         GameProgressStore.Repository = new EmptyProgressRepository();
+        testScene = EditorSceneManager.NewPreviewScene();
     }
 
     [TearDown]
@@ -30,6 +34,10 @@ public sealed class UiEventSubscriptionTests
         }
 
         createdObjects.Clear();
+        if (testScene.IsValid())
+        {
+            EditorSceneManager.ClosePreviewScene(testScene);
+        }
     }
 
     [TestCase(typeof(MainMenuPanel), "settingsButton", "settingsPanel")]
@@ -50,19 +58,23 @@ public sealed class UiEventSubscriptionTests
             (CanvasGroup)typeof(TitleUIManager).GetField(expectedPanelFieldName).GetValue(manager);
 
         panelObject.SetActive(false);
+        InvokeLifecycle(panel, "OnDisable");
         button.onClick.Invoke();
         Assert.That(expectedPanel.alpha, Is.Zero);
 
         panelObject.SetActive(true);
+        InvokeLifecycle(panel, "OnEnable");
         button.onClick.Invoke();
         Assert.That(expectedPanel.alpha, Is.EqualTo(1f));
 
         manager.ShowTitleScreen();
         panelObject.SetActive(false);
+        InvokeLifecycle(panel, "OnDisable");
         button.onClick.Invoke();
         Assert.That(expectedPanel.alpha, Is.Zero, "Disabled panels must not retain their click listener.");
 
         panelObject.SetActive(true);
+        InvokeLifecycle(panel, "OnEnable");
         button.onClick.Invoke();
         Assert.That(expectedPanel.alpha, Is.EqualTo(1f), "Re-enabled panels must restore their click listener.");
     }
@@ -81,6 +93,7 @@ public sealed class UiEventSubscriptionTests
         LogAssert.NoUnexpectedReceived();
 
         areaObject.SetActive(false);
+        InvokeLifecycle(area, "OnDisable");
         card.GetComponent<Button>().onClick.Invoke();
         LogAssert.NoUnexpectedReceived();
     }
@@ -272,8 +285,18 @@ public sealed class UiEventSubscriptionTests
     private GameObject CreateObject(string name, params System.Type[] components)
     {
         var gameObject = new GameObject(name, components);
+        SceneManager.MoveGameObjectToScene(gameObject, testScene);
         createdObjects.Add(gameObject);
         return gameObject;
+    }
+
+    private static void InvokeLifecycle(MonoBehaviour target, string methodName)
+    {
+        MethodInfo method = target.GetType().GetMethod(
+            methodName,
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(method, Is.Not.Null, $"{target.GetType().Name}.{methodName}");
+        method.Invoke(target, null);
     }
 
     private sealed class EmptyProgressRepository : EfudaIkki.Core.IProgressRepository

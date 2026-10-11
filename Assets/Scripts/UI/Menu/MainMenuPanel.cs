@@ -20,7 +20,8 @@ public class MainMenuPanel : MonoBehaviour
     [SerializeField] private bool hideButtonTextLabels = true;
     [SerializeField] private Color lockedBattleGroundColor = new Color(0.18f, 0.18f, 0.18f, 1f);
 
-    private TextMeshProUGUI battleGroundStatusLabel;
+    [Header("Scene References")]
+    [SerializeField] private TextMeshProUGUI battleGroundStatusLabel;
     private Button subscribedIkkiModeButton;
     private Button subscribedBattleGroundButton;
     private Button subscribedSettingsButton;
@@ -114,10 +115,13 @@ public class MainMenuPanel : MonoBehaviour
 
         if (image != null)
         {
-            image.sprite = !unlocked && lockedBattleGroundButtonSprite != null
-                ? lockedBattleGroundButtonSprite
-                : kachinukiModeButtonSprite;
-            image.color = Color.white;
+            // The old locked artwork contains its unlock condition across the
+            // centre of the mode name.  Keep one clean mode image and show the
+            // condition in the scene-authored status area instead.
+            image.sprite = kachinukiModeButtonSprite != null
+                ? kachinukiModeButtonSprite
+                : lockedBattleGroundButtonSprite;
+            image.color = unlocked ? Color.white : lockedBattleGroundColor;
             image.preserveAspect = true;
         }
 
@@ -129,8 +133,11 @@ public class MainMenuPanel : MonoBehaviour
         if (statusLabel != null)
         {
             statusLabel.text = unlocked
-                ? $"最高連勝 {GameProgressStore.BestBattleGroundStreak}"
-                : string.Empty;
+                ? $"最高記録 {GameProgressStore.BestBattleGroundStreak}人抜き"
+                : "ボス撃破で解放";
+            statusLabel.color = unlocked
+                ? Color.white
+                : new Color(1f, 0.35f, 0.35f, 1f);
             ConfigureStatusLabelRect(statusLabel.rectTransform, unlocked);
             statusLabel.gameObject.SetActive(true);
         }
@@ -138,7 +145,7 @@ public class MainMenuPanel : MonoBehaviour
         SpriteState state = battleGroundButton.spriteState;
         Sprite lockedOrHover = unlocked
             ? kachinukiModeButtonHoverSprite
-            : lockedBattleGroundButtonSprite;
+            : image != null ? image.sprite : kachinukiModeButtonSprite;
         state.highlightedSprite = lockedOrHover;
         state.pressedSprite = lockedOrHover;
         state.selectedSprite = lockedOrHover;
@@ -212,37 +219,7 @@ public class MainMenuPanel : MonoBehaviour
             return battleGroundStatusLabel;
         }
 
-        Transform existing = battleGroundButton.transform.Find("BattleGroundStatus");
-        if (existing != null)
-        {
-            battleGroundStatusLabel = existing.GetComponent<TextMeshProUGUI>();
-            if (battleGroundStatusLabel != null)
-            {
-                return battleGroundStatusLabel;
-            }
-        }
-
-        TextMeshProUGUI template = battleGroundButton.GetComponentInChildren<TextMeshProUGUI>(true);
-        GameObject labelObject = new GameObject(
-            "BattleGroundStatus",
-            typeof(RectTransform),
-            typeof(TextMeshProUGUI));
-        labelObject.transform.SetParent(battleGroundButton.transform, false);
-
-        battleGroundStatusLabel = labelObject.GetComponent<TextMeshProUGUI>();
-        if (template != null)
-        {
-            battleGroundStatusLabel.font = template.font;
-        }
-
-        battleGroundStatusLabel.alignment = TextAlignmentOptions.Center;
-        battleGroundStatusLabel.enableAutoSizing = true;
-        battleGroundStatusLabel.fontSizeMin = 16f;
-        battleGroundStatusLabel.fontSizeMax = 32f;
-        battleGroundStatusLabel.fontStyle = FontStyles.Bold;
-        battleGroundStatusLabel.color = Color.white;
-        RuntimeUiFactory.SetTextOutline(battleGroundStatusLabel, Color.black, 0.2f);
-        battleGroundStatusLabel.raycastTarget = false;
+        Debug.LogError("MainMenuPanel: BattleGroundStatus is not assigned.", this);
         return battleGroundStatusLabel;
     }
 
@@ -253,9 +230,6 @@ public class MainMenuPanel : MonoBehaviour
             return;
         }
 
-        rectTransform.anchorMin = unlocked ? new Vector2(0.08f, 0.04f) : new Vector2(0.08f, 0.18f);
-        rectTransform.anchorMax = unlocked ? new Vector2(0.92f, 0.3f) : new Vector2(0.92f, 0.82f);
-        rectTransform.offsetMin = Vector2.zero;
-        rectTransform.offsetMax = Vector2.zero;
+        // Position and size are authored in latest.unity.
     }
 }

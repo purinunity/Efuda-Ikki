@@ -30,13 +30,10 @@ public sealed class LatestScenePlayModeIntegrationTests
     }
 
     [UnityTest]
-    public IEnumerator InactiveShowdownPopup_InitializesMissingTextAndDisplaysSprites()
+    public IEnumerator InactiveSceneAuthoredShowdownPopup_DisplaysSprites()
     {
-        if (Enumerable.Range(0, SceneManager.sceneCount).Select(SceneManager.GetSceneAt).Any(scene => scene.isDirty))
-            throw new InvalidOperationException("Save scene changes before running this test.");
-
         StoreCurrentSceneSetup();
-        EditorSceneManager.OpenScene(LatestScenePath, OpenSceneMode.Single);
+        OpenLatestSceneWithoutDiscardingCurrentSetup();
         yield return new EnterPlayMode();
         yield return null;
         yield return VerifyInactiveShowdownPopup();
@@ -55,16 +52,6 @@ public sealed class LatestScenePlayModeIntegrationTests
         Assert.DoesNotThrow(() => popup.Initialize());
         VerifyLifeDeductionText(popup);
 
-        // Also exercise a completely absent hierarchy under an inactive parent:
-        // TMP.Awake has not run when the fallback text is first configured.
-        var parent = new GameObject("Inactive Popup Test", typeof(RectTransform), typeof(Canvas));
-        parent.SetActive(false);
-        var fallbackObject = new GameObject("Fallback", typeof(RectTransform));
-        fallbackObject.transform.SetParent(parent.transform, false);
-        var fallback = fallbackObject.AddComponent<ShowdownCutInPopup>();
-        Assert.DoesNotThrow(() => fallback.Initialize());
-        VerifyLifeDeductionText(fallback);
-        Assert.That(parent.activeSelf, Is.False);
         Assert.That(assets.textFont.material.GetFloat(TMPro.ShaderUtilities.ID_OutlineWidth), Is.EqualTo(originalOutline),
             "Styling a popup must not modify the shared font asset material.");
 
@@ -91,7 +78,6 @@ public sealed class LatestScenePlayModeIntegrationTests
             Assert.That(image.color.a, Is.GreaterThan(0f), name);
         }
         popup.CancelDisplay();
-        UnityEngine.Object.Destroy(parent);
         yield return null;
         LogAssert.NoUnexpectedReceived();
     }
@@ -114,17 +100,8 @@ public sealed class LatestScenePlayModeIntegrationTests
         SessionState.EraseString(SceneSetupSessionKey);
         Assert.That(AssetDatabase.LoadAssetAtPath<SceneAsset>(LatestScenePath), Is.Not.Null);
 
-        Scene[] openScenes = Enumerable.Range(0, SceneManager.sceneCount)
-            .Select(SceneManager.GetSceneAt)
-            .ToArray();
-        if (openScenes.Any(scene => scene.isDirty))
-        {
-            throw new InvalidOperationException(
-                "The current Editor scene setup contains unsaved changes. Save or revert it before running this integration test.");
-        }
-
         StoreCurrentSceneSetup();
-        EditorSceneManager.OpenScene(LatestScenePath, OpenSceneMode.Single);
+        OpenLatestSceneWithoutDiscardingCurrentSetup();
         Assert.That(SceneManager.GetActiveScene().path, Is.EqualTo(LatestScenePath));
 
         yield return new EnterPlayMode();
@@ -239,6 +216,17 @@ public sealed class LatestScenePlayModeIntegrationTests
             }).ToArray()
         };
         SessionState.SetString(SceneSetupSessionKey, JsonUtility.ToJson(snapshot));
+    }
+
+    private static void OpenLatestSceneWithoutDiscardingCurrentSetup()
+    {
+        Scene latest = SceneManager.GetSceneByPath(LatestScenePath);
+        if (!latest.IsValid() || !latest.isLoaded)
+        {
+            latest = EditorSceneManager.OpenScene(LatestScenePath, OpenSceneMode.Additive);
+        }
+
+        SceneManager.SetActiveScene(latest);
     }
 
     private static void RestoreStoredSceneSetup()

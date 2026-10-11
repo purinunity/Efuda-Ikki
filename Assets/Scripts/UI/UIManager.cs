@@ -23,16 +23,25 @@ public class UIManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI L1;
     [SerializeField] private TextMeshProUGUI L2;
     [SerializeField] private PlayerRemainTrashCount playerRemainTrashCount;
+    [Header("Scene-authored mode visuals")]
+    [SerializeField] private Image battleBackgroundImage;
+    [SerializeField] private Image roundFrameImage;
+    [SerializeField] private GameObject ikkiRoundView;
+    [SerializeField] private GameObject battleGroundStreakView;
+    [SerializeField] private TextMeshProUGUI battleGroundStreakText;
     public float cardMoveSpeed = 800f;
     public float cardTurnSpeed = 720f;
     [SerializeField, Min(0.1f)] private float uiUpdateRecoveryTimeout = 10f;
 
     public bool UIUpdateInProgress { get; private set; } = false;
+    public Image BattleBackgroundImage => battleBackgroundImage;
+    public Image RoundFrameImage => roundFrameImage;
     private Coroutine uiUpdateCoroutine;
     private readonly HashSet<Card> recoveryCards = new HashSet<Card>();
     private readonly GameUiPresenter presenter = new GameUiPresenter();
-    private Image playerParentMarker;
-    private Image cpuParentMarker;
+    [Header("Scene-authored markers")]
+    [SerializeField] private Image playerParentMarker;
+    [SerializeField] private Image cpuParentMarker;
     private bool parentMarkerVisible = true;
     private int lastRenderedParentIndex = -1;
 
@@ -69,7 +78,10 @@ public class UIManager : MonoBehaviour
         UIUpdateInProgress = true;
 
         GameModeData modeData = GameModeManager.GetGameModeData();
-        if (modeData != null && modeData.Mode == GameModeData.GameMode.BattleGroundMode)
+        bool battleGroundMode = modeData != null &&
+                                modeData.Mode == GameModeData.GameMode.BattleGroundMode;
+        SetRoundViewMode(battleGroundMode);
+        if (battleGroundMode)
         {
             SetBattleGroundWinCount(modeData.CurrentWinStreak);
         }
@@ -147,10 +159,16 @@ public class UIManager : MonoBehaviour
 
     public void SetBattleGroundWinCount(int defeatedOpponents)
     {
-        if (r != null)
+        if (battleGroundStreakText != null)
         {
-            r.text = Mathf.Max(0, defeatedOpponents) + "人抜き";
+            battleGroundStreakText.text = Mathf.Max(0, defeatedOpponents) + "人抜き";
         }
+    }
+
+    private void SetRoundViewMode(bool battleGroundMode)
+    {
+        if (ikkiRoundView != null) ikkiRoundView.SetActive(!battleGroundMode);
+        if (battleGroundStreakView != null) battleGroundStreakView.SetActive(battleGroundMode);
     }
 
     public void SetParentMarkerVisible(bool visible)
@@ -168,41 +186,10 @@ public class UIManager : MonoBehaviour
 
     private void EnsureParentMarkers()
     {
-        if (playerParentMarker != null && cpuParentMarker != null) return;
-        CharacterManager characters = FindObjectOfType<CharacterManager>(true);
-        RectTransform playerRect = characters != null && characters.Player != null
-            ? characters.Player.GetComponent<RectTransform>()
-            : null;
-        RectTransform cpuRect = characters != null && characters.CPU != null
-            ? characters.CPU.GetComponent<RectTransform>()
-            : null;
-        if (playerRect == null || cpuRect == null) return;
-        ShowdownCutInAssetSet assets = Resources.Load<ShowdownCutInAssetSet>("ShowdownCutInAssets");
-        Sprite sprite = assets != null ? assets.parentMarker : null;
-        playerParentMarker = CreateParentMarker("PlayerParentMarker", playerRect, sprite);
-        cpuParentMarker = CreateParentMarker("CpuParentMarker", cpuRect, sprite);
-    }
-
-    private static Image CreateParentMarker(
-        string name, RectTransform characterRect, Sprite sprite)
-    {
-        Transform existing = characterRect.Find(name);
-        GameObject target = existing != null ? existing.gameObject : new GameObject(
-            name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-        if (existing == null) target.transform.SetParent(characterRect, false);
-        RectTransform rect = target.GetComponent<RectTransform>();
-        rect.anchorMin = rect.anchorMax = Vector2.zero;
-        rect.pivot = Vector2.zero;
-        rect.anchoredPosition = Vector2.zero;
-        rect.sizeDelta = new Vector2(3.15f, 3.15f);
-        rect.localScale = Vector3.one;
-        Image image = target.GetComponent<Image>();
-        image.sprite = sprite;
-        image.color = Color.white;
-        image.preserveAspect = true;
-        image.raycastTarget = false;
-        target.transform.SetAsLastSibling();
-        return image;
+        if (playerParentMarker == null || cpuParentMarker == null)
+        {
+            Debug.LogError("UIManager: parent markers are not assigned in the scene.", this);
+        }
     }
 
     private void UpdateSpecialCardArea(GameUiSnapshot snapshot, int playerId, CardArea targetArea, Cards sourceDeck)

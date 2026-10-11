@@ -8,12 +8,12 @@ using static HandEvaluator;
 public partial class ShowdownCutInPopup : MonoBehaviour
 {
     [SerializeField] private ShowdownCutInAssetSet assetSet;
-    [SerializeField] private bool buildMissingUiAtRuntime = true;
+#pragma warning disable CS0414 // Serialized for existing scene-contract compatibility; runtime fallback is intentionally disabled.
+    [SerializeField, HideInInspector] private bool buildMissingUiAtRuntime = false;
+#pragma warning restore CS0414
     [SerializeField] private Color roleCardDimColor = new Color(1f, 1f, 1f, 0.34f);
     [SerializeField] private Color activeSpecialCardTint = new Color(1f, 0.86f, 0.18f, 1f);
     [SerializeField] private Color inactiveSpecialCardTint = new Color(1f, 1f, 1f, 0.42f);
-    [SerializeField] private Vector4 fallbackCpuRoleSpriteRect = new Vector4(304f, 176f, 416f, 82f);
-    [SerializeField] private Vector4 fallbackPlayerRoleSpriteRect = new Vector4(304f, 318f, 416f, 82f);
     [SerializeField] private float scoreStepInterval = 0.02f;
     [SerializeField] private float roleFrameInDuration = 0.28f;
     [SerializeField] private float specialActivationFadeDuration = 0.45f;
@@ -37,8 +37,8 @@ public partial class ShowdownCutInPopup : MonoBehaviour
     [SerializeField] private TextMeshProUGUI cpuScoreText;
     [SerializeField] private TextMeshProUGUI playerLifeDeductionText;
     [SerializeField] private TextMeshProUGUI cpuLifeDeductionText;
-    private Image playerLifeDeductionFrameImage;
-    private Image cpuLifeDeductionFrameImage;
+    [SerializeField] private Image playerLifeDeductionFrameImage;
+    [SerializeField] private Image cpuLifeDeductionFrameImage;
     [SerializeField] private Image specialActivationImage;
     [SerializeField] private Image specialCallBackdropImage;
     [SerializeField] private Image resultBackdropImage;
@@ -51,6 +51,7 @@ public partial class ShowdownCutInPopup : MonoBehaviour
     [SerializeField] private Image[] cpuCardImages = new Image[ShowdownCardCount];
     [SerializeField] private Image playerSpecialCardImage;
     [SerializeField] private Image cpuSpecialCardImage;
+    [SerializeField] private RectTransform roleEffectRoot;
     [SerializeField] private Button closeButton;
     private Button subscribedCloseButton;
     private bool closeRequested;
@@ -63,6 +64,8 @@ public partial class ShowdownCutInPopup : MonoBehaviour
     private Color closeButtonDefaultColor;
     private Selectable.Transition closeButtonDefaultTransition;
     private ColorBlock closeButtonDefaultColors;
+    private Vector3 playerSpecialCardInitialScale = Vector3.one;
+    private Vector3 cpuSpecialCardInitialScale = Vector3.one;
     private readonly List<GameObject> activeRoleEffects = new List<GameObject>();
 
     private void Awake()
@@ -96,46 +99,6 @@ public partial class ShowdownCutInPopup : MonoBehaviour
         ClearRoleEffects();
     }
 
-    public static ShowdownCutInPopup Create(Transform parent, ShowdownCutInAssetSet assets = null)
-    {
-        GameObject popupObject = new GameObject(
-            "ShowdownCutInPopup",
-            typeof(RectTransform),
-            typeof(CanvasGroup),
-            typeof(ShowdownCutInPopup));
-
-        ShowdownCutInPopup popup = popupObject.GetComponent<ShowdownCutInPopup>();
-        popup.assetSet = assets;
-        popup.SetPopupParent(parent);
-        popup.Initialize();
-        return popup;
-    }
-
-    public void SetPopupParent(Transform parent)
-    {
-        if (parent == null)
-        {
-            return;
-        }
-
-        if (transform.parent != parent)
-        {
-            transform.SetParent(parent, false);
-        }
-
-        ApplyLayerRecursively(gameObject, parent.gameObject.layer);
-
-        RectTransform rootRect = GetComponent<RectTransform>();
-        if (rootRect != null)
-        {
-            Stretch(rootRect);
-            rootRect.localScale = Vector3.one;
-        }
-
-        transform.SetAsLastSibling();
-        ConfigurePopupCanvas();
-    }
-
     public void Initialize()
     {
         if (initialized)
@@ -150,26 +113,19 @@ public partial class ShowdownCutInPopup : MonoBehaviour
 
         CacheRootComponents();
         ConfigurePopupCanvas();
-        RectTransform rootRect = GetComponent<RectTransform>();
-        if (rootRect != null)
-        {
-            Stretch(rootRect);
-            rootRect.localScale = Vector3.one;
-        }
 
         if (!HasRequiredUiReferences())
-        {
-            if (buildMissingUiAtRuntime)
-            {
-                BuildUi();
-            }
-            else
-            {
-                Debug.LogWarning("ShowdownCutInPopup: hierarchy references are incomplete.");
-            }
-        }
+            Debug.LogError("ShowdownCutInPopup: hierarchy references are incomplete.", this);
 
         ConfigureUiReferences();
+        if (playerSpecialCardImage != null)
+        {
+            playerSpecialCardInitialScale = playerSpecialCardImage.rectTransform.localScale;
+        }
+        if (cpuSpecialCardImage != null)
+        {
+            cpuSpecialCardInitialScale = cpuSpecialCardImage.rectTransform.localScale;
+        }
         CacheCloseButtonDefaultVisual();
         WireCloseButton();
         HideImmediately();
@@ -186,40 +142,6 @@ public partial class ShowdownCutInPopup : MonoBehaviour
         HideImmediately();
     }
 
-#if UNITY_EDITOR
-    [ContextMenu("Build Editable UI")]
-    private void BuildEditableUi()
-    {
-        if (assetSet == null)
-        {
-            assetSet = Resources.Load<ShowdownCutInAssetSet>("ShowdownCutInAssets");
-        }
-
-        CacheRootComponents();
-        ConfigurePopupCanvas();
-        RectTransform rootRect = GetComponent<RectTransform>();
-        if (rootRect != null)
-        {
-            Stretch(rootRect);
-        }
-
-        BuildUi();
-        ConfigureUiReferences();
-        WireCloseButton();
-        gameObject.SetActive(true);
-        if (canvasGroup != null)
-        {
-            canvasGroup.alpha = 1f;
-            canvasGroup.blocksRaycasts = true;
-            canvasGroup.interactable = true;
-        }
-
-        UnityEditor.EditorUtility.SetDirty(this);
-        UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(gameObject.scene);
-    }
-#endif
-
-
     private void CacheRootComponents()
     {
         if (canvasGroup == null)
@@ -229,7 +151,7 @@ public partial class ShowdownCutInPopup : MonoBehaviour
 
         if (canvasGroup == null)
         {
-            canvasGroup = gameObject.AddComponent<CanvasGroup>();
+            Debug.LogError("ShowdownCutInPopup: CanvasGroup is not assigned.", this);
         }
 
     }
@@ -249,6 +171,8 @@ public partial class ShowdownCutInPopup : MonoBehaviour
                cpuScoreText != null &&
                playerLifeDeductionText != null &&
                cpuLifeDeductionText != null &&
+               playerLifeDeductionFrameImage != null &&
+               cpuLifeDeductionFrameImage != null &&
                specialActivationImage != null &&
                specialCallBackdropImage != null &&
                resultBackdropImage != null &&
@@ -261,7 +185,17 @@ public partial class ShowdownCutInPopup : MonoBehaviour
                HasImageSlots(cpuCardImages, ShowdownCardCount) &&
                playerSpecialCardImage != null &&
                cpuSpecialCardImage != null &&
+               roleEffectRoot != null &&
                closeButton != null;
+    }
+
+    private void OnValidate()
+    {
+        if (!Application.isPlaying && !string.IsNullOrEmpty(gameObject.scene.path) &&
+            !HasRequiredUiReferences())
+        {
+            Debug.LogWarning("ShowdownCutInPopup: assign all fixed cut-in references in the Inspector.", this);
+        }
     }
 
 
@@ -363,7 +297,7 @@ public partial class ShowdownCutInPopup : MonoBehaviour
 
     private void SpawnRoleEffect(HandRank rank, RectTransform target)
     {
-        if (assetSet == null || stage == null || target == null)
+        if (assetSet == null || stage == null || roleEffectRoot == null || target == null)
         {
             return;
         }
@@ -374,28 +308,16 @@ public partial class ShowdownCutInPopup : MonoBehaviour
             return;
         }
 
-        GameObject effect = Instantiate(prefab);
+        GameObject effect = Instantiate(prefab, roleEffectRoot, false);
         effect.name = $"{rank}CutInEffect";
+        effect.transform.localPosition = roleEffectRoot.InverseTransformPoint(target.position);
+        effect.transform.localScale = prefab.transform.localScale * 0.18f;
 
-        Canvas canvas = GetParentCanvas();
-        Camera renderCamera = canvas != null && canvas.worldCamera != null
-            ? canvas.worldCamera
-            : Camera.main;
-        if (renderCamera != null)
-        {
-            Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(renderCamera, target.position);
-            float distance = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
-                ? Mathf.Max(renderCamera.nearClipPlane + 0.01f, canvas.planeDistance - 1f)
-                : Mathf.Max(renderCamera.nearClipPlane + 0.01f, 10f);
-            effect.transform.position = renderCamera.ScreenToWorldPoint(
-                new Vector3(screenPoint.x, screenPoint.y, distance));
-        }
-
-        // Keep the prefab's authored rotation and world-unit scale. Parenting it
-        // below the Canvas scales its particles into a huge, invisible bounds.
+        // The effect root is deliberately behind cards and text.  A modest
+        // scale keeps the world-space particle prefab inside its role frame.
         foreach (ParticleSystemRenderer renderer in effect.GetComponentsInChildren<ParticleSystemRenderer>(true))
         {
-            renderer.sortingOrder = 32760;
+            renderer.sortingOrder = 1;
         }
         activeRoleEffects.Add(effect);
     }

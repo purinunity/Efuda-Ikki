@@ -2,6 +2,15 @@ using UnityEngine;
 
 public class TitleUIManager : MonoBehaviour
 {
+    public enum EditorPreviewScreen
+    {
+        Title,
+        ModeSelect,
+        StageSelect,
+        SpecialCardSelect,
+        Settings
+    }
+
     public CanvasGroup titleScreenPanel;
     public CanvasGroup modeSelectPanel;
     public CanvasGroup stageSelectPanel;
@@ -10,12 +19,63 @@ public class TitleUIManager : MonoBehaviour
 
     [SerializeField] private GameManager gameManager;
 
+    [Header("Editor Preview")]
+    [SerializeField] private EditorPreviewScreen editorPreviewScreen = EditorPreviewScreen.Title;
+
     private GameModeData currentGameModeData;
 
     private void Start()
     {
         ShowTitleScreen();
     }
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        if (Application.isPlaying || !gameObject.scene.IsValid())
+        {
+            return;
+        }
+
+        UnityEditor.EditorApplication.delayCall -= ApplyEditorPreviewDelayed;
+        UnityEditor.EditorApplication.delayCall += ApplyEditorPreviewDelayed;
+    }
+
+    private void ApplyEditorPreviewDelayed()
+    {
+        UnityEditor.EditorApplication.delayCall -= ApplyEditorPreviewDelayed;
+        if (this == null || Application.isPlaying || !gameObject.scene.IsValid())
+        {
+            return;
+        }
+
+        ApplyEditorPreview();
+    }
+
+    [ContextMenu("Apply Editor Preview")]
+    private void ApplyEditorPreview()
+    {
+        HideAllPanels();
+        switch (editorPreviewScreen)
+        {
+            case EditorPreviewScreen.ModeSelect:
+                SetPanelActive(modeSelectPanel, true);
+                break;
+            case EditorPreviewScreen.StageSelect:
+                SetPanelActive(stageSelectPanel, true);
+                break;
+            case EditorPreviewScreen.SpecialCardSelect:
+                SetPanelActive(specialCardSelectPanel, true);
+                break;
+            case EditorPreviewScreen.Settings:
+                SetPanelActive(settingsPanel, true);
+                break;
+            default:
+                SetPanelActive(titleScreenPanel, true);
+                break;
+        }
+    }
+#endif
 
     private void Update()
     {

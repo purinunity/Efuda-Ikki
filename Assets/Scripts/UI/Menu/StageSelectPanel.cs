@@ -94,7 +94,6 @@ public class StageSelectPanel : MonoBehaviour
 
     private void Start()
     {
-        ApplyCharacterFrameLayout();
         HideLegacyTextLabels();
         RefreshProgression();
 
@@ -266,7 +265,6 @@ public class StageSelectPanel : MonoBehaviour
     {
         CacheUnlockedCharacterSprites();
         BuildActiveCharacterBindings();
-        ApplyCharacterFrameLayout();
         HideLegacyTextLabels();
     }
 

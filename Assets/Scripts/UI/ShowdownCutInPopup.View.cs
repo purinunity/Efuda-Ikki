@@ -8,7 +8,6 @@ public partial class ShowdownCutInPopup
 {
     private void ConfigureUiReferences()
     {
-        ApplyRuntimeLayout();
         ConfigureRequestedFrames();
 
         if (screenFillImage != null)
@@ -41,9 +40,6 @@ public partial class ShowdownCutInPopup
         ConfigureImage(cpuResultStampImage, preserveAspect: true);
         ConfigureSpecialCallPanel();
         ConfigureTextBackdrop(resultBackdropImage);
-        PlaceBackdropBehindText(specialCallBackdropImage, specialCallText);
-        PlaceBackdropBehindText(resultBackdropImage, resultText);
-        PlaceImageBehindText(resultStampImage, resultText);
         DisableLegacyRoleFallbackTexts();
 
         ApplyTextDefaults(playerScoreText);
@@ -60,7 +56,6 @@ public partial class ShowdownCutInPopup
         ConfigureSpecialCallText();
         ApplyReadableOverlayText(resultText, Color.white);
         ApplyReadableOverlayText(damageText, new Color(1f, 0.92f, 0.72f, 1f));
-        ApplyStageSiblingOrder();
     }
 
     private void ConfigureRequestedFrames()
@@ -72,18 +67,17 @@ public partial class ShowdownCutInPopup
             specialCallBackdropImage.color = Color.white;
             specialCallBackdropImage.preserveAspect = true;
         }
-        playerLifeDeductionFrameImage = CreateLifeDeductionFrame(
-            "PlayerLifeDeductionFrame",
-            playerLifeDeductionFrameImage,
-            playerLifeDeductionText,
-            assetSet.lifeDeductionFrame,
-            PlayerLifeDeductionRect);
-        cpuLifeDeductionFrameImage = CreateLifeDeductionFrame(
-            "CpuLifeDeductionFrame",
-            cpuLifeDeductionFrameImage,
-            cpuLifeDeductionText,
-            assetSet.lifeDeductionFrame,
-            CpuLifeDeductionRect);
+        ConfigureLifeDeductionFrame(playerLifeDeductionFrameImage, assetSet.lifeDeductionFrame);
+        ConfigureLifeDeductionFrame(cpuLifeDeductionFrameImage, assetSet.lifeDeductionFrame);
+    }
+
+    private static void ConfigureLifeDeductionFrame(Image image, Sprite sprite)
+    {
+        if (image == null || sprite == null) return;
+        image.sprite = sprite;
+        image.color = Color.white;
+        image.preserveAspect = true;
+        image.raycastTarget = false;
     }
 
     private void ConfigureSpecialCallPanel()
@@ -133,245 +127,6 @@ public partial class ShowdownCutInPopup
         ApplyReadableOverlayText(specialCallText, new Color(1f, 0.9f, 0.35f, 1f));
     }
 
-    private Image CreateLifeDeductionFrame(
-        string objectName,
-        Image current,
-        TextMeshProUGUI text,
-        Sprite sprite,
-        Vector4 referenceRect)
-    {
-        if (stage == null || text == null || sprite == null) return current;
-
-        Image image = current;
-        if (image == null)
-        {
-            Transform existing = stage.Find(objectName);
-            GameObject frame = existing != null
-                ? existing.gameObject
-                : new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-            if (existing == null) frame.transform.SetParent(stage, false);
-            image = frame.GetComponent<Image>();
-        }
-
-        image.sprite = sprite;
-        image.color = Color.white;
-        image.preserveAspect = true;
-        image.raycastTarget = false;
-        SetReferencePixelRect(image.rectTransform, referenceRect);
-        PlaceFrameBehindText(image, text);
-        return image;
-    }
-
-    private void ApplyRuntimeLayout()
-    {
-        if (stage == null)
-        {
-            return;
-        }
-
-        Stretch(stage);
-        EnsureDirectStageChild(screenFillImage);
-        EnsureDirectStageChild(backgroundImage);
-        EnsureDirectStageChild(cpuCharacterBaseImage);
-        EnsureDirectStageChild(playerCharacterBaseImage);
-        EnsureDirectStageChild(cpuCharacterImage);
-        EnsureDirectStageChild(playerCharacterImage);
-        EnsureDirectStageChild(cpuLifeDeductionText);
-        EnsureDirectStageChild(playerLifeDeductionText);
-        EnsureDirectStageChild(cpuRoleImage);
-        EnsureDirectStageChild(playerRoleImage);
-        EnsureDirectStageChild(cpuScoreText);
-        EnsureDirectStageChild(playerScoreText);
-        EnsureDirectStageChild(cpuCardImages);
-        EnsureDirectStageChild(playerCardImages);
-        EnsureDirectStageChild(cpuSpecialCardImage);
-        EnsureDirectStageChild(playerSpecialCardImage);
-        EnsureDirectStageChild(specialActivationImage);
-        EnsureDirectStageChild(specialCallBackdropImage);
-        EnsureDirectStageChild(resultBackdropImage);
-        EnsureDirectStageChild(specialCallText);
-        EnsureDirectStageChild(resultText);
-        EnsureDirectStageChild(damageText);
-        EnsureDirectStageChild(resultStampImage);
-        EnsureDirectStageChild(cpuResultStampImage);
-        EnsureDirectStageChild(closeButton);
-
-        if (screenFillImage != null)
-        {
-            Stretch(screenFillImage.rectTransform);
-        }
-
-        if (backgroundImage != null)
-        {
-            Stretch(backgroundImage.rectTransform);
-        }
-
-        SetReferencePixelRect(cpuCharacterBaseImage, CpuCharacterBaseRect);
-        SetReferencePixelRect(playerCharacterBaseImage, PlayerCharacterBaseRect);
-        SetReferencePixelRect(cpuCharacterImage, CpuCharacterRect);
-        SetReferencePixelRect(playerCharacterImage, PlayerCharacterRect);
-        SetReferencePixelRect(cpuLifeDeductionText, CpuLifeDeductionRect);
-        SetReferencePixelRect(playerLifeDeductionText, PlayerLifeDeductionRect);
-        SetReferencePixelRect(cpuLifeDeductionFrameImage, CpuLifeDeductionRect);
-        SetReferencePixelRect(playerLifeDeductionFrameImage, PlayerLifeDeductionRect);
-
-        if (cpuRoleImage != null)
-        {
-            SetReferencePixelRect(cpuRoleImage.rectTransform, GetCpuRoleSpriteRect());
-        }
-
-        if (playerRoleImage != null)
-        {
-            SetReferencePixelRect(playerRoleImage.rectTransform, GetPlayerRoleSpriteRect());
-        }
-
-        ApplyShowdownCardLayout(cpuCardImages, CpuHandFrameRect, CpuCommonFrameRect);
-        ApplyShowdownCardLayout(playerCardImages, PlayerHandFrameRect, PlayerCommonFrameRect);
-
-        if (cpuSpecialCardImage != null)
-        {
-            SetReferencePixelRect(cpuSpecialCardImage.rectTransform, CpuSpecialCardSlotRect);
-        }
-
-        if (playerSpecialCardImage != null)
-        {
-            SetReferencePixelRect(playerSpecialCardImage.rectTransform, PlayerSpecialCardSlotRect);
-        }
-
-        PlaceScoreAtRoleSwordTip(cpuScoreText, cpuRoleImage, false);
-        PlaceScoreAtRoleSwordTip(playerScoreText, playerRoleImage, true);
-
-        SetReferencePixelRect(specialCallBackdropImage, SpecialCallBackdropRect);
-        SetReferencePixelRect(specialActivationImage, SpecialActivationRect);
-        SetReferencePixelRect(resultBackdropImage, ResultBackdropRect);
-        if (resultStampImage != null)
-        {
-            SetReferencePixelRect(resultStampImage.rectTransform, PlayerResultStampRect);
-        }
-
-        if (cpuResultStampImage != null)
-        {
-            SetReferencePixelRect(cpuResultStampImage.rectTransform, CpuResultStampRect);
-        }
-
-        if (specialCallText != null && specialCallBackdropImage != null &&
-            specialCallText.transform.parent == specialCallBackdropImage.transform)
-        {
-            Stretch(specialCallText.rectTransform);
-            specialCallText.rectTransform.offsetMin = new Vector2(56f, 42f);
-            specialCallText.rectTransform.offsetMax = new Vector2(-56f, -42f);
-        }
-        else
-        {
-            SetReferencePixelRect(specialCallText, SpecialCallTextRect);
-        }
-        SetReferencePixelRect(resultText, ResultTextRect);
-        SetReferencePixelRect(damageText, DamageTextRect);
-
-        if (closeButton != null)
-        {
-            SetReferencePixelRect(closeButton.GetComponent<RectTransform>(), CloseButtonRect);
-        }
-    }
-
-    private void ApplyShowdownCardLayout(Image[] images, Vector4 handFrameRect, Vector4 commonFrameRect)
-    {
-        if (images == null)
-        {
-            return;
-        }
-
-        for (int i = 0; i < images.Length; i++)
-        {
-            if (images[i] == null)
-            {
-                continue;
-            }
-
-            SetReferencePixelRect(images[i].rectTransform, GetShowdownCardSlotRect(handFrameRect, commonFrameRect, i));
-        }
-    }
-
-    private static Vector4 GetShowdownCardSlotRect(Vector4 handFrameRect, Vector4 commonFrameRect, int index)
-    {
-        if (index < HandCardCount)
-        {
-            const float handCardWidth = 72f;
-            const float handCardHeight = 96f;
-            const float handCardGap = 16f;
-            float handTotalWidth =
-                HandCardCount * handCardWidth +
-                (HandCardCount - 1) * handCardGap;
-            float handStartX =
-                handFrameRect.x + (handFrameRect.z - handTotalWidth) * 0.5f;
-            float x = handStartX + index * (handCardWidth + handCardGap);
-            float y = handFrameRect.y + (handFrameRect.w - handCardHeight) * 0.5f;
-            return new Vector4(x, y, handCardWidth, handCardHeight);
-        }
-
-        const float commonCardWidth = 72f;
-        const float commonCardHeight = 96f;
-        const float commonCardGap = 16f;
-        int commonIndex = index - HandCardCount;
-        float totalWidth = CommonCardCount * commonCardWidth + (CommonCardCount - 1) * commonCardGap;
-        float startX = commonFrameRect.x + (commonFrameRect.z - totalWidth) * 0.5f;
-        return new Vector4(
-            startX + commonIndex * (commonCardWidth + commonCardGap),
-            commonFrameRect.y + (commonFrameRect.w - commonCardHeight) * 0.5f,
-            commonCardWidth,
-            commonCardHeight);
-    }
-
-    private void EnsureDirectStageChild(Component component)
-    {
-        if (component == null || stage == null || component.transform.parent == stage)
-        {
-            return;
-        }
-
-        component.transform.SetParent(stage, false);
-    }
-
-    private void EnsureDirectStageChild(Image[] images)
-    {
-        if (images == null)
-        {
-            return;
-        }
-
-        foreach (Image image in images)
-        {
-            EnsureDirectStageChild(image);
-        }
-    }
-
-    private void PlaceScoreAtRoleSwordTip(TextMeshProUGUI scoreText, Image roleImage, bool isPlayer)
-    {
-        if (scoreText == null || roleImage == null)
-        {
-            return;
-        }
-
-        RectTransform scoreRect = scoreText.rectTransform;
-        RectTransform roleRect = roleImage.rectTransform;
-        if (scoreRect == null || roleRect == null)
-        {
-            return;
-        }
-
-        if (scoreRect.parent != roleRect)
-        {
-            scoreRect.SetParent(roleRect, false);
-        }
-
-        Vector2 anchor = isPlayer ? new Vector2(1f, 0.5f) : new Vector2(0f, 0.5f);
-        scoreRect.anchorMin = anchor;
-        scoreRect.anchorMax = anchor;
-        scoreRect.pivot = isPlayer ? new Vector2(1f, 0.5f) : new Vector2(0f, 0.5f);
-        scoreRect.sizeDelta = ScoreTextSize;
-        scoreRect.anchoredPosition = isPlayer ? new Vector2(-44f, 0f) : new Vector2(44f, 0f);
-    }
-
     private void ConfigureImage(Image image, bool preserveAspect)
     {
         if (image == null)
@@ -406,26 +161,6 @@ public partial class ShowdownCutInPopup
         image.color = new Color(0f, 0f, 0f, 0.68f);
         image.preserveAspect = false;
         image.raycastTarget = false;
-    }
-
-    private static void PlaceBackdropBehindText(Image backdrop, TextMeshProUGUI text)
-    {
-        if (backdrop == null || text == null || backdrop.transform.parent != text.transform.parent)
-        {
-            return;
-        }
-
-        backdrop.transform.SetSiblingIndex(text.transform.GetSiblingIndex());
-    }
-
-    private static void PlaceImageBehindText(Image image, TextMeshProUGUI text)
-    {
-        if (image == null || text == null || image.transform.parent != text.transform.parent)
-        {
-            return;
-        }
-
-        image.transform.SetSiblingIndex(text.transform.GetSiblingIndex());
     }
 
     private static bool HasImageSlots(Image[] images, int requiredCount)
@@ -505,44 +240,6 @@ public partial class ShowdownCutInPopup
         RuntimeUiFactory.SetTextOutline(text, Color.black, 0.24f);
     }
 
-    private void ApplyStageSiblingOrder()
-    {
-        SetAsLastSibling(screenFillImage);
-        SetAsLastSibling(backgroundImage);
-        SetAsLastSibling(cpuCharacterBaseImage);
-        SetAsLastSibling(playerCharacterBaseImage);
-        SetAsLastSibling(cpuCharacterImage);
-        SetAsLastSibling(playerCharacterImage);
-        SetAsLastSibling(cpuRoleImage);
-        SetAsLastSibling(playerRoleImage);
-        SetAsLastSibling(cpuCardImages);
-        SetAsLastSibling(playerCardImages);
-        SetAsLastSibling(cpuSpecialCardImage);
-        SetAsLastSibling(playerSpecialCardImage);
-        SetAsLastSibling(cpuScoreText);
-        SetAsLastSibling(playerScoreText);
-        SetAsLastSibling(cpuLifeDeductionFrameImage);
-        SetAsLastSibling(cpuLifeDeductionText);
-        SetAsLastSibling(playerLifeDeductionFrameImage);
-        SetAsLastSibling(playerLifeDeductionText);
-        SetAsLastSibling(specialActivationImage);
-        SetAsLastSibling(specialCallBackdropImage);
-        SetAsLastSibling(resultBackdropImage);
-        SetAsLastSibling(cpuResultStampImage);
-        SetAsLastSibling(resultStampImage);
-        SetAsLastSibling(specialCallText);
-        SetAsLastSibling(resultText);
-        SetAsLastSibling(damageText);
-        SetAsLastSibling(closeButton);
-    }
-
-    private static void PlaceFrameBehindText(Image frame, TextMeshProUGUI text)
-    {
-        if (frame == null || text == null) return;
-        frame.transform.SetSiblingIndex(text.transform.GetSiblingIndex());
-        text.transform.SetSiblingIndex(frame.transform.GetSiblingIndex() + 1);
-    }
-
     private void SetLifeDeductionActive(TextMeshProUGUI text, bool active)
     {
         SetTextActive(text, active);
@@ -550,32 +247,6 @@ public partial class ShowdownCutInPopup
             ? playerLifeDeductionFrameImage
             : text == cpuLifeDeductionText ? cpuLifeDeductionFrameImage : null;
         SetActive(frame, active);
-        if (active)
-        {
-            SetAsLastSibling(frame);
-            SetAsLastSibling(text);
-        }
-    }
-
-    private static void SetAsLastSibling(Component component)
-    {
-        if (component != null)
-        {
-            component.transform.SetAsLastSibling();
-        }
-    }
-
-    private static void SetAsLastSibling(Image[] images)
-    {
-        if (images == null)
-        {
-            return;
-        }
-
-        foreach (Image image in images)
-        {
-            SetAsLastSibling(image);
-        }
     }
 
     private void DisableLegacyRoleFallbackTexts()
@@ -701,7 +372,10 @@ public partial class ShowdownCutInPopup
         }
 
         image.color = isActive ? activeSpecialCardTint : dimInactive ? inactiveSpecialCardTint : Color.white;
-        image.rectTransform.localScale = isActive ? Vector3.one * 1.08f : Vector3.one;
+        Vector3 authoredScale = image == playerSpecialCardImage
+            ? playerSpecialCardInitialScale
+            : image == cpuSpecialCardImage ? cpuSpecialCardInitialScale : image.rectTransform.localScale;
+        image.rectTransform.localScale = isActive ? authoredScale * 1.08f : authoredScale;
     }
 
     private void SetImage(Image image, Sprite sprite)
@@ -765,6 +439,7 @@ public partial class ShowdownCutInPopup
         if (labelText != null)
         {
             labelText.text = label;
+            labelText.gameObject.SetActive(!string.IsNullOrEmpty(label));
         }
     }
 
@@ -832,12 +507,6 @@ public partial class ShowdownCutInPopup
             }
 
             SetCloseButtonLabel("次へ");
-            SetNormalizedRect(
-                closeButton.GetComponent<RectTransform>(),
-                0.82f,
-                0.82f,
-                0.95f,
-                0.92f);
             return;
         }
 
@@ -886,6 +555,7 @@ public partial class ShowdownCutInPopup
             closeButton,
             assetSet != null ? assetSet.closeButton : null,
             highlightedSprite);
+        SetCloseButtonLabel(string.Empty);
     }
 
     private static string BuildWinnerText(Data data)

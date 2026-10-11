@@ -15,13 +15,15 @@ public sealed class RoleListPanelController : MonoBehaviour
     [SerializeField] private Sprite closeButtonSprite;
     [SerializeField] private Sprite closeButtonHighlightedSprite;
 
-    private Button openButton;
-    private Button closeButton;
-    private GameObject panelRoot;
+    [Header("Scene References")]
+    [SerializeField] private Button openButton;
+    [SerializeField] private Button closeButton;
+    [SerializeField] private GameObject panelRoot;
+    [SerializeField] private Image roleListPage;
 
     private void Awake()
     {
-        BuildUi();
+        ConfigureSceneUi();
         Close();
     }
 
@@ -33,11 +35,9 @@ public sealed class RoleListPanelController : MonoBehaviour
 
     public void Open()
     {
-        if (panelRoot == null) BuildUi();
         if (panelRoot != null)
         {
             panelRoot.SetActive(true);
-            panelRoot.transform.SetAsLastSibling();
         }
     }
 
@@ -46,128 +46,54 @@ public sealed class RoleListPanelController : MonoBehaviour
         if (panelRoot != null) panelRoot.SetActive(false);
     }
 
-    private void BuildUi()
+    private void ConfigureSceneUi()
     {
-        if (panelRoot != null) return;
-
-        openButton = CreateButton(
-            "RoleListButton",
-            transform,
-            openButtonSprite,
-            openButtonHighlightedSprite,
-            new Vector2(0f, 1f),
-            new Vector2(20f, -100f),
-            new Vector2(72f, 240f));
-        RectTransform openRect = openButton.GetComponent<RectTransform>();
-        openRect.pivot = new Vector2(0f, 1f);
-        openButton.onClick.AddListener(Open);
-
-        panelRoot = new GameObject(
-            "RoleListPanel",
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(Image));
-        panelRoot.transform.SetParent(transform, false);
-        RectTransform panelRect = panelRoot.GetComponent<RectTransform>();
-        Stretch(panelRect);
-
-        Image dimmer = panelRoot.GetComponent<Image>();
-        dimmer.color = new Color(0f, 0f, 0f, 0.82f);
-        dimmer.raycastTarget = true;
-
-        if (combinedRoleSprite != null)
+        if (openButton == null || closeButton == null || panelRoot == null || roleListPage == null)
         {
-            CreatePage("RoleListPage", combinedRoleSprite, new Vector2(0f, -6f), new Vector2(1520f, 656f));
-        }
-        else
-        {
-            CreatePage("RoleListPage1", firstPageSprite, new Vector2(-382f, -6f), new Vector2(720f, 615f));
-            CreatePage("RoleListPage2", secondPageSprite, new Vector2(382f, -6f), new Vector2(720f, 615f));
+            Debug.LogError("RoleListPanelController: scene references are incomplete.", this);
+            return;
         }
 
-        closeButton = CreateButton(
-            "RoleListCloseButton",
-            panelRoot.transform,
-            closeButtonSprite,
-            closeButtonHighlightedSprite,
-            new Vector2(1f, 1f),
-            Vector2.zero,
-            new Vector2(124f, 124f));
+        Image openImage = openButton.targetGraphic as Image ?? openButton.GetComponent<Image>();
+        ConfigureButtonSprites(openButton, openImage, openButtonSprite, openButtonHighlightedSprite);
+        roleListPage.sprite = combinedRoleSprite != null ? combinedRoleSprite : firstPageSprite;
+        roleListPage.preserveAspect = true;
         CloseButtonStyle.Apply(closeButton, closeButtonSprite, closeButtonHighlightedSprite);
+
+        openButton.onClick.RemoveListener(Open);
+        closeButton.onClick.RemoveListener(Close);
+        openButton.onClick.AddListener(Open);
         closeButton.onClick.AddListener(Close);
-        closeButton.transform.SetAsLastSibling();
     }
 
-    private void CreatePage(string objectName, Sprite sprite, Vector2 anchoredPosition, Vector2 size)
+    private static void ConfigureButtonSprites(
+        Button button,
+        Image image,
+        Sprite normal,
+        Sprite highlighted)
     {
-        GameObject page = new GameObject(
-            objectName,
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(Image));
-        page.transform.SetParent(panelRoot.transform, false);
-        RectTransform rect = page.GetComponent<RectTransform>();
-        rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = anchoredPosition;
-        rect.sizeDelta = size;
-
-        Image image = page.GetComponent<Image>();
-        image.sprite = sprite;
+        if (button == null || image == null) return;
+        image.sprite = normal;
         image.color = Color.white;
         image.preserveAspect = true;
-        image.raycastTarget = false;
-    }
-
-    private static Button CreateButton(
-        string objectName,
-        Transform parent,
-        Sprite normalSprite,
-        Sprite highlightedSprite,
-        Vector2 anchor,
-        Vector2 anchoredPosition,
-        Vector2 size)
-    {
-        GameObject buttonObject = new GameObject(
-            objectName,
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(Image),
-            typeof(Button));
-        buttonObject.transform.SetParent(parent, false);
-
-        RectTransform rect = buttonObject.GetComponent<RectTransform>();
-        rect.anchorMin = rect.anchorMax = anchor;
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = anchoredPosition;
-        rect.sizeDelta = size;
-
-        Image image = buttonObject.GetComponent<Image>();
-        image.sprite = normalSprite;
-        image.color = Color.white;
-        image.preserveAspect = true;
-
-        Button button = buttonObject.GetComponent<Button>();
         button.targetGraphic = image;
-        if (highlightedSprite != null)
+        if (highlighted != null)
         {
             SpriteState state = button.spriteState;
-            state.highlightedSprite = highlightedSprite;
-            state.pressedSprite = highlightedSprite;
-            state.selectedSprite = highlightedSprite;
+            state.highlightedSprite = highlighted;
+            state.pressedSprite = highlighted;
+            state.selectedSprite = highlighted;
             button.spriteState = state;
             button.transition = Selectable.Transition.SpriteSwap;
         }
-
-        return button;
     }
 
-    private static void Stretch(RectTransform rect)
+    private void OnValidate()
     {
-        rect.anchorMin = Vector2.zero;
-        rect.anchorMax = Vector2.one;
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = Vector2.zero;
-        rect.sizeDelta = Vector2.zero;
+        if (!Application.isPlaying && !string.IsNullOrEmpty(gameObject.scene.path) &&
+            (openButton == null || closeButton == null || panelRoot == null || roleListPage == null))
+        {
+            Debug.LogWarning("RoleListPanelController: assign all scene-authored references.", this);
+        }
     }
 }

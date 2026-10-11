@@ -22,7 +22,7 @@ public sealed class SpecialCardTooltip : MonoBehaviour
             return;
         }
 
-        SpecialCardTooltip tooltip = EnsureInstance(FindOwnerCanvas(owner));
+        SpecialCardTooltip tooltip = EnsureInstance();
         if (tooltip != null)
         {
             tooltip.ShowInternal(owner, sprite, screenPosition);
@@ -62,96 +62,20 @@ public sealed class SpecialCardTooltip : MonoBehaviour
         }
     }
 
-    private static SpecialCardTooltip EnsureInstance(Canvas preferredCanvas)
+    private static SpecialCardTooltip EnsureInstance()
     {
         if (instance != null)
         {
-            instance.AttachToCanvas(preferredCanvas);
             return instance;
         }
-
-        instance = FindObjectOfType<SpecialCardTooltip>();
-        if (instance != null)
-        {
-            instance.Initialize();
-            instance.AttachToCanvas(preferredCanvas);
-            return instance;
-        }
-
-        Canvas canvas = preferredCanvas != null ? preferredCanvas : FindRootCanvas();
-        if (canvas == null)
-        {
-            return null;
-        }
-
-        GameObject tooltipObject = new GameObject(
-            "SpecialCardTooltip",
-            typeof(RectTransform),
-            typeof(CanvasGroup),
-            typeof(Image));
-        tooltipObject.transform.SetParent(canvas.transform, false);
-
-        instance = tooltipObject.AddComponent<SpecialCardTooltip>();
-        instance.rootCanvas = canvas;
-        instance.Initialize();
-        return instance;
-    }
-
-    private static Canvas FindOwnerCanvas(object owner)
-    {
-        Component ownerComponent = owner as Component;
-        if (ownerComponent == null)
-        {
-            return null;
-        }
-
-        Canvas ownerCanvas = ownerComponent.GetComponentInParent<Canvas>();
-        return ownerCanvas != null && ownerCanvas.rootCanvas != null
-            ? ownerCanvas.rootCanvas
-            : ownerCanvas;
-    }
-
-    private static Canvas FindRootCanvas()
-    {
-        Canvas[] canvases = FindObjectsOfType<Canvas>();
-        Canvas fallback = null;
-
-        foreach (Canvas canvas in canvases)
-        {
-            if (canvas == null || !canvas.gameObject.activeInHierarchy)
-            {
-                continue;
-            }
-
-            if (fallback == null)
-            {
-                fallback = canvas;
-            }
-
-            if (canvas.isRootCanvas && canvas.renderMode != RenderMode.WorldSpace)
-            {
-                return canvas;
-            }
-        }
-
-        return fallback;
+        Debug.LogError("SpecialCardTooltip: scene-authored instance is missing.");
+        return null;
     }
 
     private void Awake()
     {
+        instance = this;
         Initialize();
-    }
-
-    private void AttachToCanvas(Canvas canvas)
-    {
-        if (canvas == null || rootCanvas == canvas)
-        {
-            return;
-        }
-
-        rootCanvas = canvas;
-        transform.SetParent(rootCanvas.transform, false);
-        gameObject.layer = rootCanvas.gameObject.layer;
     }
 
     private void Initialize()
@@ -159,10 +83,6 @@ public sealed class SpecialCardTooltip : MonoBehaviour
         if (rectTransform == null)
         {
             rectTransform = GetComponent<RectTransform>();
-            rectTransform.anchorMin = new Vector2(0f, 1f);
-            rectTransform.anchorMax = new Vector2(0f, 1f);
-            rectTransform.pivot = new Vector2(0f, 1f);
-            rectTransform.sizeDelta = tooltipSize;
         }
 
         if (rootCanvas == null)
@@ -192,9 +112,6 @@ public sealed class SpecialCardTooltip : MonoBehaviour
         Initialize();
         currentOwner = owner;
         tooltipImage.sprite = sprite;
-        rectTransform.sizeDelta = tooltipSize;
-        transform.SetAsLastSibling();
-
         canvasGroup.alpha = 1f;
         canvasGroup.blocksRaycasts = false;
         canvasGroup.interactable = false;
