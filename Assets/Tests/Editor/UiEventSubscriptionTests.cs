@@ -171,14 +171,25 @@ public sealed class UiEventSubscriptionTests
         MethodInfo switchTop = typeof(SpecialCardArea).GetMethod(
             "SwitchTopCard",
             BindingFlags.Instance | BindingFlags.NonPublic);
+        MethodInfo unsubscribeAll = typeof(SpecialCardArea).GetMethod(
+            "UnsubscribeAllCardClickHandlers",
+            BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.That(rebuild, Is.Not.Null);
         Assert.That(switchTop, Is.Not.Null);
+        Assert.That(unsubscribeAll, Is.Not.Null);
         rebuild.Invoke(area, new object[] { originalOrder });
         switchTop.Invoke(area, new object[] { second });
         Assert.That(first.IsSelected, Is.True);
 
         area.SetUsedCards(new[] { second });
         area.SetInputEnabled(false);
+        Assert.That(first.GetComponent<Button>().interactable, Is.False);
+        Assert.That(first.GetComponent<Image>().raycastTarget, Is.True,
+            "The Graphic must remain registered with the standalone player's raycaster.");
+
+        // Model a standalone UI rebuild which removed the runtime listeners at
+        // the end of the first match. The next-match reset must restore them.
+        unsubscribeAll.Invoke(area, null);
         area.ResetForNewMatch(enableInput: true);
         rebuild.Invoke(area, new object[] { originalOrder });
 
@@ -188,6 +199,11 @@ public sealed class UiEventSubscriptionTests
             "A new match must choose from the restored deck order instead of retaining the previous match's top card.");
         Assert.That(first.GetComponent<Button>().interactable, Is.True);
         Assert.That(second.GetComponent<Button>().interactable, Is.True);
+
+        second.GetComponent<Button>().onClick.Invoke();
+        Assert.That(area.cardsInArea[0], Is.SameAs(second),
+            "The second match must receive clicks after rebuilding runtime listeners.");
+        Assert.That(first.IsSelected, Is.True);
     }
 
     [Test]

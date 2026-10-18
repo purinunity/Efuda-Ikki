@@ -307,7 +307,6 @@ public sealed class GameSessionFlow
         currentMatchResults.Clear();
 
         gameState.ResetForNewMatch();
-        uiManager?.ResetSpecialCardAreasForNewMatch();
         CpuSetupService cpuSetupService = CreateCpuSetupService();
         cpuSetupService.ApplyLevelSettings(modeData.CurrentLevel);
         if (battleGroundRun != null && gameState.PlayerStates.Count >= 2)
@@ -317,6 +316,9 @@ public sealed class GameSessionFlow
             modeData.ReplaceSpecialCards(battleGroundRun.SpecialCards);
         }
         cpuSetupService.ApplySpecialCardsForLevel(modeData, modeData.CurrentLevel);
+        // Reset after assigning this match's cards so the UI cannot retain the
+        // previous match's disabled buttons, usage tint, order, or listeners.
+        uiManager?.ResetSpecialCardAreasForNewMatch();
         if (battleGroundRun != null)
         {
             BattleGroundVisualTheme.Activate(modeData.CurrentLevel, uiManager, characterManager);
@@ -327,6 +329,7 @@ public sealed class GameSessionFlow
         uiManager?.SetParentMarkerVisible(false);
         PrepareMatchUiForCoinToss();
         uiUpdateService.UpdateImmediately();
+        uiManager?.SetPlayerSpecialCardInputEnabled(true);
         if (!IsRunning)
         {
             yield break;
