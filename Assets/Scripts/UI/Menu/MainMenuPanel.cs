@@ -18,7 +18,6 @@ public class MainMenuPanel : MonoBehaviour
     [SerializeField] private Sprite lockedBattleGroundButtonSprite;
     [SerializeField] private Sprite settingsButtonHoverSprite;
     [SerializeField] private bool hideButtonTextLabels = true;
-    [SerializeField] private Color lockedBattleGroundColor = new Color(0.18f, 0.18f, 0.18f, 1f);
 
     [Header("Scene References")]
     [SerializeField] private TextMeshProUGUI battleGroundStatusLabel;
@@ -115,13 +114,15 @@ public class MainMenuPanel : MonoBehaviour
 
         if (image != null)
         {
-            // The old locked artwork contains its unlock condition across the
-            // centre of the mode name.  Keep one clean mode image and show the
-            // condition in the scene-authored status area instead.
-            image.sprite = kachinukiModeButtonSprite != null
+            Sprite desiredSprite = unlocked
                 ? kachinukiModeButtonSprite
                 : lockedBattleGroundButtonSprite;
-            image.color = unlocked ? Color.white : lockedBattleGroundColor;
+            if (desiredSprite != null)
+            {
+                image.sprite = desiredSprite;
+            }
+
+            image.color = Color.white;
             image.preserveAspect = true;
         }
 
@@ -132,24 +133,27 @@ public class MainMenuPanel : MonoBehaviour
         TextMeshProUGUI statusLabel = EnsureBattleGroundStatusLabel();
         if (statusLabel != null)
         {
-            statusLabel.text = unlocked
-                ? $"最高記録 {GameProgressStore.BestBattleGroundStreak}人抜き"
-                : "ボス撃破で解放";
-            statusLabel.color = unlocked
-                ? Color.white
-                : new Color(1f, 0.35f, 0.35f, 1f);
-            ConfigureStatusLabelRect(statusLabel.rectTransform, unlocked);
-            statusLabel.gameObject.SetActive(true);
+            statusLabel.text = $"最高記録 {GameProgressStore.BestBattleGroundStreak}人抜き";
+            statusLabel.color = Color.white;
+            ConfigureStatusLabelRect(statusLabel.rectTransform, true);
+            statusLabel.gameObject.SetActive(unlocked);
         }
 
-        SpriteState state = battleGroundButton.spriteState;
-        Sprite lockedOrHover = unlocked
-            ? kachinukiModeButtonHoverSprite
-            : image != null ? image.sprite : kachinukiModeButtonSprite;
-        state.highlightedSprite = lockedOrHover;
-        state.pressedSprite = lockedOrHover;
-        state.selectedSprite = lockedOrHover;
-        battleGroundButton.spriteState = state;
+        if (unlocked)
+        {
+            SpriteState state = battleGroundButton.spriteState;
+            state.highlightedSprite = kachinukiModeButtonHoverSprite;
+            state.pressedSprite = kachinukiModeButtonHoverSprite;
+            state.selectedSprite = kachinukiModeButtonHoverSprite;
+            battleGroundButton.spriteState = state;
+            battleGroundButton.transition = Selectable.Transition.SpriteSwap;
+        }
+        else
+        {
+            // The locked artwork already contains the unlock condition.  Keep
+            // the image unchanged when the pointer moves over the disabled button.
+            battleGroundButton.transition = Selectable.Transition.None;
+        }
     }
 
     private void ApplyModeButtonImages()

@@ -1,5 +1,8 @@
+using System.Collections.Generic;
 using System.Linq;
+using EfudaIkki.Core;
 using NUnit.Framework;
+using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -8,6 +11,71 @@ using UnityEngine.UI;
 
 public sealed class UiSpriteReferenceTests
 {
+    [Test]
+    public void MainMenuPanel_BattleGroundButtonUsesLockedArtworkUntilUnlocked()
+    {
+        IProgressRepository originalRepository = GameProgressStore.Repository;
+        var repository = new MemoryProgressRepository();
+        GameProgressStore.Repository = repository;
+
+        GameObject panelObject = null;
+        try
+        {
+            panelObject = new GameObject("MainMenuPanel Test");
+            MainMenuPanel panel = panelObject.AddComponent<MainMenuPanel>();
+
+            GameObject buttonObject = new GameObject("BattleGround", typeof(RectTransform), typeof(Image), typeof(Button));
+            buttonObject.transform.SetParent(panelObject.transform, false);
+            Image image = buttonObject.GetComponent<Image>();
+            Button button = buttonObject.GetComponent<Button>();
+            button.targetGraphic = image;
+            panel.battleGroundButton = button;
+
+            GameObject labelObject = new GameObject("BattleGroundStatus", typeof(RectTransform), typeof(TextMeshProUGUI));
+            labelObject.transform.SetParent(buttonObject.transform, false);
+            TextMeshProUGUI statusLabel = labelObject.GetComponent<TextMeshProUGUI>();
+
+            Sprite normal = AssetDatabase.LoadAssetAtPath<Sprite>(
+                "Assets/Sprite/production/ui/buttons/title/menu2(最新)/bg.png");
+            Sprite hover = AssetDatabase.LoadAssetAtPath<Sprite>(
+                "Assets/Sprite/production/ui/buttons/title/menu2(最新)/bg_hover.png");
+            Sprite locked = AssetDatabase.LoadAssetAtPath<Sprite>(
+                "Assets/Sprite/production/ui/buttons/title/menu2(最新)/bg_locked.png");
+
+            var serialized = new SerializedObject(panel);
+            serialized.FindProperty("kachinukiModeButtonSprite").objectReferenceValue = normal;
+            serialized.FindProperty("kachinukiModeButtonHoverSprite").objectReferenceValue = hover;
+            serialized.FindProperty("lockedBattleGroundButtonSprite").objectReferenceValue = locked;
+            serialized.FindProperty("battleGroundStatusLabel").objectReferenceValue = statusLabel;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            panel.RefreshModeAvailability();
+
+            Assert.That(image.sprite, Is.SameAs(locked));
+            Assert.That(image.color, Is.EqualTo(Color.white));
+            Assert.That(button.interactable, Is.False);
+            Assert.That(button.transition, Is.EqualTo(Selectable.Transition.None));
+            Assert.That(statusLabel.gameObject.activeSelf, Is.False);
+
+            GameProgressStore.UnlockAllProgress();
+            panel.RefreshModeAvailability();
+
+            Assert.That(image.sprite, Is.SameAs(normal));
+            Assert.That(button.interactable, Is.True);
+            Assert.That(button.transition, Is.EqualTo(Selectable.Transition.SpriteSwap));
+            Assert.That(button.spriteState.highlightedSprite, Is.SameAs(hover));
+            Assert.That(statusLabel.gameObject.activeSelf, Is.True);
+        }
+        finally
+        {
+            GameProgressStore.Repository = originalRepository;
+            if (panelObject != null)
+            {
+                Object.DestroyImmediate(panelObject);
+            }
+        }
+    }
+
     [Test]
     public void UpdatedCutInAndResultAssetsResolveToRequestedProductionFiles()
     {
@@ -75,5 +143,21 @@ public sealed class UiSpriteReferenceTests
         Assert.That(sprite, Is.Not.Null, propertyName);
         Assert.That(AssetDatabase.GetAssetPath(sprite),
             Is.EqualTo("Assets/Sprite/production/" + relativePath));
+    }
+
+    private sealed class MemoryProgressRepository : IProgressRepository
+    {
+        private readonly Dictionary<string, string> strings = new Dictionary<string, string>();
+        private readonly Dictionary<string, int> ints = new Dictionary<string, int>();
+
+        public string GetString(string key, string defaultValue) =>
+            strings.TryGetValue(key, out string value) ? value : defaultValue;
+
+        public int GetInt(string key, int defaultValue) =>
+            ints.TryGetValue(key, out int value) ? value : defaultValue;
+
+        public void SetString(string key, string value) => strings[key] = value;
+        public void SetInt(string key, int value) => ints[key] = value;
+        public void Save() { }
     }
 }
