@@ -157,6 +157,25 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    public void ResetSpecialCardSelectionToNoUse()
+    {
+        SpecialCardArea playerArea = player1Special as SpecialCardArea;
+        if (playerArea == null)
+        {
+            return;
+        }
+
+        Card noUseCard = FindNoUseSpecialCard(specialCards1);
+        if (noUseCard == null)
+        {
+            Debug.LogError(
+                "UIManager: the player special-card deck has no 'no use' card.",
+                this);
+        }
+
+        playerArea.ResetSelectionTo(noUseCard);
+    }
+
     public void SetBattleGroundWinCount(int defeatedOpponents)
     {
         if (battleGroundStreakText != null)

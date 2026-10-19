@@ -101,6 +101,32 @@ public class SpecialCardArea : CardArea
         RefreshTooltipTargets();
     }
 
+    /// <summary>
+    /// Resets the current choice without changing which special cards are used.
+    /// The no-use card is supplied by UIManager because it is displayed in the
+    /// player's stack but is intentionally not part of PlayerState.SpecialCards.
+    /// </summary>
+    public void ResetSelectionTo(Card card)
+    {
+        StopTopSwitchAndRecoverLayout();
+        CardSelectionUtility.ClearSelections(cardsInArea);
+        selectedTopCard = card;
+
+        if (selectedTopCard != null)
+        {
+            selectedTopCard.IsSelected = true;
+            if (cardsInArea.Remove(selectedTopCard))
+            {
+                cardsInArea.Add(selectedTopCard);
+            }
+        }
+
+        ApplyTopSelection();
+        ApplyStackTargetsAndSiblingOrder();
+        SnapStackToTargets();
+        RefreshTooltipTargets();
+    }
+
     public void SetTooltipsEnabled(bool enabled)
     {
         tooltipsEnabled = enabled;

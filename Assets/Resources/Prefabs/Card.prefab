@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 8672067130272921856}
   - component: {fileID: -2881620905972814554}
   - component: {fileID: 5330333707586722881}
+  - component: {fileID: 1620026436160108613}
   m_Layer: 0
   m_Name: Card
   m_TagString: Untagged
@@ -51,9 +52,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 70558b6d1aa642a46b24f33ebda40dfc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  IsFaceUp: 0
-  IsSelectable: 0
-  IsSelected: 0
+  authoredCardData: {fileID: 0}
 --- !u!222 &8672067130272921856
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -136,3 +135,15 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &1620026436160108613
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6147642839866378973}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c6c5e6067c6477c8fe7056abd77a7a8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

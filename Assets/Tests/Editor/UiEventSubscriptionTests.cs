@@ -245,6 +245,33 @@ public sealed class UiEventSubscriptionTests
     }
 
     [Test]
+    public void SpecialCardArea_RoundResetSelectsNoUseCardWithoutRestoringUsedCards()
+    {
+        GameObject areaObject = CreateObject("Special Card Area", typeof(RectTransform));
+        SpecialCardArea area = areaObject.AddComponent<SpecialCardArea>();
+        area.areaRect = areaObject.GetComponent<RectTransform>();
+        Card first = CreateCard("First Special Card");
+        Card used = CreateCard("Used Special Card");
+        Card noUse = CreateCard("No Use Special Card");
+        first.Initialize();
+        used.Initialize();
+        noUse.Initialize();
+
+        area.SetCards(new List<Card> { first, used, noUse }, 0f);
+        area.SetUsedCards(new[] { used });
+        first.IsSelected = true;
+
+        area.ResetSelectionTo(noUse);
+
+        Assert.That(area.cardsInArea[area.cardsInArea.Count - 1], Is.SameAs(noUse));
+        Assert.That(noUse.IsSelected, Is.True);
+        Assert.That(first.IsSelected, Is.False);
+        Assert.That(used.IsSelected, Is.False);
+        Assert.That(used.GetComponent<Image>().color, Is.Not.EqualTo(Color.white),
+            "A round reset must preserve the consumed-card visual state.");
+    }
+
+    [Test]
     public void HandCardArea_InputLockSurvivesSelectionLimitRefresh()
     {
         GameObject areaObject = CreateObject("Player Hand", typeof(RectTransform));
@@ -294,6 +321,7 @@ public sealed class UiEventSubscriptionTests
             typeof(CanvasRenderer),
             typeof(Image),
             typeof(Button),
+            typeof(SpecialCardTooltipTarget),
             typeof(Card));
         return gameObject.GetComponent<Card>();
     }

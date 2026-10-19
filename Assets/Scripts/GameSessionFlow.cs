@@ -319,6 +319,7 @@ public sealed class GameSessionFlow
         // Reset after assigning this match's cards so the UI cannot retain the
         // previous match's disabled buttons, usage tint, order, or listeners.
         uiManager?.ResetSpecialCardAreasForNewMatch();
+        ResetSpecialCardSelectionToNoUse();
         if (battleGroundRun != null)
         {
             BattleGroundVisualTheme.Activate(modeData.CurrentLevel, uiManager, characterManager);
@@ -398,6 +399,7 @@ public sealed class GameSessionFlow
             if (!gameOver)
             {
                 gameState.NextRound();
+                ResetSpecialCardSelectionToNoUse();
             }
         }
 
@@ -405,6 +407,12 @@ public sealed class GameSessionFlow
         {
             currentMatchWinnerIndex = DetermineMatchWinnerIndex();
         }
+    }
+
+    private void ResetSpecialCardSelectionToNoUse()
+    {
+        gameState.ResetSpecialCardSelections();
+        uiManager?.ResetSpecialCardSelectionToNoUse();
     }
 
     private void PrepareMatchUiForCoinToss()
