@@ -77,9 +77,9 @@ public sealed class CoinTossPanel : MonoBehaviour
     private void Initialize()
     {
         if (initialized) return;
-        if (parentSprite == null) parentSprite = Resources.Load<Sprite>("CoinToss/parent_coin");
-        if (childSprite == null) childSprite = Resources.Load<Sprite>("CoinToss/child_coin");
-        if (backgroundSprite == null) backgroundSprite = Resources.Load<Sprite>("CoinToss/coin_background");
+        if (parentSprite == null) parentSprite = Resources.Load<Sprite>("coin/parent_coin");
+        if (childSprite == null) childSprite = Resources.Load<Sprite>("coin/child_coin");
+        if (backgroundSprite == null) backgroundSprite = Resources.Load<Sprite>("coin/coin_background");
         if (overlayImage == null || frameImage == null || coinImage == null || resultText == null)
         {
             Debug.LogError("CoinTossPanel: scene references are incomplete.", this);
