@@ -15,16 +15,22 @@ MonoBehaviour:
   m_GroupName: Localization-Asset-Tables-English (en)
   m_Data:
     m_SerializedData: []
-  m_GUID: c9a2093d7e0c2ec4dbdc50d6ef320600
+  m_GUID: 299dd8188ac9af24a88ac64493b7e856
   m_SerializeEntries:
-  - m_GUID: 307750b44274e534088af0bc4a955168
+  - m_GUID: 86fa404b12ea1774fad4de7006d9423c
+    m_Address: UIImages_en
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-en
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fdd96ca69215d5a48920b6f5fffc0855
     m_Address: Fonts_en
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale-en
     FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 1
-  m_Settings: {fileID: 11400000, guid: 967fa65191aba544a9f5f18229b8c113, type: 2}
+  m_Settings: {fileID: 11400000, guid: 04a413cf372c4c64986a115378a72bdc, type: 2}
   m_SchemaSet:
     m_Schemas:
     - {fileID: 11400000, guid: 34b188bb98395d347af1e9434d05f683, type: 2}

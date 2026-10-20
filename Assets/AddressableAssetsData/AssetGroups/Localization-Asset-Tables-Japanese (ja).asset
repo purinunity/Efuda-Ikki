@@ -15,16 +15,22 @@ MonoBehaviour:
   m_GroupName: Localization-Asset-Tables-Japanese (ja)
   m_Data:
     m_SerializedData: []
-  m_GUID: 9808311c6647ad64fbe517e3547b9810
+  m_GUID: 152d05919b41af346a5544b6e935fcd7
   m_SerializeEntries:
-  - m_GUID: 1a64c433f5776ef4998bfd29f5ee7829
+  - m_GUID: a9a125da1b1c31e489b9f5ffe3ce787b
+    m_Address: UIImages_ja
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-ja
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f092014daa8dce64ea5ad1755ca85eeb
     m_Address: Fonts_ja
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale-ja
     FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 1
-  m_Settings: {fileID: 11400000, guid: 967fa65191aba544a9f5f18229b8c113, type: 2}
+  m_Settings: {fileID: 11400000, guid: 04a413cf372c4c64986a115378a72bdc, type: 2}
   m_SchemaSet:
     m_Schemas:
     - {fileID: 11400000, guid: e7cb07d83d1c59640a1e22ba7e33a929, type: 2}

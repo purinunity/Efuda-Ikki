@@ -12,4 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c2a6cbe3350d4236a61c288cd10ec63e, type: 3}
   m_Name: Localization-Assets-Korean (ko)_LocalizationGroupSchema
   m_EditorClassIdentifier: 
-  m_Group: {fileID: 11400000, guid: b08182d9f9695574998c5c950d12ad0f, type: 2}
+  m_Group: {fileID: 11400000, guid: 8ebad52614ffd0c4b854174f1bb8dae2, type: 2}

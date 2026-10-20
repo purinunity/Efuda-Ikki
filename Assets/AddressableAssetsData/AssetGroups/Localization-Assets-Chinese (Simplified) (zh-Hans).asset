@@ -15,18 +15,36 @@ MonoBehaviour:
   m_GroupName: Localization-Assets-Chinese (Simplified) (zh-Hans)
   m_Data:
     m_SerializedData: []
-  m_GUID: c6470740b89dc4f41a075a1cfb1bb07f
+  m_GUID: 569f2d94c57f7ee438c239908580e455
   m_SerializeEntries:
+  - m_GUID: 1d901ef747133cb45a3d5cda9eaa6fec
+    m_Address: zh-Han-background
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-zh-Hans
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5a62ad3426eecdd4db431f579b706f41
+    m_Address: "\u4E2D\u56FD\u8A9E"
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-zh-Hans
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: c5728b6104b79234a95248a5e77c5b09
     m_Address: LXGWWenKaiTC-Regular SDF
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale-zh-Hans
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cdda10db0dbeffd45a621e99676546e8
+    m_Address: "\u4E2D\u56FD\u8A9E_hover"
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-zh-Hans
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 1
-  m_Settings: {fileID: 11400000, guid: 967fa65191aba544a9f5f18229b8c113, type: 2}
+  m_Settings: {fileID: 11400000, guid: 04a413cf372c4c64986a115378a72bdc, type: 2}
   m_SchemaSet:
     m_Schemas:
-    - {fileID: 11400000, guid: 4571540b427f54e4ea3f36f8ee6fb56b, type: 2}
-    - {fileID: 11400000, guid: f06db23ddf5e9ff40be35f7378bf6013, type: 2}
-    - {fileID: 11400000, guid: 70f94f313288d7e4da8c697573f8df85, type: 2}
+    - {fileID: 11400000, guid: a1dc0aa899002564ab76f799dcc7a604, type: 2}
+    - {fileID: 11400000, guid: eaf1ddb4faf391143a4143c96eee0965, type: 2}
+    - {fileID: 11400000, guid: 1d672cc8d891a7848a2719dbdd228dfb, type: 2}

@@ -1,0 +1,65 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b11a58205ec3474ca216360e9fa74a8, type: 3}
+  m_Name: UIImages Shared Data
+  m_EditorClassIdentifier: 
+  m_TableCollectionName: UIImages
+  m_TableCollectionNameGuidString: f0f71406b6a3e224eb9788e7b527b75c
+  m_Entries:
+  - m_Id: 745251950592
+    m_Key: lang_button
+    m_Metadata:
+      m_Items: []
+  - m_Id: 879301906432
+    m_Key: lang_button_hover
+    m_Metadata:
+      m_Items: []
+  - m_Id: 119070166503424
+    m_Key: option_background
+    m_Metadata:
+      m_Items: []
+  m_Metadata:
+    m_Items:
+    - rid: 1992129651983777820
+  m_KeyGenerator:
+    rid: 1992129651983777817
+  references:
+    version: 2
+    RefIds:
+    - rid: 1992129651983777817
+      type: {class: DistributedUIDGenerator, ns: UnityEngine.Localization.Tables, asm: Unity.Localization}
+      data:
+        m_CustomEpoch: 1792252122817
+    - rid: 1992129651983777820
+      type: {class: AssetTypeMetadata, ns: UnityEngine.Localization.Metadata, asm: Unity.Localization}
+      data:
+        m_Entries:
+        - m_KeyId: 745251950592
+          m_TableCodes:
+          - zh-Hans
+          - en
+          - ja
+          - ko
+        - m_KeyId: 879301906432
+          m_TableCodes:
+          - ko
+          - ja
+          - en
+          - zh-Hans
+        - m_KeyId: 119070166503424
+          m_TableCodes:
+          - zh-Hans
+          - en
+          - ko
+          - ja
+        m_TypeString: UnityEngine.Texture2D, UnityEngine.CoreModule, Version=0.0.0.0,
+          Culture=neutral, PublicKeyToken=null

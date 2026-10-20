@@ -15,16 +15,22 @@ MonoBehaviour:
   m_GroupName: Localization-Asset-Tables-Chinese (Simplified) (zh-Hans)
   m_Data:
     m_SerializedData: []
-  m_GUID: cac676d8a94252947ad0e6cfbb4729af
+  m_GUID: 175aacedd0b221a4d99c6bc902c3e56d
   m_SerializeEntries:
-  - m_GUID: 62b42c4c99d9d6e4eb174d3719cdcb9a
+  - m_GUID: 0367fc846309c7a48b54e4358f39d764
     m_Address: Fonts_zh-Hans
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale-zh-Hans
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c978c997a36e5544997074205a1ffec8
+    m_Address: UIImages_zh-Hans
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-zh-Hans
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 1
-  m_Settings: {fileID: 11400000, guid: 967fa65191aba544a9f5f18229b8c113, type: 2}
+  m_Settings: {fileID: 11400000, guid: 04a413cf372c4c64986a115378a72bdc, type: 2}
   m_SchemaSet:
     m_Schemas:
     - {fileID: 11400000, guid: 6986265881f0a884588cec66eab8813b, type: 2}

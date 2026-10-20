@@ -1,50 +1,38 @@
+using System;
 using System.Collections;
-using TMPro;
 using UnityEngine;
 using UnityEngine.Localization.Settings;
 using UnityEngine.UI;
-
+ 
 /// <summary>
-/// 言語切り替えボタン(要 Localization パッケージ)。
-/// 押すたびに 日本語 → English → … と順番に切り替わる。
-/// 選択した言語は Localization の「Player Pref Locale Selector」が自動で保存・復元する。
+/// オプション画面の言語ボタン。クリックするたびに order の順で言語が切り替わる。
+/// ボタンの画像(English / 日本語 …)の切り替えは、同じボタンに付けた LocalizeSprite が行う。
 /// </summary>
 public class LanguageSelector : MonoBehaviour
 {
-    [SerializeField] Button button;  // ONボタンと同じ枠素材を流用
-    [SerializeField] TMP_Text label;
-
+    [SerializeField] Button button;
+    [Tooltip("切り替わる順番(Locale の言語コード)")]
+    [SerializeField] string[] order = { "en", "ja", "zh-Hans", "ko" };
+ 
     bool busy;
-
-    void Awake() => button.onClick.AddListener(() => StartCoroutine(Next()));
-
-    void OnEnable() => StartCoroutine(RefreshWhenReady());
-
-    IEnumerator RefreshWhenReady()
+ 
+    void Awake()
     {
-        yield return LocalizationSettings.InitializationOperation;
-        Refresh();
+        button.onClick.AddListener(() =>
+        {
+            if (!busy) StartCoroutine(Next());
+        });
     }
-
+ 
     IEnumerator Next()
     {
-        if (busy) yield break;
         busy = true;
-
         yield return LocalizationSettings.InitializationOperation;
-        var locales = LocalizationSettings.AvailableLocales.Locales;
-        int i = locales.IndexOf(LocalizationSettings.SelectedLocale);
-        LocalizationSettings.SelectedLocale = locales[(i + 1) % locales.Count];
-
-        Refresh();
+ 
+        int i = Array.IndexOf(order, LanguageManager.CurrentCode); // 見つからなければ -1 → 先頭へ
+        string next = order[(i + 1) % order.Length];
+        yield return LanguageManager.SetLanguage(next);
+ 
         busy = false;
-    }
-
-    void Refresh()
-    {
-        var locale = LocalizationSettings.SelectedLocale;
-        if (locale == null) return;
-        // 「日本語」「English」のように、その言語自身の表記で表示する
-        label.text = locale.Identifier.CultureInfo?.NativeName ?? locale.LocaleName;
     }
 }

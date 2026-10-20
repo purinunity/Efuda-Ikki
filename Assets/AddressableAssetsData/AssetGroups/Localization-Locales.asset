@@ -15,34 +15,34 @@ MonoBehaviour:
   m_GroupName: Localization-Locales
   m_Data:
     m_SerializedData: []
-  m_GUID: d523525a91b8c1d4e940062c0790bd6e
+  m_GUID: 587824cbe7bd32a4fb8671cfee57bde2
   m_SerializeEntries:
-  - m_GUID: 131e41e6d469dc64e82cb50b79695fcb
-    m_Address: Japanese (ja)
-    m_ReadOnly: 1
-    m_SerializedLabels:
-    - Locale
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 1a1784d10c2d6a3429595573b447010d
-    m_Address: English (en)
-    m_ReadOnly: 1
-    m_SerializedLabels:
-    - Locale
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 6579d8189abf24b41b89133d1d62f5a9
+  - m_GUID: 3bb829e61cc20f2499d2af02c11beb50
     m_Address: Chinese (Simplified) (zh-Hans)
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 8c1427c38c9367648ae189f0fdf49531
+  - m_GUID: 7d5830c6aae1ad64c89247214675fdd2
     m_Address: Korean (ko)
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c3f5a7a1fcd7b6f4280a1cdad24626a1
+    m_Address: English (en)
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c89505927d76064469439d9b6fe19d83
+    m_Address: Japanese (ja)
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 1
-  m_Settings: {fileID: 11400000, guid: 967fa65191aba544a9f5f18229b8c113, type: 2}
+  m_Settings: {fileID: 11400000, guid: 04a413cf372c4c64986a115378a72bdc, type: 2}
   m_SchemaSet:
     m_Schemas:
     - {fileID: 11400000, guid: fa85a40e77bab3144bb72c279ff00cc1, type: 2}

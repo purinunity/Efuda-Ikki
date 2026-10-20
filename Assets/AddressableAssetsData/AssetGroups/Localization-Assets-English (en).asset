@@ -15,18 +15,36 @@ MonoBehaviour:
   m_GroupName: Localization-Assets-English (en)
   m_Data:
     m_SerializedData: []
-  m_GUID: 3ad501e104518fc4a88644fb800bc6d0
+  m_GUID: 39de0c2f5161e714fbda0ab70e7a32d0
   m_SerializeEntries:
+  - m_GUID: 0b5f709e23eada146a791949c3ea5e1e
+    m_Address: "\u82F1\u8A9E"
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-en
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3491ec1663ffdf14d83d87a7eb0ff77f
+    m_Address: en-background
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-en
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 5e90dc7e31a4baa47b2d7b57db6e4a69
     m_Address: IMFellEnglish-Regular SDF
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale-en
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b29df36c302daba4f8b8a84cc9c981ad
+    m_Address: "\u82F1\u8A9E_hover"
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-en
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 1
-  m_Settings: {fileID: 11400000, guid: 967fa65191aba544a9f5f18229b8c113, type: 2}
+  m_Settings: {fileID: 11400000, guid: 04a413cf372c4c64986a115378a72bdc, type: 2}
   m_SchemaSet:
     m_Schemas:
-    - {fileID: 11400000, guid: ea3d358ccd57fbf43af4a3d3c390f0b7, type: 2}
-    - {fileID: 11400000, guid: f12795e6130e1dd42b8d60cf93d6cea7, type: 2}
-    - {fileID: 11400000, guid: 8271eb98a8b0cbe4faed71e0bb79a471, type: 2}
+    - {fileID: 11400000, guid: 85eeb26132eef3f4196279abcfd827f4, type: 2}
+    - {fileID: 11400000, guid: 4377b027a289c814889ddc1e0b7cc0bd, type: 2}
+    - {fileID: 11400000, guid: 3339f78cb3ad0b74b977a9048dd35ef4, type: 2}

@@ -12,12 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4db626ad063b13545924a9839ac5fa83, type: 3}
   m_Name: Fonts
   m_EditorClassIdentifier: 
-  m_SharedTableData: {fileID: 11400000, guid: 8f5b18f5c32eb3249bb6ea689afe11f9, type: 2}
+  m_SharedTableData: {fileID: 11400000, guid: 22ffdfcbc7297ad4a8cb9f0589d6e43a, type: 2}
   m_Tables:
-  - {fileID: 11400000, guid: 62b42c4c99d9d6e4eb174d3719cdcb9a, type: 2}
-  - {fileID: 11400000, guid: 307750b44274e534088af0bc4a955168, type: 2}
-  - {fileID: 11400000, guid: 1a64c433f5776ef4998bfd29f5ee7829, type: 2}
-  - {fileID: 11400000, guid: 78102a048d050594d9f89a0c3b300bb5, type: 2}
+  - {fileID: 11400000, guid: 0367fc846309c7a48b54e4358f39d764, type: 2}
+  - {fileID: 11400000, guid: fdd96ca69215d5a48920b6f5fffc0855, type: 2}
+  - {fileID: 11400000, guid: f092014daa8dce64ea5ad1755ca85eeb, type: 2}
+  - {fileID: 11400000, guid: 491f0f958cd420a4eb8992248520ad17, type: 2}
   m_Extensions: []
   m_Group: Asset Table
   references:

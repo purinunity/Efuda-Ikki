@@ -17,8 +17,8 @@ public class GameSettings : MonoBehaviour
     [SerializeField] AudioMixer mixer;
     [SerializeField] string bgmParam = "BGMVolume";   // AudioMixerでExposeしたパラメータ名
     [SerializeField] string seParam = "SEVolume";
-    [SerializeField, Range(0, MaxVolumeLevel)] int defaultBgmLevel = 6;
-    [SerializeField, Range(0, MaxVolumeLevel)] int defaultSeLevel = 6;
+    [SerializeField, Range(0, MaxVolumeLevel)] int defaultBgmLevel = 5;
+    [SerializeField, Range(0, MaxVolumeLevel)] int defaultSeLevel = 5;
 
     [Header("Window")]
     [SerializeField] bool defaultFullscreen = true;
@@ -49,6 +49,9 @@ public class GameSettings : MonoBehaviour
         ApplyVolume(bgmParam, BgmLevel);
         ApplyVolume(seParam, SeLevel);
         ApplyFullscreen(IsFullscreen);
+
+        // 前回選んだ言語を復元(一度も選んでいなければ何もしない)
+        StartCoroutine(LanguageManager.ApplySaved());
     }
 
     // ---------- 音量 ----------

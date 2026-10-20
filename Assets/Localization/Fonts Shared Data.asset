@@ -13,33 +13,61 @@ MonoBehaviour:
   m_Name: Fonts Shared Data
   m_EditorClassIdentifier: 
   m_TableCollectionName: Fonts
-  m_TableCollectionNameGuidString: 8f5b18f5c32eb3249bb6ea689afe11f9
+  m_TableCollectionNameGuidString: 22ffdfcbc7297ad4a8cb9f0589d6e43a
   m_Entries:
-  - m_Id: 20572688384
+  - m_Id: 415722262528
     m_Key: MainFont
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2883789148160
+    m_Key: New Entry
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2889589870592
+    m_Key: New Entry 1
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2892760764416
+    m_Key: New Entry 2
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2894778224640
+    m_Key: New Entry 3
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2896611135488
+    m_Key: New Entry 4
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2968358899712
+    m_Key: New Entry 5
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3013011460096
+    m_Key: New Entry 6
     m_Metadata:
       m_Items: []
   m_Metadata:
     m_Items:
-    - rid: 1992129529137332253
+    - rid: 1992129651983777819
   m_KeyGenerator:
-    rid: 1992129529137332252
+    rid: 1992129651983777816
   references:
     version: 2
     RefIds:
-    - rid: 1992129529137332252
+    - rid: 1992129651983777816
       type: {class: DistributedUIDGenerator, ns: UnityEngine.Localization.Tables, asm: Unity.Localization}
       data:
-        m_CustomEpoch: 1791786439280
-    - rid: 1992129529137332253
+        m_CustomEpoch: 1792252103707
+    - rid: 1992129651983777819
       type: {class: AssetTypeMetadata, ns: UnityEngine.Localization.Metadata, asm: Unity.Localization}
       data:
         m_Entries:
-        - m_KeyId: 20572688384
+        - m_KeyId: 415722262528
           m_TableCodes:
+          - en
           - ja
           - ko
-          - en
           - zh-Hans
         m_TypeString: TMPro.TMP_FontAsset, Unity.TextMeshPro, Version=0.0.0.0, Culture=neutral,
           PublicKeyToken=null

@@ -15,16 +15,22 @@ MonoBehaviour:
   m_GroupName: Localization-Asset-Tables-Korean (ko)
   m_Data:
     m_SerializedData: []
-  m_GUID: 11b6b1d00e1387a4dba2cf2f00d74532
+  m_GUID: 40ec1c212d8a59443bb9691cd8993e0c
   m_SerializeEntries:
-  - m_GUID: 78102a048d050594d9f89a0c3b300bb5
+  - m_GUID: 491f0f958cd420a4eb8992248520ad17
     m_Address: Fonts_ko
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale-ko
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9cfbe6fb725430841bf2d79e97cb93e6
+    m_Address: UIImages_ko
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-ko
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 1
-  m_Settings: {fileID: 11400000, guid: 967fa65191aba544a9f5f18229b8c113, type: 2}
+  m_Settings: {fileID: 11400000, guid: 04a413cf372c4c64986a115378a72bdc, type: 2}
   m_SchemaSet:
     m_Schemas:
     - {fileID: 11400000, guid: 1e998bb4f64468d4aae692bfc62d1ada, type: 2}

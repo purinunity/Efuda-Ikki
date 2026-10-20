@@ -12,5 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5834b5087d578d24c926ce20cd31e6d6, type: 3}
   m_Name: Localization-Assets-Chinese (Simplified) (zh-Hans)_ContentUpdateGroupSchema
   m_EditorClassIdentifier: 
-  m_Group: {fileID: 11400000, guid: 7afb2a04e31d4144ebfca90b4bb5d387, type: 2}
+  m_Group: {fileID: 11400000, guid: 23e014d604be8e94f880063f446deae3, type: 2}
   m_StaticContent: 0

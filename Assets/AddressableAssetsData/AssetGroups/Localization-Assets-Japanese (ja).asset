@@ -15,7 +15,7 @@ MonoBehaviour:
   m_GroupName: Localization-Assets-Japanese (ja)
   m_Data:
     m_SerializedData: []
-  m_GUID: 83c1bf02685f2504cb9e9f5ef341e3b1
+  m_GUID: a678980a1ec4cee4bb333705ce42039a
   m_SerializeEntries:
   - m_GUID: 2a7b3e5085dcef945861217a568646fa
     m_Address: YujiSyuku-Regular SDF
@@ -23,10 +23,28 @@ MonoBehaviour:
     m_SerializedLabels:
     - Locale-ja
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5ffce238f7f962d47a0f9428431daa92
+    m_Address: ja-background
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-ja
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8299542f912bb6e4fb1b6f2915534ea3
+    m_Address: "\u65E5\u672C\u8A9E_hover"
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-ja
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c5c114ee417fc5e41bdf4789630fd0b9
+    m_Address: "\u65E5\u672C\u8A9E"
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-ja
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 1
-  m_Settings: {fileID: 11400000, guid: 967fa65191aba544a9f5f18229b8c113, type: 2}
+  m_Settings: {fileID: 11400000, guid: 04a413cf372c4c64986a115378a72bdc, type: 2}
   m_SchemaSet:
     m_Schemas:
-    - {fileID: 11400000, guid: 0c22cd28b2beb8b4fb3e266e3b1780d7, type: 2}
-    - {fileID: 11400000, guid: 4ee73605a3800a3429c4c999ebf7b7e4, type: 2}
-    - {fileID: 11400000, guid: 45a985bbe9de77f4f9884a43a3b54365, type: 2}
+    - {fileID: 11400000, guid: 4726e427226d0ef4a96991bdf7237ead, type: 2}
+    - {fileID: 11400000, guid: 33b976168b4a21c479d4adf7cd41ca6e, type: 2}
+    - {fileID: 11400000, guid: 754c0efcfef2acc4f85b803b90469afc, type: 2}
