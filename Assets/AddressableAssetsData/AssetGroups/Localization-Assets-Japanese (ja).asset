@@ -17,8 +17,26 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: a678980a1ec4cee4bb333705ce42039a
   m_SerializeEntries:
+  - m_GUID: 08115d8aefd0d4b4dbb1f31b41092166
+    m_Address: menu2
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-ja
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0885d1275915506469ed61b2bb82cdc3
+    m_Address: menu2_hover
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-ja
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 2a7b3e5085dcef945861217a568646fa
     m_Address: YujiSyuku-Regular SDF
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-ja
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3c2b3a82dacd22d438efca63b04336c8
+    m_Address: menu3
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale-ja
@@ -29,14 +47,38 @@ MonoBehaviour:
     m_SerializedLabels:
     - Locale-ja
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6548922db63ed194ea1b21e0d3cf646d
+    m_Address: menu1_hover
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-ja
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 724c24c3d0186324687b9e8f7690d6ea
+    m_Address: menu2_locked
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-ja
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 8299542f912bb6e4fb1b6f2915534ea3
     m_Address: "\u65E5\u672C\u8A9E_hover"
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale-ja
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a7f834f6d2afb6e4e8057e35bc807938
+    m_Address: menu1
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-ja
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: c5c114ee417fc5e41bdf4789630fd0b9
     m_Address: "\u65E5\u672C\u8A9E"
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-ja
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: dba7324777de43546aab530d55bee0f6
+    m_Address: menu3_hover
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale-ja

@@ -19,34 +19,6 @@ MonoBehaviour:
     m_Key: MainFont
     m_Metadata:
       m_Items: []
-  - m_Id: 2883789148160
-    m_Key: New Entry
-    m_Metadata:
-      m_Items: []
-  - m_Id: 2889589870592
-    m_Key: New Entry 1
-    m_Metadata:
-      m_Items: []
-  - m_Id: 2892760764416
-    m_Key: New Entry 2
-    m_Metadata:
-      m_Items: []
-  - m_Id: 2894778224640
-    m_Key: New Entry 3
-    m_Metadata:
-      m_Items: []
-  - m_Id: 2896611135488
-    m_Key: New Entry 4
-    m_Metadata:
-      m_Items: []
-  - m_Id: 2968358899712
-    m_Key: New Entry 5
-    m_Metadata:
-      m_Items: []
-  - m_Id: 3013011460096
-    m_Key: New Entry 6
-    m_Metadata:
-      m_Items: []
   m_Metadata:
     m_Items:
     - rid: 1992129651983777819

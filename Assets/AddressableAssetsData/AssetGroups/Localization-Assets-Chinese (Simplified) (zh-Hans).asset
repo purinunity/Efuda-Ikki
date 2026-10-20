@@ -23,8 +23,32 @@ MonoBehaviour:
     m_SerializedLabels:
     - Locale-zh-Hans
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 418bb98ff195b1247b1b3953161cf4ab
+    m_Address: menu3
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-zh-Hans
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 5a62ad3426eecdd4db431f579b706f41
     m_Address: "\u4E2D\u56FD\u8A9E"
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-zh-Hans
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 66345ab9afc98204abfd9ff9d588711d
+    m_Address: menu3_hover
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-zh-Hans
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8fd68ecfe6b119944970122a861317d5
+    m_Address: menu1
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-zh-Hans
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 990afecdab85293498ec052c934d955f
+    m_Address: menu2
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale-zh-Hans
@@ -35,8 +59,26 @@ MonoBehaviour:
     m_SerializedLabels:
     - Locale-zh-Hans
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cad4635ffe062b546a0b83f15fbc04bc
+    m_Address: menu1_hover
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-zh-Hans
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: cdda10db0dbeffd45a621e99676546e8
     m_Address: "\u4E2D\u56FD\u8A9E_hover"
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-zh-Hans
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e96f87b71541be64696e6b395505b25f
+    m_Address: menu2_locked
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-zh-Hans
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f2a77beae5e3cf841894035a684011fe
+    m_Address: menu2_hover
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale-zh-Hans

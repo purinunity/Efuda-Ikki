@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.Localization;
 
 public class MainMenuPanel : MonoBehaviour
 {
@@ -10,6 +11,7 @@ public class MainMenuPanel : MonoBehaviour
     public TitleUIManager titleUIManager;
 
     [Header("Mode Button Images")]
+    [Tooltip("LocalizeSprite が付いたボタンでは、以下の画像は使われない(LocalizeSprite の画像が優先)")]
     [SerializeField] private Sprite ikkiModeButtonSprite;
     [SerializeField] private Sprite kachinukiModeButtonSprite;
     [SerializeField] private Sprite settingsButtonSprite;
@@ -21,6 +23,10 @@ public class MainMenuPanel : MonoBehaviour
 
     [Header("Scene References")]
     [SerializeField] private TextMeshProUGUI battleGroundStatusLabel;
+
+    [Header("Localization")]
+    [Tooltip("「最高記録：{0}連勝」の訳文(UI テーブルのキー)。{0} に最高記録の数字が入る")]
+    [SerializeField] private LocalizedString bestStreakText = new LocalizedString();
     private Button subscribedIkkiModeButton;
     private Button subscribedBattleGroundButton;
     private Button subscribedSettingsButton;
@@ -40,11 +46,46 @@ public class MainMenuPanel : MonoBehaviour
     private void OnEnable()
     {
         WireButtonListeners();
+
+        if (!bestStreakText.IsEmpty)
+        {
+            // 数字を先に渡してから登録する(言語が変わるたびに OnBestStreakTextChanged が呼ばれる)
+            bestStreakText.Arguments = new object[] { GameProgressStore.BestBattleGroundStreak };
+            bestStreakText.StringChanged += OnBestStreakTextChanged;
+        }
     }
 
     private void OnDisable()
     {
         UnwireButtonListeners();
+
+        if (!bestStreakText.IsEmpty)
+        {
+            bestStreakText.StringChanged -= OnBestStreakTextChanged;
+        }
+    }
+
+    private void UpdateBestStreakText()
+    {
+        int best = GameProgressStore.BestBattleGroundStreak;
+
+        if (bestStreakText.IsEmpty)
+        {
+            // 訳文が未設定の場合は日本語で表示する
+            battleGroundStatusLabel.text = $"最高記録：{best}連勝";
+            return;
+        }
+
+        bestStreakText.Arguments = new object[] { best };
+        bestStreakText.RefreshString();
+    }
+
+    private void OnBestStreakTextChanged(string value)
+    {
+        if (battleGroundStatusLabel != null)
+        {
+            battleGroundStatusLabel.text = value;
+        }
     }
 
     private void OnDestroy()
@@ -112,14 +153,20 @@ public class MainMenuPanel : MonoBehaviour
             image = battleGroundButton.GetComponent<Image>();
         }
 
+        // LocalizeSprite が付いていれば、画像の切り替えはそちらに任せる
+        LocalizeSprite localizeSprite = battleGroundButton.GetComponent<LocalizeSprite>();
+
         if (image != null)
         {
-            Sprite desiredSprite = unlocked
-                ? kachinukiModeButtonSprite
-                : lockedBattleGroundButtonSprite;
-            if (desiredSprite != null)
+            if (localizeSprite == null)
             {
-                image.sprite = desiredSprite;
+                Sprite desiredSprite = unlocked
+                    ? kachinukiModeButtonSprite
+                    : lockedBattleGroundButtonSprite;
+                if (desiredSprite != null)
+                {
+                    image.sprite = desiredSprite;
+                }
             }
 
             image.color = Color.white;
@@ -130,16 +177,27 @@ public class MainMenuPanel : MonoBehaviour
         colors.disabledColor = Color.white;
         battleGroundButton.colors = colors;
 
-        TextMeshProUGUI statusLabel = EnsureBattleGroundStatusLabel();
-        if (statusLabel != null)
+        // 解放後だけ「最高記録：〇連勝」を表示する
+        if (battleGroundStatusLabel != null)
         {
-            statusLabel.text = $"最高記録 {GameProgressStore.BestBattleGroundStreak}人抜き";
-            statusLabel.color = Color.white;
-            ConfigureStatusLabelRect(statusLabel.rectTransform, true);
-            statusLabel.gameObject.SetActive(unlocked);
+            battleGroundStatusLabel.gameObject.SetActive(unlocked);
+            if (unlocked)
+            {
+                UpdateBestStreakText();
+            }
+        }
+        else
+        {
+            Debug.LogError("MainMenuPanel: BattleGroundStatus is not assigned.", this);
         }
 
-        if (unlocked)
+        if (localizeSprite != null)
+        {
+            // 通常・ホバー・ロック中の画像(言語別)の切り替えと、
+            // ロック中にマウスを乗せても画像が変わらない設定は LocalizeSprite が行う
+            localizeSprite.SetLocked(!unlocked);
+        }
+        else if (unlocked)
         {
             SpriteState state = battleGroundButton.spriteState;
             state.highlightedSprite = kachinukiModeButtonHoverSprite;
@@ -176,16 +234,22 @@ public class MainMenuPanel : MonoBehaviour
             image = button.GetComponent<Image>();
         }
 
-        if (image != null && sprite != null)
+        // LocalizeSprite が付いているボタンは、画像を上書きしない(言語別の画像を優先する)
+        bool localized = button.GetComponent<LocalizeSprite>() != null;
+
+        if (image != null && (localized || sprite != null))
         {
-            image.sprite = sprite;
+            if (!localized)
+            {
+                image.sprite = sprite;
+            }
             image.type = Image.Type.Simple;
             image.preserveAspect = true;
             image.color = Color.white;
             button.targetGraphic = image;
         }
 
-        if (hoverSprite != null)
+        if (!localized && hoverSprite != null)
         {
             SpriteState state = button.spriteState;
             state.highlightedSprite = hoverSprite;
@@ -216,24 +280,4 @@ public class MainMenuPanel : MonoBehaviour
         }
     }
 
-    private TextMeshProUGUI EnsureBattleGroundStatusLabel()
-    {
-        if (battleGroundStatusLabel != null)
-        {
-            return battleGroundStatusLabel;
-        }
-
-        Debug.LogError("MainMenuPanel: BattleGroundStatus is not assigned.", this);
-        return battleGroundStatusLabel;
-    }
-
-    private static void ConfigureStatusLabelRect(RectTransform rectTransform, bool unlocked)
-    {
-        if (rectTransform == null)
-        {
-            return;
-        }
-
-        // Position and size are authored in latest.unity.
-    }
 }

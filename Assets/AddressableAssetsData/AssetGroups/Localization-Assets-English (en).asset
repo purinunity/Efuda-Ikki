@@ -17,8 +17,20 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: 39de0c2f5161e714fbda0ab70e7a32d0
   m_SerializeEntries:
+  - m_GUID: 075fd8b193d81c24c831079d14221b82
+    m_Address: menu3_hover
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-en
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 0b5f709e23eada146a791949c3ea5e1e
     m_Address: "\u82F1\u8A9E"
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-en
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 27479f2fbf18a6d4e85d5c48a35f3d8a
+    m_Address: menu1_hover
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale-en
@@ -35,8 +47,38 @@ MonoBehaviour:
     m_SerializedLabels:
     - Locale-en
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8d82d8b8513b3cf41930313f32e5c3a2
+    m_Address: menu2_locked
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-en
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: b29df36c302daba4f8b8a84cc9c981ad
     m_Address: "\u82F1\u8A9E_hover"
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-en
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: be08cd67398cd794990e150f5bed127c
+    m_Address: menu3
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-en
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d402af374890b5e4bb1b0ebe1816624e
+    m_Address: menu2_hover
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-en
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: dca7caaef84b1bd4599dd16edd420dd5
+    m_Address: menu2
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-en
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f7c7cd10a8edda34a9beb750ad0213bf
+    m_Address: menu1
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale-en

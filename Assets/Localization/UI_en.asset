@@ -16,12 +16,24 @@ MonoBehaviour:
     m_Code: en
   m_SharedData: {fileID: 11400000, guid: 1c99eaa030d6d924d8c67b2d3a53a75c, type: 2}
   m_Metadata:
-    m_Items: []
+    m_Items:
+    - rid: 1992129717954936842
   m_TableData:
   - m_Id: 1457776119808
     m_Localized: Click to Start
     m_Metadata:
       m_Items: []
+  - m_Id: 1059651868839936
+    m_Localized: 'Best Streak: {0} Wins'
+    m_Metadata:
+      m_Items:
+      - rid: 1992129717954936842
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 1992129717954936842
+      type: {class: SmartFormatTag, ns: UnityEngine.Localization.Metadata, asm: Unity.Localization}
+      data:
+        m_Entries: 
+        m_SharedEntries:
+        - id: 1059651868839936

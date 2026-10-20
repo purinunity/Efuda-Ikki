@@ -16,12 +16,24 @@ MonoBehaviour:
     m_Code: zh-Hans
   m_SharedData: {fileID: 11400000, guid: 1c99eaa030d6d924d8c67b2d3a53a75c, type: 2}
   m_Metadata:
-    m_Items: []
+    m_Items:
+    - rid: 1992129717954936843
   m_TableData:
   - m_Id: 1457776119808
     m_Localized: "\u70B9\u51FB\u5F00\u59CB"
     m_Metadata:
       m_Items: []
+  - m_Id: 1059651868839936
+    m_Localized: "\u6700\u9AD8\u7EAA\u5F55\uFF1A{0}\u8FDE\u80DC"
+    m_Metadata:
+      m_Items:
+      - rid: 1992129717954936843
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 1992129717954936843
+      type: {class: SmartFormatTag, ns: UnityEngine.Localization.Metadata, asm: Unity.Localization}
+      data:
+        m_Entries: 
+        m_SharedEntries:
+        - id: 1059651868839936

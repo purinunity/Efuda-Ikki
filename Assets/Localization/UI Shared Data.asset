@@ -19,6 +19,10 @@ MonoBehaviour:
     m_Key: title_button
     m_Metadata:
       m_Items: []
+  - m_Id: 1059651868839936
+    m_Key: best_streak
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

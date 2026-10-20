@@ -16,12 +16,24 @@ MonoBehaviour:
     m_Code: ko
   m_SharedData: {fileID: 11400000, guid: 1c99eaa030d6d924d8c67b2d3a53a75c, type: 2}
   m_Metadata:
-    m_Items: []
+    m_Items:
+    - rid: 1992129717954936841
   m_TableData:
   - m_Id: 1457776119808
     m_Localized: "\uD074\uB9AD\uD558\uC5EC \uC2DC\uC791"
     m_Metadata:
       m_Items: []
+  - m_Id: 1059651868839936
+    m_Localized: "\t\uCD5C\uACE0 \uAE30\uB85D: {0}\uC5F0\uC2B9"
+    m_Metadata:
+      m_Items:
+      - rid: 1992129717954936841
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 1992129717954936841
+      type: {class: SmartFormatTag, ns: UnityEngine.Localization.Metadata, asm: Unity.Localization}
+      data:
+        m_Entries: 
+        m_SharedEntries:
+        - id: 1059651868839936

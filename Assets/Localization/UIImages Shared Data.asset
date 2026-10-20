@@ -27,6 +27,34 @@ MonoBehaviour:
     m_Key: option_background
     m_Metadata:
       m_Items: []
+  - m_Id: 1053436568817664
+    m_Key: menu1
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1053708334551040
+    m_Key: menu1_hover
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1053743239548928
+    m_Key: menu2
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1053762587873280
+    m_Key: menu2_hover
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1053790693904384
+    m_Key: menu2_locked
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1053822163767296
+    m_Key: menu3
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1053845333102592
+    m_Key: menu3_hover
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items:
     - rid: 1992129651983777820
@@ -61,5 +89,47 @@ MonoBehaviour:
           - en
           - ko
           - ja
+        - m_KeyId: 1053436568817664
+          m_TableCodes:
+          - zh-Hans
+          - en
+          - ja
+          - ko
+        - m_KeyId: 1053708334551040
+          m_TableCodes:
+          - zh-Hans
+          - en
+          - ja
+          - ko
+        - m_KeyId: 1053743239548928
+          m_TableCodes:
+          - zh-Hans
+          - en
+          - ja
+          - ko
+        - m_KeyId: 1053762587873280
+          m_TableCodes:
+          - zh-Hans
+          - en
+          - ja
+          - ko
+        - m_KeyId: 1053790693904384
+          m_TableCodes:
+          - zh-Hans
+          - en
+          - ja
+          - ko
+        - m_KeyId: 1053845333102592
+          m_TableCodes:
+          - zh-Hans
+          - en
+          - ja
+          - ko
+        - m_KeyId: 1053822163767296
+          m_TableCodes:
+          - zh-Hans
+          - en
+          - ja
+          - ko
         m_TypeString: UnityEngine.Texture2D, UnityEngine.CoreModule, Version=0.0.0.0,
           Culture=neutral, PublicKeyToken=null
