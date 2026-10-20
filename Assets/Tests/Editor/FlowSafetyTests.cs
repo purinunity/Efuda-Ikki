@@ -47,6 +47,25 @@ public sealed class FlowSafetyTests
         Assert.That(new GameUiPresenter().CreateSnapshot(gameState).PlayerCanSelectSpecialCard, Is.True);
     }
 
+    [Test]
+    public void NextRound_ClearsSpecialCardChoiceButPreservesUsedCards()
+    {
+        GameState gameState = CreateGameState();
+        Card availableCard = CreateSpecialCard(SpecialCardResolver.SpecialCardId.Bonus5);
+        Card usedCard = CreateSpecialCard(SpecialCardResolver.SpecialCardId.Bonus10);
+        PlayerState player = gameState.PlayerStates[0];
+        player.SetSpecialCardsForMatch(new[] { availableCard, usedCard });
+        availableCard.IsSelected = true;
+        player.MarkSpecialCardUsed(usedCard);
+
+        gameState.NextRound();
+
+        Assert.That(availableCard.IsSelected, Is.False);
+        Assert.That(usedCard.IsSelected, Is.False);
+        Assert.That(player.IsSpecialCardUsed(usedCard), Is.True,
+            "Starting a new round must not restore a special card that was already consumed.");
+    }
+
     [TearDown]
     public void TearDown()
     {

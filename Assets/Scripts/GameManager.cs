@@ -123,7 +123,12 @@ public class GameManager : MonoBehaviour
     private void OnDisable()
     {
         sessionFlow?.Cancel();
-        battleGroundHud?.Configure(false, null);
+        // Unity objects can keep a managed reference after their native object
+        // has been destroyed during player shutdown. Use Unity's null check.
+        if (battleGroundHud != null)
+        {
+            battleGroundHud.Configure(false, null);
+        }
         if (sessionCoroutine != null)
         {
             StopCoroutine(sessionCoroutine);

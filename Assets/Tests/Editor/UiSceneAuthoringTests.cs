@@ -79,6 +79,83 @@ public sealed class UiSceneAuthoringTests
     }
 
     [Test]
+    public void LatestScene_CardPoolsAreSceneAuthored()
+    {
+        Scene scene = OpenScene(out bool openedForTest);
+        try
+        {
+            Cards[] pools = scene.GetRootGameObjects()
+                .SelectMany(root => root.GetComponentsInChildren<Cards>(true))
+                .ToArray();
+
+            Assert.That(pools.Length, Is.EqualTo(4));
+            foreach (Cards pool in pools)
+            {
+                Assert.That(pool.CardsData, Is.Not.Null, pool.name);
+                Assert.That(pool.cardList, Is.Not.Null, pool.name);
+                Assert.That(
+                    pool.TryGetAuthoringError(out string authoringError),
+                    Is.False,
+                    $"{pool.name}: {authoringError}");
+                Assert.That(
+                    pool.cardList.Count,
+                    Is.EqualTo(pool.CardsData.cards.Length),
+                    pool.name);
+                for (int index = 0; index < pool.cardList.Count; index++)
+                {
+                    Assert.That(pool.cardList[index], Is.Not.Null, $"{pool.name}[{index}]");
+                    Assert.That(
+                        pool.cardList[index].CardData,
+                        Is.SameAs(pool.CardsData.cards[index]),
+                        $"{pool.name}[{index}]");
+                    Assert.That(
+                        pool.cardList[index].gameObject.scene,
+                        Is.EqualTo(scene),
+                        $"{pool.name}[{index}] must be saved in latest.unity.");
+                    Assert.That(
+                        pool.cardList[index].GetComponent<SpecialCardTooltipTarget>(),
+                        Is.Not.Null,
+                        $"{pool.name}[{index}] must have its tooltip component authored.");
+                }
+            }
+
+            int cardCountBeforeInitialize = scene.GetRootGameObjects()
+                .Sum(root => root.GetComponentsInChildren<Card>(true).Length);
+            foreach (Cards pool in pools)
+            {
+                pool.Awake();
+            }
+            int cardCountAfterInitialize = scene.GetRootGameObjects()
+                .Sum(root => root.GetComponentsInChildren<Card>(true).Length);
+            Assert.That(
+                cardCountAfterInitialize,
+                Is.EqualTo(cardCountBeforeInitialize),
+                "Initializing a card pool must never generate runtime Card objects.");
+
+            Card cardPrefab = AssetDatabase.LoadAssetAtPath<Card>(
+                "Assets/Resources/Prefabs/Card.prefab");
+            Assert.That(cardPrefab, Is.Not.Null);
+            Assert.That(
+                cardPrefab.GetComponent<SpecialCardTooltipTarget>(),
+                Is.Not.Null,
+                "Card.prefab must contain every component required at runtime.");
+
+            Transform selectionCards = FindRoot(scene, "MenuCanvas").transform.Find(
+                "Screens/SpecialCardSelectScreen/SpecialCardSelectPanel/" +
+                "SPContainer/SelectableCards");
+            Assert.That(selectionCards, Is.Not.Null);
+            Assert.That(
+                selectionCards.GetComponentsInChildren<Card>(true).Length,
+                Is.EqualTo(12),
+                "The selectable special cards must be visible and editable in their Scene slots.");
+        }
+        finally
+        {
+            if (openedForTest) EditorSceneManager.CloseScene(scene, true);
+        }
+    }
+
+    [Test]
     public void CloseButtonStyle_PreservesAuthoredRectTransform()
     {
         var target = new GameObject("Close", typeof(RectTransform), typeof(Image), typeof(Button));

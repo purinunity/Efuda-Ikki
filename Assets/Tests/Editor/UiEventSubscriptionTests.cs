@@ -171,14 +171,25 @@ public sealed class UiEventSubscriptionTests
         MethodInfo switchTop = typeof(SpecialCardArea).GetMethod(
             "SwitchTopCard",
             BindingFlags.Instance | BindingFlags.NonPublic);
+        MethodInfo unsubscribeAll = typeof(SpecialCardArea).GetMethod(
+            "UnsubscribeAllCardClickHandlers",
+            BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.That(rebuild, Is.Not.Null);
         Assert.That(switchTop, Is.Not.Null);
+        Assert.That(unsubscribeAll, Is.Not.Null);
         rebuild.Invoke(area, new object[] { originalOrder });
         switchTop.Invoke(area, new object[] { second });
         Assert.That(first.IsSelected, Is.True);
 
         area.SetUsedCards(new[] { second });
         area.SetInputEnabled(false);
+        Assert.That(first.GetComponent<Button>().interactable, Is.False);
+        Assert.That(first.GetComponent<Image>().raycastTarget, Is.True,
+            "The Graphic must remain registered with the standalone player's raycaster.");
+
+        // Model a standalone UI rebuild which removed the runtime listeners at
+        // the end of the first match. The next-match reset must restore them.
+        unsubscribeAll.Invoke(area, null);
         area.ResetForNewMatch(enableInput: true);
         rebuild.Invoke(area, new object[] { originalOrder });
 
@@ -188,6 +199,11 @@ public sealed class UiEventSubscriptionTests
             "A new match must choose from the restored deck order instead of retaining the previous match's top card.");
         Assert.That(first.GetComponent<Button>().interactable, Is.True);
         Assert.That(second.GetComponent<Button>().interactable, Is.True);
+
+        second.GetComponent<Button>().onClick.Invoke();
+        Assert.That(area.cardsInArea[0], Is.SameAs(second),
+            "The second match must receive clicks after rebuilding runtime listeners.");
+        Assert.That(first.IsSelected, Is.True);
     }
 
     [Test]
@@ -226,6 +242,33 @@ public sealed class UiEventSubscriptionTests
         switchTop.Invoke(area, new object[] { second });
         Assert.That(tooltipEnabled.GetValue(firstTooltip), Is.True);
         Assert.That(tooltipEnabled.GetValue(secondTooltip), Is.False);
+    }
+
+    [Test]
+    public void SpecialCardArea_RoundResetSelectsNoUseCardWithoutRestoringUsedCards()
+    {
+        GameObject areaObject = CreateObject("Special Card Area", typeof(RectTransform));
+        SpecialCardArea area = areaObject.AddComponent<SpecialCardArea>();
+        area.areaRect = areaObject.GetComponent<RectTransform>();
+        Card first = CreateCard("First Special Card");
+        Card used = CreateCard("Used Special Card");
+        Card noUse = CreateCard("No Use Special Card");
+        first.Initialize();
+        used.Initialize();
+        noUse.Initialize();
+
+        area.SetCards(new List<Card> { first, used, noUse }, 0f);
+        area.SetUsedCards(new[] { used });
+        first.IsSelected = true;
+
+        area.ResetSelectionTo(noUse);
+
+        Assert.That(area.cardsInArea[area.cardsInArea.Count - 1], Is.SameAs(noUse));
+        Assert.That(noUse.IsSelected, Is.True);
+        Assert.That(first.IsSelected, Is.False);
+        Assert.That(used.IsSelected, Is.False);
+        Assert.That(used.GetComponent<Image>().color, Is.Not.EqualTo(Color.white),
+            "A round reset must preserve the consumed-card visual state.");
     }
 
     [Test]
@@ -278,6 +321,7 @@ public sealed class UiEventSubscriptionTests
             typeof(CanvasRenderer),
             typeof(Image),
             typeof(Button),
+            typeof(SpecialCardTooltipTarget),
             typeof(Card));
         return gameObject.GetComponent<Card>();
     }

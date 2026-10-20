@@ -79,12 +79,51 @@ public class SpecialCardArea : CardArea
     public void ResetForNewMatch(bool enableInput)
     {
         StopTopSwitchAndRecoverLayout();
+        // A match can end while Unity is rebuilding the standalone player's UI.
+        // Recreate our runtime listeners instead of assuming the listeners from
+        // the previous match survived that lifecycle transition.
+        UnsubscribeAllCardClickHandlers();
         usedCards.Clear();
         selectedTopCard = null;
         inputEnabled = enableInput;
         resetOrderOnNextSetCards = true;
         CardSelectionUtility.ClearSelections(cardsInArea);
+
+        foreach (Card card in cardsInArea)
+        {
+            if (card != null)
+            {
+                SetupCardClickHandler(card);
+            }
+        }
+
         ApplyUsedVisualState();
+        RefreshTooltipTargets();
+    }
+
+    /// <summary>
+    /// Resets the current choice without changing which special cards are used.
+    /// The no-use card is supplied by UIManager because it is displayed in the
+    /// player's stack but is intentionally not part of PlayerState.SpecialCards.
+    /// </summary>
+    public void ResetSelectionTo(Card card)
+    {
+        StopTopSwitchAndRecoverLayout();
+        CardSelectionUtility.ClearSelections(cardsInArea);
+        selectedTopCard = card;
+
+        if (selectedTopCard != null)
+        {
+            selectedTopCard.IsSelected = true;
+            if (cardsInArea.Remove(selectedTopCard))
+            {
+                cardsInArea.Add(selectedTopCard);
+            }
+        }
+
+        ApplyTopSelection();
+        ApplyStackTargetsAndSiblingOrder();
+        SnapStackToTargets();
         RefreshTooltipTargets();
     }
 
@@ -591,7 +630,10 @@ public class SpecialCardArea : CardArea
             Color cardTint = used && dimUsedCards ? usedSpecialCardTint : normalSpecialCardTint;
             cardTint.a = 1f;
             image.color = cardTint;
-            image.raycastTarget = inputEnabled;
+            // Keep the Graphic registered with the raycaster. Button.interactable
+            // is the single source of truth for input; toggling raycastTarget
+            // between matches was not reliably rebuilt by the standalone player.
+            image.raycastTarget = true;
         }
 
         Button cardButton = card.GetComponent<Button>();
@@ -612,14 +654,11 @@ public class SpecialCardArea : CardArea
                 colors.colorMultiplier = 1f;
             }
             cardButton.colors = colors;
-            // Input is blocked by the Image raycast flag and SwitchTopCard guard.
-            // Keeping Button enabled prevents Unity's Disabled tint from darkening
-            // the opponent deck in standalone builds.
-            cardButton.interactable = true;
-            if (!inputEnabled)
+            cardButton.interactable = inputEnabled;
+            cardButton.navigation = new Navigation
             {
-                cardButton.navigation = new Navigation { mode = Navigation.Mode.None };
-            }
+                mode = inputEnabled ? Navigation.Mode.Automatic : Navigation.Mode.None
+            };
         }
     }
 

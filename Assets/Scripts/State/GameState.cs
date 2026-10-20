@@ -77,6 +77,14 @@ public class GameState
         InitializePlayerStates();
     }
 
+    public void ResetSpecialCardSelections()
+    {
+        foreach (PlayerState playerState in PlayerStates)
+        {
+            CardSelectionUtility.ClearSelections(playerState?.SpecialCards);
+        }
+    }
+
     // 現在のプレイヤー状態を取得
     public PlayerState GetPlayerState()
     {
@@ -107,6 +115,7 @@ public class GameState
         RoundNumber++;
         IsWaitingForHandReveal = false;
         IsSpecialCardSelectionLocked = false;
+        ResetSpecialCardSelections();
         CurrentParentIndex = (CurrentParentIndex + 1) % PlayerStates.Count;
         CurrentPlayerIndex = CurrentParentIndex; // 親プレイヤーからスタート
         foreach (var playerState in PlayerStates)

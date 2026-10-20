@@ -1,70 +1,149 @@
-﻿
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
-// 複数のカードオブジェクトを管理するクラス
+// 複数のカードオブジェクトを管理するクラス。
+// カードはScene上に事前配置し、Play開始時には生成しない。
+[DisallowMultipleComponent]
 public class Cards : MonoBehaviour
 {
-    public List<Card> cardList { get; private set; } // 管理するカードリスト
-    public CardsData CardsData; // 全カードデータ
-    [SerializeField] private Card cardPrefab; // カードのプレハブ
+    [SerializeField]
+    [Tooltip("Scene上に事前配置されたカード。実行時には生成しません。")]
+    private List<Card> sceneCards = new List<Card>();
+
+    public List<Card> cardList => sceneCards;
+    public CardsData CardsData;
+    [SerializeField] private Card cardPrefab; // EditorでSceneカードを配置するためのPrefab
 
     [SerializeField]
     [Tooltip("選択時のYオフセット")]
-    private float selectedYOffset = 20f; // 選択時のYオフセット
+    private float selectedYOffset = 20f;
 
-    // カードリストの初期化処理
     public void Initialize()
     {
-        if (cardList == null)
+        if (sceneCards == null)
         {
-            cardList = new List<Card>();
+            sceneCards = new List<Card>();
         }
 
-        foreach (var card in cardList)
+        foreach (Card card in sceneCards)
         {
-            if (card == null) continue;
-            card.gameObject.transform.SetParent(this.transform); // 親をこの Cards オブジェクトに設定
-            card.Initialize(selectedYOffset); // Card に Initialize メソッドが存在する前提で呼び出す
+            if (card != null)
+            {
+                card.Initialize(selectedYOffset);
+            }
         }
-        // 必要ならカードリストの初期化や他のセットアップをここで行う
+
         Debug.Log("Cards initialized.");
     }
 
-    // オブジェクト生成時の初期化
     public void Awake()
     {
-        cardList = new List<Card>();
-        foreach (var cardData in CardsData.cards)
+        if (!TryGetAuthoringError(out string error))
         {
-            Card card = Instantiate(cardPrefab, this.transform);
-            card.SetCardData(cardData);
-            card.Initialize(selectedYOffset);
-            cardList.Add(card);
+            Initialize();
+            Debug.Log($"Scene-authored cards initialized. Count: {sceneCards.Count}");
+            return;
         }
-        Debug.Log($"Cards initialized. Count: {cardList.Count}");
+
+        Debug.LogError($"Cards: {error}", this);
+        enabled = false;
     }
 
-    // 指定したカードデータに対応するCardオブジェクトを取得
+    /// <summary>
+    /// Editor、Build、Playの全経路で使用するSceneカード構成の検証。
+    /// nullは正常、文字列が返った場合は実行・ビルドを継続できない。
+    /// </summary>
+    public bool TryGetAuthoringError(out string error)
+    {
+        if (CardsData == null || CardsData.cards == null)
+        {
+            error = "CardsData is not assigned.";
+            return true;
+        }
+
+        if (sceneCards == null || sceneCards.Count != CardsData.cards.Length)
+        {
+            int actualCount = sceneCards != null ? sceneCards.Count : 0;
+            error =
+                $"Scene card count is {actualCount}, but CardsData requires " +
+                $"{CardsData.cards.Length}. Use 'Rebuild Scene Cards' in Edit Mode.";
+            return true;
+        }
+
+        for (int index = 0; index < sceneCards.Count; index++)
+        {
+            Card card = sceneCards[index];
+            CardData expected = CardsData.cards[index];
+            if (expected == null)
+            {
+                error = $"CardsData entry {index + 1} is not assigned.";
+                return true;
+            }
+
+            if (card == null || card.CardData != expected)
+            {
+                error =
+                    $"Scene card {index + 1} does not match CardsData. " +
+                    "Rebuild the Scene cards from the Cards inspector.";
+                return true;
+            }
+
+            if (card.GetComponent<Image>() == null ||
+                card.GetComponent<Button>() == null ||
+                card.GetComponent<SpecialCardTooltipTarget>() == null)
+            {
+                error =
+                    $"Scene card {index + 1} is missing a required UI component. " +
+                    "Restore Card.prefab and rebuild the Scene cards.";
+                return true;
+            }
+        }
+
+        error = null;
+        return false;
+    }
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        if (Application.isPlaying)
+        {
+            return;
+        }
+
+        if (TryGetAuthoringError(out string error))
+        {
+            Debug.LogWarning(
+                $"Cards: {name}: {error}",
+                this);
+        }
+    }
+#endif
+
     public Card GetCard(CardData cardData)
     {
-        foreach (var card in cardList)
+        foreach (Card card in sceneCards)
         {
-            if (card.CardData == cardData)
+            if (card != null && card.CardData == cardData)
             {
                 return card;
             }
         }
-        Debug.LogWarning($"Card with data {cardData.number} of {cardData.suit} not found.");
+
+        Debug.LogWarning($"Card with data {cardData?.name ?? "null"} not found.");
         return null;
     }
 
-    // 複数のカードデータに対応するCardオブジェクトリストを取得
     public List<Card> GetCards(List<CardData> cardDataList)
     {
-        List<Card> cards = new List<Card>();
-        foreach (var cardData in cardDataList)
+        var cards = new List<Card>();
+        if (cardDataList == null)
+        {
+            return cards;
+        }
+
+        foreach (CardData cardData in cardDataList)
         {
             Card card = GetCard(cardData);
             if (card != null)
@@ -72,6 +151,7 @@ public class Cards : MonoBehaviour
                 cards.Add(card);
             }
         }
+
         return cards;
     }
 }

@@ -10,9 +10,10 @@ using UnityEngine.UI;
 public class Card : MonoBehaviour // カードの表示・状態管理
 {
     private readonly CardRuntimeState runtimeState = new CardRuntimeState();
+    [SerializeField] private CardData authoredCardData;
 
     public CardRuntimeState RuntimeState => runtimeState;
-    public CardData CardData => runtimeState.CardData; // カード情報
+    public CardData CardData => authoredCardData; // Scene/Prefabに保存されるカード情報
     private Image cardImage; // カード画像
     private RectTransform cardRect; // RectTransform参照
     public bool IsFaceUp // 表向きかどうか
@@ -55,6 +56,7 @@ public class Card : MonoBehaviour // カードの表示・状態管理
     // 初期化処理（Image, RectTransform取得）
     public void Initialize(float selectedYOffset = 20f)
     {
+        runtimeState.SetCardData(authoredCardData);
         if (cardImage == null)
         {
             cardImage = GetComponent<Image>();
@@ -67,10 +69,8 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         // Buttonコンポーネント取得とクリックイベント登録
         RegisterSelectionListener();
 
-        if (GetComponent<SpecialCardTooltipTarget>() == null)
-        {
-            gameObject.AddComponent<SpecialCardTooltipTarget>();
-        }
+        // TooltipTarget is authored on Card.prefab. Runtime initialization must
+        // not add components, so the complete card structure is visible in Edit Mode.
     }
     // クリックイベントで選択フラグをトグル
     private void ToggleSelect()
@@ -124,6 +124,7 @@ public class Card : MonoBehaviour // カードの表示・状態管理
     // カード情報をセットし、画像を更新
     public void SetCardData(CardData cardData)
     {
+        authoredCardData = cardData;
         runtimeState.SetCardData(cardData);
         if (cardImage != null && CardData != null)
         {
