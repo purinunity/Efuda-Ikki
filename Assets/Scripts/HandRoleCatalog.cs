@@ -20,21 +20,8 @@ public sealed class HandRoleDefinition
 
 public static class HandRoleCatalog
 {
-    // Public ordering is retained for serialized/UI compatibility; values come from Core.
-    private static readonly HandRoleDefinition[] RolesInRankOrder =
-    {
-        Create(HandRank.Miezu),
-        Create(HandRank.Isso),
-        Create(HandRank.Niso),
-        Create(HandRank.Sanju),
-        Create(HandRank.Hikari),
-        Create(HandRank.Suzi),
-        Create(HandRank.Yonju),
-        Create(HandRank.Tenshu),
-        Create(HandRank.Nanahikari),
-        Create(HandRank.Nanasuzi),
-        Create(HandRank.Tenshukaku)
-    };
+    // Enum values remain serialized-compatible; strength order and scores come from Core.
+    private static readonly HandRoleDefinition[] RolesInRankOrder = BuildRolesInRankOrder();
 
     private static readonly Dictionary<HandRank, int> IndexByRank = BuildIndexByRank();
     private static readonly Dictionary<string, int> IndexByDisplayName = BuildIndexByDisplayName();
@@ -114,6 +101,13 @@ public static class HandRoleCatalog
         }
 
         return map;
+    }
+
+    private static HandRoleDefinition[] BuildRolesInRankOrder()
+    {
+        return HandRoleRules.StrengthOrder
+            .Select(role => Create((HandRank)(int)role))
+            .ToArray();
     }
 
     private static HandRoleDefinition Create(HandRank rank)

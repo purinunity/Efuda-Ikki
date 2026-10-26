@@ -233,8 +233,8 @@ public partial class ShowdownCutInPopup
 
         text.alignment = TextAlignmentOptions.Center;
         text.enableAutoSizing = true;
-        text.fontSizeMin = 15f;
-        text.fontSizeMax = 26f;
+        text.fontSizeMin = 18f;
+        text.fontSizeMax = 32f;
         text.color = LifeDeductionColor;
         text.fontStyle = FontStyles.Bold;
         RuntimeUiFactory.SetTextOutline(text, Color.black, 0.24f);

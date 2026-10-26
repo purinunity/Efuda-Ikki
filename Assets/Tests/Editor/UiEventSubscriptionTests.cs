@@ -40,43 +40,41 @@ public sealed class UiEventSubscriptionTests
         }
     }
 
-    [TestCase(typeof(MainMenuPanel), "settingsButton", "settingsPanel")]
-    [TestCase(typeof(SettingsPanel), "backButton", "modeSelectPanel")]
-    [TestCase(typeof(TitleScreenPanel), "titleButton", "modeSelectPanel")]
+    [TestCase(typeof(MainMenuPanel), "settingsButton", "SettingsRequested")]
+    [TestCase(typeof(SettingsPanel), "backButton", "BackRequested")]
+    [TestCase(typeof(TitleScreenPanel), "titleButton", "ContinueRequested")]
     public void PanelButtonListener_IsRemovedWhileDisabledAndRestoredOnce(
         System.Type panelType,
         string buttonFieldName,
-        string expectedPanelFieldName)
+        string eventName)
     {
         Button button = CreateButton("Panel Button");
-        TitleUIManager manager = CreateTitleUiManager();
         GameObject panelObject = CreateObject("Panel");
         MonoBehaviour panel = (MonoBehaviour)panelObject.AddComponent(panelType);
         panelType.GetField(buttonFieldName).SetValue(panel, button);
-        panelType.GetField("titleUIManager").SetValue(panel, manager);
-        CanvasGroup expectedPanel =
-            (CanvasGroup)typeof(TitleUIManager).GetField(expectedPanelFieldName).GetValue(manager);
+        int requestCount = 0;
+        System.Action handler = () => requestCount++;
+        panelType.GetEvent(eventName).AddEventHandler(panel, handler);
 
         panelObject.SetActive(false);
         InvokeLifecycle(panel, "OnDisable");
         button.onClick.Invoke();
-        Assert.That(expectedPanel.alpha, Is.Zero);
+        Assert.That(requestCount, Is.Zero);
 
         panelObject.SetActive(true);
         InvokeLifecycle(panel, "OnEnable");
         button.onClick.Invoke();
-        Assert.That(expectedPanel.alpha, Is.EqualTo(1f));
+        Assert.That(requestCount, Is.EqualTo(1));
 
-        manager.ShowTitleScreen();
         panelObject.SetActive(false);
         InvokeLifecycle(panel, "OnDisable");
         button.onClick.Invoke();
-        Assert.That(expectedPanel.alpha, Is.Zero, "Disabled panels must not retain their click listener.");
+        Assert.That(requestCount, Is.EqualTo(1), "Disabled panels must not retain their click listener.");
 
         panelObject.SetActive(true);
         InvokeLifecycle(panel, "OnEnable");
         button.onClick.Invoke();
-        Assert.That(expectedPanel.alpha, Is.EqualTo(1f), "Re-enabled panels must restore their click listener.");
+        Assert.That(requestCount, Is.EqualTo(2), "Re-enabled panels must restore their click listener.");
     }
 
     [Test]
@@ -84,11 +82,13 @@ public sealed class UiEventSubscriptionTests
     {
         GameObject areaObject = CreateObject("Preview Area");
         PopupPreviewCardArea area = areaObject.AddComponent<PopupPreviewCardArea>();
+        LogAssert.Expect(LogType.Warning, "DiscardPreviewPanel: assign Close, assets, and all 52 authored slots.");
+        DiscardPreviewPanel preview = CreateObject("Discard Preview").AddComponent<DiscardPreviewPanel>();
+        area.ConfigurePreview(preview);
         Card card = CreateCard("Source Card");
 
         area.SetCards(new List<Card> { card }, 0f);
         area.SetCards(new List<Card> { card }, 0f);
-        LogAssert.Expect(LogType.Warning, "PopupPreviewCardArea: popup references are not assigned.");
         card.GetComponent<Button>().onClick.Invoke();
         LogAssert.NoUnexpectedReceived();
 

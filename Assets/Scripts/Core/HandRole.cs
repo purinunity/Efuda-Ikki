@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace EfudaIkki.Core
 {
     // Integer values mirror the existing global HandEvaluator.HandRank API.
@@ -18,6 +21,24 @@ namespace EfudaIkki.Core
 
     public static class HandRoleRules
     {
+        private static readonly HandRole[] StrengthOrderInternal =
+        {
+            HandRole.Miezu,
+            HandRole.Isso,
+            HandRole.Niso,
+            HandRole.Sanju,
+            HandRole.Hikari,
+            HandRole.Suzi,
+            HandRole.Tenshu,
+            HandRole.Yonju,
+            HandRole.Nanahikari,
+            HandRole.Nanasuzi,
+            HandRole.Tenshukaku
+        };
+
+        public static IReadOnlyList<HandRole> StrengthOrder { get; } =
+            Array.AsReadOnly(StrengthOrderInternal);
+
         public static int GetScore(HandRole role)
         {
             switch (role)
@@ -26,14 +47,30 @@ namespace EfudaIkki.Core
                 case HandRole.Niso: return 10;
                 case HandRole.Sanju: return 20;
                 case HandRole.Hikari: return 30;
-                case HandRole.Suzi: return 35;
+                case HandRole.Suzi: return 30;
                 case HandRole.Yonju: return 45;
-                case HandRole.Tenshu: return 45;
-                case HandRole.Nanahikari: return 60;
+                case HandRole.Tenshu: return 35;
+                case HandRole.Nanahikari: return 70;
                 case HandRole.Nanasuzi: return 70;
-                case HandRole.Tenshukaku: return 90;
+                case HandRole.Tenshukaku: return 70;
                 default: return 0;
             }
+        }
+
+        public static bool TryStep(HandRole current, int delta, out HandRole result)
+        {
+            int currentIndex = Array.IndexOf(StrengthOrderInternal, current);
+            if (currentIndex < 0)
+            {
+                result = current;
+                return false;
+            }
+
+            int nextIndex = Math.Max(
+                0,
+                Math.Min(StrengthOrderInternal.Length - 1, currentIndex + delta));
+            result = StrengthOrderInternal[nextIndex];
+            return nextIndex != currentIndex;
         }
 
         public static string GetDisplayName(HandRole role)

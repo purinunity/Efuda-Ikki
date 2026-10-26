@@ -227,7 +227,7 @@ public class Card : MonoBehaviour // カードの表示・状態管理
             return true;
         }
 
-        if (Vector2.Distance(cardRect.anchoredPosition, GetFinalAnchoredPosition()) > PositionTolerance)
+        if (HasAnchoredPositionChanged())
         {
             return true;
         }
@@ -354,13 +354,25 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         return Vector2.Distance(worldPosition, LastWorldPosition) > PositionTolerance;
     }
 
+    private bool HasAnchoredPositionChanged()
+    {
+        if (cardRect == null)
+        {
+            cardRect = GetComponent<RectTransform>();
+        }
+
+        return cardRect == null ||
+               Vector2.Distance(cardRect.anchoredPosition, GetFinalAnchoredPosition()) > PositionTolerance;
+    }
+
     private IEnumerator MoveAndTurnToPositionBySpeed(float moveSpeed, float turnSpeed)
     {
         var WorldPosition = GetTargetWorldPosition();
         bool worldPositionChanged = HasWorldPositionChanged(WorldPosition);
+        bool anchoredPositionChanged = HasAnchoredPositionChanged();
         bool selectionChanged = IsSelected != LastSelected;
         bool faceChanged = IsFaceUp != LastFaceUp;
-        bool needsMove = worldPositionChanged || selectionChanged;
+        bool needsMove = worldPositionChanged || anchoredPositionChanged || selectionChanged;
 
         if (needsMove)
         {
@@ -421,9 +433,10 @@ public class Card : MonoBehaviour // カードの表示・状態管理
         // カード移動のデバッグ用ログ（必要なら有効化）
         var WorldPosition = GetTargetWorldPosition();
         bool worldPositionChanged = HasWorldPositionChanged(WorldPosition);
+        bool anchoredPositionChanged = HasAnchoredPositionChanged();
         bool selectionChanged = IsSelected != LastSelected;
         bool faceChanged = IsFaceUp != LastFaceUp;
-        bool needsMove = worldPositionChanged || selectionChanged;
+        bool needsMove = worldPositionChanged || anchoredPositionChanged || selectionChanged;
         float stepDuration = needsMove && faceChanged ? moveDuration / 2f : moveDuration;
 
         if (needsMove)

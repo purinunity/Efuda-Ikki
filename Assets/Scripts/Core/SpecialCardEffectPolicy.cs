@@ -198,16 +198,14 @@ namespace EfudaIkki.Core
 
         private static bool StepRank(SpecialResolvedHand hand, int delta)
         {
-            int current = (int)hand.CurrentRole;
-            int next = Math.Max((int)HandRole.Miezu, Math.Min((int)HandRole.Tenshukaku, current + delta));
-            if (current == next)
+            if (!HandRoleRules.TryStep(hand.CurrentRole, delta, out HandRole next))
             {
                 return false;
             }
 
-            int scoreDelta = HandRoleRules.GetScore((HandRole)next) -
+            int scoreDelta = HandRoleRules.GetScore(next) -
                              HandRoleRules.GetScore(hand.CurrentRole);
-            hand.CurrentRole = (HandRole)next;
+            hand.CurrentRole = next;
             AddScore(hand, scoreDelta);
             return true;
         }

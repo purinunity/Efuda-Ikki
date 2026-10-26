@@ -244,7 +244,24 @@ public sealed class SpecialCardResolverTests
         Assert.That(minimum.Score, Is.EqualTo(0));
         Assert.That(maximum.StepUpRank(), Is.False);
         Assert.That(maximum.CurrentRank, Is.EqualTo(HandEvaluator.HandRank.Tenshukaku));
-        Assert.That(maximum.Score, Is.EqualTo(90));
+        Assert.That(maximum.Score, Is.EqualTo(70));
+    }
+
+    [Test]
+    public void RankAdjustment_UsesCoreStrengthOrderAcrossTenshuAndYonju()
+    {
+        var hand = new ResolvedHand(
+            0,
+            new HandEvaluator.HandInfo(
+                HandEvaluator.HandRank.Tenshu,
+                HandRoleCatalog.GetDisplayName(HandEvaluator.HandRank.Tenshu)));
+
+        Assert.That(hand.StepUpRank(), Is.True);
+        Assert.That(hand.CurrentRank, Is.EqualTo(HandEvaluator.HandRank.Yonju));
+        Assert.That(hand.Score, Is.EqualTo(45));
+        Assert.That(hand.StepDownRank(), Is.True);
+        Assert.That(hand.CurrentRank, Is.EqualTo(HandEvaluator.HandRank.Tenshu));
+        Assert.That(hand.Score, Is.EqualTo(35));
     }
 
     private GameState CreateGameState(CardSpec[] playerHand, CardSpec[] cpuHand)

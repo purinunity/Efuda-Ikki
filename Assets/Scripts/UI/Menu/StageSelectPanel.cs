@@ -46,28 +46,13 @@ public class StageSelectPanel : MonoBehaviour
         }
     }
 
-    private static readonly Vector2[] CharacterFramePositions =
-    {
-        new Vector2(-540f, -360f),
-        new Vector2(-180f, -360f),
-        new Vector2(180f, -360f),
-        new Vector2(540f, -360f),
-        new Vector2(-540f, 0f),
-        new Vector2(-180f, 0f),
-        new Vector2(180f, 0f),
-        new Vector2(540f, 0f),
-        new Vector2(0f, 360f)
-    };
-
     public Button[] stageButtons = new Button[9];
     public TextMeshProUGUI stageInfoText;
     public Button backButton;
-    public TitleUIManager titleUIManager;
+    public event Action<int> StageRequested;
+    public event Action BackRequested;
 
-    [Header("Character Select Layout")]
-    [SerializeField] private bool fitButtonsToCharacterFrames = true;
-    [SerializeField] private Vector2 characterButtonSize = new Vector2(280f, 280f);
-    [SerializeField] private bool preserveCharacterSpriteAspect = true;
+    [Header("Character Select Display")]
     [SerializeField] private bool hideLegacyTextLabels = true;
     [SerializeField] private Color unlockedCharacterColor = Color.white;
     [SerializeField] private Sprite[] lockedCharacterSprites = new Sprite[9];
@@ -78,7 +63,7 @@ public class StageSelectPanel : MonoBehaviour
     [SerializeField] private CharacterBinding[] characterBindings = Array.Empty<CharacterBinding>();
     private Sprite[] unlockedCharacterSprites;
     private CharacterBinding[] activeCharacterBindings;
-    private ShowdownCutInAssetSet sharedAssetSet;
+    [SerializeField] private ShowdownCutInAssetSet sharedAssetSet;
     private readonly Dictionary<Button, UnityAction> characterClickHandlers =
         new Dictionary<Button, UnityAction>();
     private UnityAction backClickHandler;
@@ -87,7 +72,6 @@ public class StageSelectPanel : MonoBehaviour
 
     private void Awake()
     {
-        sharedAssetSet = Resources.Load<ShowdownCutInAssetSet>("ShowdownCutInAssets");
         CacheUnlockedCharacterSprites();
         BuildActiveCharacterBindings();
     }
@@ -133,13 +117,7 @@ public class StageSelectPanel : MonoBehaviour
             return;
         }
 
-        if (titleUIManager == null)
-        {
-            Debug.LogWarning("Stage character cannot be selected because TitleUIManager is not assigned.");
-            return;
-        }
-
-        titleUIManager.SelectStage(level - 1);
+        StageRequested?.Invoke(level - 1);
     }
 
     private void RegisterButtonListeners()
@@ -200,10 +178,7 @@ public class StageSelectPanel : MonoBehaviour
 
     private void HandleBackClicked()
     {
-        if (titleUIManager != null)
-        {
-            titleUIManager.BackFromStageSelect();
-        }
+        BackRequested?.Invoke();
     }
 
     public void RefreshProgression()
@@ -266,60 +241,6 @@ public class StageSelectPanel : MonoBehaviour
         CacheUnlockedCharacterSprites();
         BuildActiveCharacterBindings();
         HideLegacyTextLabels();
-    }
-
-    private void ApplyCharacterFrameLayout()
-    {
-        if (!fitButtonsToCharacterFrames || stageButtons == null)
-        {
-            return;
-        }
-
-        DisableLayoutGroup();
-
-        int buttonCount = Mathf.Min(stageButtons.Length, CharacterFramePositions.Length);
-        for (int i = 0; i < buttonCount; i++)
-        {
-            Button button = stageButtons[i];
-            if (button == null)
-            {
-                continue;
-            }
-
-            RectTransform rectTransform = button.GetComponent<RectTransform>();
-            if (rectTransform != null)
-            {
-                rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-                rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-                rectTransform.pivot = new Vector2(0.5f, 0.5f);
-                rectTransform.anchoredPosition = CharacterFramePositions[i];
-                rectTransform.sizeDelta = characterButtonSize;
-            }
-
-            Image image = button.targetGraphic as Image;
-            if (image == null)
-            {
-                image = button.GetComponent<Image>();
-            }
-
-            if (image != null)
-            {
-                image.type = Image.Type.Simple;
-                image.preserveAspect = preserveCharacterSpriteAspect;
-                image.raycastTarget = true;
-                button.targetGraphic = image;
-            }
-
-            if (activeCharacterBindings != null && i < activeCharacterBindings.Length)
-            {
-                ConfigureHoverSprite(activeCharacterBindings[i], false);
-            }
-            else
-            {
-                ConfigureHoverSprite(button, i, false);
-            }
-            SetTextLabelsActive(button.transform, !hideLegacyTextLabels);
-        }
     }
 
     private void ConfigureHoverSprite(Button button, int index, bool cleared)
@@ -390,11 +311,6 @@ public class StageSelectPanel : MonoBehaviour
         if (sprite != null)
         {
             return sprite;
-        }
-
-        if (sharedAssetSet == null)
-        {
-            sharedAssetSet = Resources.Load<ShowdownCutInAssetSet>("ShowdownCutInAssets");
         }
 
         Sprite[] sharedSprites = sharedAssetSet == null
@@ -519,35 +435,6 @@ public class StageSelectPanel : MonoBehaviour
         }
     }
 
-    private void DisableLayoutGroup()
-    {
-        if (stageButtons == null || stageButtons.Length == 0 || stageButtons[0] == null)
-        {
-            return;
-        }
-
-        Transform layoutRoot = stageButtons[0].transform.parent;
-        if (layoutRoot == null)
-        {
-            return;
-        }
-
-        LayoutGroup layoutGroup = layoutRoot.GetComponent<LayoutGroup>();
-        if (layoutGroup != null)
-        {
-            layoutGroup.enabled = false;
-        }
-
-        RectTransform layoutRect = layoutRoot as RectTransform;
-        if (layoutRect != null)
-        {
-            layoutRect.anchorMin = Vector2.zero;
-            layoutRect.anchorMax = Vector2.one;
-            layoutRect.pivot = new Vector2(0.5f, 0.5f);
-            layoutRect.anchoredPosition = Vector2.zero;
-            layoutRect.sizeDelta = Vector2.zero;
-        }
-    }
 
     private static void SetTextLabelsActive(Transform root, bool isActive)
     {

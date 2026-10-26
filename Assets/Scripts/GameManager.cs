@@ -24,6 +24,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private TitleUIManager titleUIManager;
     [SerializeField] private CharacterManager characterManager;
     [SerializeField] private GameplayUiReferences gameplayUiReferences;
+    [SerializeField] private UiRootCoordinator uiRootCoordinator;
 
     [Header("Special Card Decks")]
     [SerializeField] private Cards specialCardsDeck1;
@@ -48,6 +49,7 @@ public class GameManager : MonoBehaviour
 
     public void StartGameWithMode(GameModeData modeData)
     {
+        uiRootCoordinator?.ShowGameplay();
         EnsureSessionFlow();
         if (!sessionFlow.TryStart(modeData, out IEnumerator routine))
         {

@@ -7,6 +7,7 @@ public sealed class ShowdownPresentationService
     private readonly GameState gameState;
     private readonly UIManager uiManager;
     private readonly CharacterManager characterManager;
+    private readonly Cards playerSpecialCardsDeck;
 
     public ShowdownCutInPopup CurrentPopup { get; private set; }
 
@@ -15,12 +16,14 @@ public sealed class ShowdownPresentationService
         GameState gameState,
         UIManager uiManager,
         CharacterManager characterManager,
-        ShowdownCutInPopup initialPopup)
+        ShowdownCutInPopup initialPopup,
+        Cards playerSpecialCardsDeck = null)
     {
         this.owner = owner;
         this.gameState = gameState;
         this.uiManager = uiManager;
         this.characterManager = characterManager;
+        this.playerSpecialCardsDeck = playerSpecialCardsDeck;
         CurrentPopup = initialPopup;
     }
 
@@ -37,7 +40,10 @@ public sealed class ShowdownPresentationService
         }
 
         ShowdownCutInPopup.Data cutInData =
-            new ShowdownCutInDataBuilder(gameState, characterManager).Build(showdownResult);
+            new ShowdownCutInDataBuilder(
+                gameState,
+                characterManager,
+                playerSpecialCardsDeck).Build(showdownResult);
         yield return popup.Play(cutInData);
     }
 }

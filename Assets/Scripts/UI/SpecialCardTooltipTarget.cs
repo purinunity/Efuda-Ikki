@@ -9,6 +9,11 @@ public sealed class SpecialCardTooltipTarget : MonoBehaviour, IPointerEnterHandl
     private bool isPointerOver;
     private bool tooltipEnabled = true;
 
+    public static void ConfigureAssets(ShowdownCutInAssetSet assets)
+    {
+        tooltipAssetSet = assets;
+    }
+
     private void Awake()
     {
         card = GetComponent<Card>();
@@ -77,11 +82,6 @@ public sealed class SpecialCardTooltipTarget : MonoBehaviour, IPointerEnterHandl
         if (card == null || card.CardData == null)
         {
             return false;
-        }
-
-        if (tooltipAssetSet == null)
-        {
-            tooltipAssetSet = Resources.Load<ShowdownCutInAssetSet>("ShowdownCutInAssets");
         }
 
         tooltipSprite = tooltipAssetSet != null

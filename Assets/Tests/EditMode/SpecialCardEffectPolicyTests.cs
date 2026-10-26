@@ -53,7 +53,7 @@ namespace EfudaIkki.Core.Tests
             Assert.That(result.Hands[0].CurrentRole, Is.EqualTo(HandRole.Isso));
             Assert.That(result.Hands[0].Score, Is.EqualTo(5));
             Assert.That(result.Hands[1].CurrentRole, Is.EqualTo(HandRole.Tenshu));
-            Assert.That(result.Hands[1].Score, Is.EqualTo(45));
+            Assert.That(result.Hands[1].Score, Is.EqualTo(35));
         }
 
         [Test]
@@ -82,6 +82,22 @@ namespace EfudaIkki.Core.Tests
 
             Assert.That(lowerBound.Hands[1].CurrentRole, Is.EqualTo(HandRole.Miezu));
             Assert.That(upperBound.Hands[0].CurrentRole, Is.EqualTo(HandRole.Tenshukaku));
+        }
+
+        [Test]
+        public void RainAndSunny_UseSharedStrengthOrderAcrossTenshuAndYonju()
+        {
+            SpecialCardResolutionResult sunny = Resolve(
+                new[] { HandRole.Tenshu, HandRole.Miezu },
+                E(0, 0, SpecialEffectKind.Sunny, 300));
+            SpecialCardResolutionResult rain = Resolve(
+                new[] { HandRole.Miezu, HandRole.Yonju },
+                E(0, 0, SpecialEffectKind.Rain, 200));
+
+            Assert.That(sunny.Hands[0].CurrentRole, Is.EqualTo(HandRole.Yonju));
+            Assert.That(sunny.Hands[0].Score, Is.EqualTo(45));
+            Assert.That(rain.Hands[1].CurrentRole, Is.EqualTo(HandRole.Tenshu));
+            Assert.That(rain.Hands[1].Score, Is.EqualTo(35));
         }
 
         [Test]

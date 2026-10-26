@@ -1,5 +1,4 @@
 using System.Linq;
-using System.Reflection;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -50,13 +49,9 @@ public sealed class UiSceneAuthoringTests
             Assert.That(references.SpecialCardTooltip, Is.Not.Null);
 
             var gameplayReferences = new SerializedObject(references);
-            Assert.That(gameplayReferences.FindProperty("menuCanvas").objectReferenceValue, Is.Not.Null);
+            Assert.That(gameplayReferences.FindProperty("gameplayScreen").objectReferenceValue, Is.Not.Null);
             Assert.That(gameplayReferences.FindProperty("discardPreviewRoot").objectReferenceValue, Is.Not.Null);
-            Assert.That(gameplayReferences.FindProperty("roleListOverlayRoot").objectReferenceValue, Is.Not.Null);
             Assert.That(gameplayReferences.FindProperty("surrenderConfirmationRoot").objectReferenceValue, Is.Not.Null);
-            Assert.That(
-                gameplayReferences.FindProperty("editorPreview").enumValueIndex,
-                Is.EqualTo((int)GameplayUiReferences.EditorPreview.None));
 
             Transform overlayLayer = gameCanvas.transform.Find("OverlayLayer");
             Assert.That(overlayLayer.Find("PopUpTrush").gameObject.activeSelf, Is.False);
@@ -242,67 +237,6 @@ public sealed class UiSceneAuthoringTests
         {
             if (openedForTest) EditorSceneManager.CloseScene(scene, true);
         }
-    }
-
-    [Test]
-    public void TitleUiManager_EditorPreviewShowsExactlyOneMenuScreen()
-    {
-        var root = new GameObject("TitleUiPreviewTest");
-        var manager = root.AddComponent<TitleUIManager>();
-        manager.titleScreenPanel = CreateCanvasGroup(root.transform, "Title");
-        manager.modeSelectPanel = CreateCanvasGroup(root.transform, "ModeSelect");
-        manager.stageSelectPanel = CreateCanvasGroup(root.transform, "StageSelect");
-        manager.specialCardSelectPanel = CreateCanvasGroup(root.transform, "SpecialCardSelect");
-        manager.settingsPanel = CreateCanvasGroup(root.transform, "Settings");
-
-        try
-        {
-            MethodInfo applyPreview = typeof(TitleUIManager).GetMethod(
-                "ApplyEditorPreview",
-                BindingFlags.Instance | BindingFlags.NonPublic);
-            Assert.That(applyPreview, Is.Not.Null);
-
-            var serialized = new SerializedObject(manager);
-            SerializedProperty preview = serialized.FindProperty("editorPreviewScreen");
-            CanvasGroup[] panels =
-            {
-                manager.titleScreenPanel,
-                manager.modeSelectPanel,
-                manager.stageSelectPanel,
-                manager.specialCardSelectPanel,
-                manager.settingsPanel
-            };
-
-            for (int index = 0; index < panels.Length; index++)
-            {
-                preview.enumValueIndex = index;
-                serialized.ApplyModifiedPropertiesWithoutUndo();
-                applyPreview.Invoke(manager, null);
-
-                for (int panelIndex = 0; panelIndex < panels.Length; panelIndex++)
-                {
-                    Assert.That(
-                        panels[panelIndex].alpha,
-                        Is.EqualTo(panelIndex == index ? 1f : 0f),
-                        $"Preview {index}, panel {panelIndex}");
-                }
-            }
-
-            manager.ShowTitleScreen();
-            Assert.That(manager.titleScreenPanel.alpha, Is.EqualTo(1f));
-            Assert.That(panels.Skip(1).All(panel => panel.alpha == 0f), Is.True);
-        }
-        finally
-        {
-            Object.DestroyImmediate(root);
-        }
-    }
-
-    private static CanvasGroup CreateCanvasGroup(Transform parent, string name)
-    {
-        var child = new GameObject(name, typeof(RectTransform), typeof(CanvasGroup));
-        child.transform.SetParent(parent, false);
-        return child.GetComponent<CanvasGroup>();
     }
 
     private static Scene OpenScene(out bool openedForTest)

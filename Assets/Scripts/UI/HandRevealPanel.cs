@@ -19,8 +19,7 @@ public sealed class HandRevealPanel : MonoBehaviour
     private void Initialize()
     {
         if (initialized) return;
-        if (assets == null) assets = Resources.Load<ShowdownCutInAssetSet>("ShowdownCutInAssets");
-        if (button == null || image == null)
+        if (button == null || image == null || assets == null)
         {
             Debug.LogError("HandRevealPanel: scene references are incomplete.", this);
             return;

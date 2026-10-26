@@ -82,7 +82,10 @@ public class LocalizeSprite : MonoBehaviour
     {
         if (image == null) return; // Awake 前に呼ばれた場合は、画像の読み込み完了時に反映される
 
-        bool showLocked = isLocked && lockedSprite != null;
+        // Keep the synchronously assigned locked fallback while the localized
+        // locked sprite is still loading. Treating this as an unlocked state
+        // allowed normalSprite to flash for one frame in player builds.
+        bool showLocked = isLocked;
 
         Sprite main = showLocked ? lockedSprite : normalSprite;
         if (main != null)
@@ -111,9 +114,10 @@ public class LocalizeSprite : MonoBehaviour
             state.selectedSprite = null; // クリック後に灰色のまま残らないようにする
             button.spriteState = state;
 
-            // クリック直後(マウスが乗ったまま)でも表示をすぐ更新する
-            if (image.overrideSprite != null)
-                image.overrideSprite = highlightedSprite;
+            // Do not assign Image.overrideSprite here. Its getter falls back to
+            // the normal sprite when no override exists, so using it as a hover
+            // state check makes every button display its hover artwork as soon
+            // as localized assets finish loading.
         }
     }
 }

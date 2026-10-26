@@ -179,7 +179,8 @@ public sealed class GameSessionFlow
             gameState,
             uiManager,
             characterManager,
-            showdownCutInPopup);
+            showdownCutInPopup,
+            playerSpecialCardsDeck);
         navigationService = new GameEndNavigationService(titleUIManager);
     }
 
@@ -460,7 +461,7 @@ public sealed class GameSessionFlow
         Debug.Log("ShowDown started.");
 
         ShowdownFlowService showdownService =
-            new ShowdownFlowService(gameState, cpuController);
+            new ShowdownFlowService(gameState, cpuController, playerSpecialCardsDeck);
         PreparedShowdown preparedShowdown = showdownService.PrepareShowdown();
         LogShowdownResult(preparedShowdown.Result);
 

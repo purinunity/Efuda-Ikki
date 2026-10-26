@@ -77,10 +77,8 @@ public sealed class CoinTossPanel : MonoBehaviour
     private void Initialize()
     {
         if (initialized) return;
-        if (parentSprite == null) parentSprite = Resources.Load<Sprite>("coin/parent_coin");
-        if (childSprite == null) childSprite = Resources.Load<Sprite>("coin/child_coin");
-        if (backgroundSprite == null) backgroundSprite = Resources.Load<Sprite>("coin/coin_background");
-        if (overlayImage == null || frameImage == null || coinImage == null || resultText == null)
+        if (overlayImage == null || frameImage == null || coinImage == null || resultText == null ||
+            parentSprite == null || childSprite == null || backgroundSprite == null)
         {
             Debug.LogError("CoinTossPanel: scene references are incomplete.", this);
             return;
@@ -102,21 +100,11 @@ public sealed class CoinTossPanel : MonoBehaviour
         coinImage.rectTransform.localScale = baseCoinScale;
     }
 
-#if UNITY_EDITOR
-    public void ApplyEditorPreview()
-    {
-        Initialize();
-        if (frameImage != null) frameImage.sprite = backgroundSprite;
-        if (coinImage != null) coinImage.sprite = parentSprite;
-        if (resultText != null) resultText.text = "あなたが親";
-        RestoreCoinTransform();
-    }
-#endif
-
     private void OnValidate()
     {
         if (!Application.isPlaying && !string.IsNullOrEmpty(gameObject.scene.path) &&
-            (overlayImage == null || frameImage == null || coinImage == null || resultText == null))
+            (overlayImage == null || frameImage == null || coinImage == null || resultText == null ||
+             parentSprite == null || childSprite == null || backgroundSprite == null))
         {
             Debug.LogWarning("CoinTossPanel: assign all scene-authored references.", this);
         }

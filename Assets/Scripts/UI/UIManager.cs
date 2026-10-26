@@ -234,7 +234,7 @@ public class UIManager : MonoBehaviour
         }
 
         var cards = specialCards;
-        if (cards != null && cards.Count > 0)
+        if (cards != null)
         {
             bool showCardFaces = playerId == 0;
             foreach (var card in cards)
@@ -244,21 +244,17 @@ public class UIManager : MonoBehaviour
                     card.ForceSetFaceUp(showCardFaces);
                 }
             }
+        }
 
-            List<Card> displayCards = BuildSpecialCardDisplayCards(
-                cards,
-                sourceDeck,
-                includeNoUseCard: playerId == 0);
-            if (!(targetArea is SpecialCardArea))
-            {
-                SetSpecialCardTooltipsEnabled(displayCards, playerId == 0);
-            }
-            targetArea.SetCardsBySpeed(displayCards, cardMoveSpeed, cardTurnSpeed);
-        }
-        else
+        List<Card> displayCards = BuildSpecialCardDisplayCards(
+            cards,
+            sourceDeck,
+            includeNoUseCard: playerId == 0);
+        if (!(targetArea is SpecialCardArea))
         {
-            targetArea.SetCardsBySpeed(new List<Card>(), cardMoveSpeed, cardTurnSpeed);
+            SetSpecialCardTooltipsEnabled(displayCards, playerId == 0);
         }
+        targetArea.SetCardsBySpeed(displayCards, cardMoveSpeed, cardTurnSpeed);
     }
 
     private static void SetSpecialCardTooltipsEnabled(
@@ -292,19 +288,17 @@ public class UIManager : MonoBehaviour
         bool includeNoUseCard)
     {
         List<Card> displayCards = new List<Card>();
-        if (specialCards == null || specialCards.Count == 0)
+        if (specialCards != null)
         {
-            return displayCards;
-        }
-
-        foreach (Card card in specialCards)
-        {
-            if (card == null || SpecialCardResolver.IsNoUseSpecialCard(card.CardData))
+            foreach (Card card in specialCards)
             {
-                continue;
-            }
+                if (card == null || SpecialCardResolver.IsNoUseSpecialCard(card.CardData))
+                {
+                    continue;
+                }
 
-            displayCards.Add(card);
+                displayCards.Add(card);
+            }
         }
 
         if (!includeNoUseCard)

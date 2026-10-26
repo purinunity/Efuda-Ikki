@@ -155,7 +155,7 @@ public sealed class CatalogCharacterizationTests
             Assert.That(binding.TooltipSprite, Is.Not.Null, binding.Id);
             Assert.That(
                 AssetDatabase.GetAssetPath(binding.TooltipSprite).Replace('\\', '/'),
-                Is.EqualTo($"Assets/Sprite/production/ui/tooltips/special_cards/{expected.Id}.png"));
+                Is.EqualTo($"Assets/Sprite/production/ui/popup/special_cards/{expected.Id}.png"));
             Assert.That(assetSet.GetSpecialCardTooltipSprite(binding.CardData), Is.SameAs(binding.TooltipSprite));
         }
     }
@@ -333,7 +333,8 @@ public sealed class StageSelectPanelTests
         try
         {
             StageSelectPanel panel = root.AddComponent<StageSelectPanel>();
-            panel.titleUIManager = root.AddComponent<TitleUIManager>();
+            TitleUIManager manager = root.AddComponent<TitleUIManager>();
+            panel.StageRequested += manager.SelectStage;
             panel.stageButtons = new Button[StageCharacterCatalog.Entries.Count];
             for (int i = 0; i < panel.stageButtons.Length; i++)
             {

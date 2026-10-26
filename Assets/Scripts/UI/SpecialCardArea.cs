@@ -279,10 +279,16 @@ public class SpecialCardArea : CardArea
             if (card == null) continue;
             card.UseSelectedYOffset = false;
 
-            card.gameObject.transform.SetParent(areaRect);
-            card.gameObject.transform.SetSiblingIndex(idx);
-
-            card.TargetPosition = GetStackPosition(idx, visibleCount);
+            if (HasEnoughAuthoredSlots(visibleCount))
+            {
+                BindCardToAuthoredSlot(card, idx);
+            }
+            else
+            {
+                card.gameObject.transform.SetParent(areaRect);
+                card.gameObject.transform.SetSiblingIndex(idx);
+                card.TargetPosition = GetStackPosition(idx, visibleCount);
+            }
 
             if (!card.MoveComplete || card.NeedsAnimationForCurrentTarget())
             {
@@ -302,10 +308,16 @@ public class SpecialCardArea : CardArea
             if (card == null) continue;
             card.UseSelectedYOffset = false;
 
-            card.gameObject.transform.SetParent(areaRect);
-            card.gameObject.transform.SetSiblingIndex(idx);
-
-            card.TargetPosition = GetStackPosition(idx, visibleCount);
+            if (HasEnoughAuthoredSlots(visibleCount))
+            {
+                BindCardToAuthoredSlot(card, idx);
+            }
+            else
+            {
+                card.gameObject.transform.SetParent(areaRect);
+                card.gameObject.transform.SetSiblingIndex(idx);
+                card.TargetPosition = GetStackPosition(idx, visibleCount);
+            }
 
             if (!card.MoveComplete || card.NeedsAnimationForCurrentTarget())
             {
@@ -534,9 +546,16 @@ public class SpecialCardArea : CardArea
             }
 
             card.UseSelectedYOffset = false;
-            card.gameObject.transform.SetParent(areaRect);
-            card.gameObject.transform.SetSiblingIndex(idx);
-            card.TargetPosition = GetStackPosition(idx, cardsInArea.Count);
+            if (HasEnoughAuthoredSlots(cardsInArea.Count))
+            {
+                BindCardToAuthoredSlot(card, idx);
+            }
+            else
+            {
+                card.gameObject.transform.SetParent(areaRect);
+                card.gameObject.transform.SetSiblingIndex(idx);
+                card.TargetPosition = GetStackPosition(idx, cardsInArea.Count);
+            }
         }
     }
 

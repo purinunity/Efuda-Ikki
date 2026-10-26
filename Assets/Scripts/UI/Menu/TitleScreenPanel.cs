@@ -1,10 +1,11 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class TitleScreenPanel : MonoBehaviour
 {
     public Button titleButton;
-    public TitleUIManager titleUIManager;
+    public event Action ContinueRequested;
     private Button subscribedTitleButton;
 
     private void Start()
@@ -42,6 +43,6 @@ public class TitleScreenPanel : MonoBehaviour
 
     private void HandleTitleClicked()
     {
-        titleUIManager?.ShowMainMenu();
+        ContinueRequested?.Invoke();
     }
 }
