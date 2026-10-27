@@ -24,7 +24,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1059651868839936
-    m_Localized: "\t\uCD5C\uACE0 \uAE30\uB85D: {0}\uC5F0\uC2B9"
+    m_Localized: "\uCD5C\uACE0 \uAE30\uB85D: {0}\uC5F0\uC2B9"
     m_Metadata:
       m_Items:
       - rid: 1992129717954936841
