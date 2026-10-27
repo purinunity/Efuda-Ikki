@@ -8,6 +8,7 @@ public sealed class SpecialCardTooltip : MonoBehaviour
     [SerializeField] private Vector2 pointerOffset = new Vector2(24f, -24f);
     [SerializeField] private Vector2 tooltipSize = new Vector2(512f, 328f);
     [SerializeField] private float screenMargin = 12f;
+    [SerializeField] private ShowdownCutInAssetSet visualAssets;
 
     private Canvas rootCanvas;
     private CanvasGroup canvasGroup;
@@ -75,6 +76,7 @@ public sealed class SpecialCardTooltip : MonoBehaviour
     private void Awake()
     {
         instance = this;
+        SpecialCardTooltipTarget.ConfigureAssets(visualAssets);
         Initialize();
     }
 

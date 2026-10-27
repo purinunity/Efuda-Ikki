@@ -2,15 +2,6 @@ using UnityEngine;
 
 public class TitleUIManager : MonoBehaviour
 {
-    public enum EditorPreviewScreen
-    {
-        Title,
-        ModeSelect,
-        StageSelect,
-        SpecialCardSelect,
-        Settings
-    }
-
     public CanvasGroup titleScreenPanel;
     public CanvasGroup modeSelectPanel;
     public CanvasGroup stageSelectPanel;
@@ -18,64 +9,69 @@ public class TitleUIManager : MonoBehaviour
     public CanvasGroup settingsPanel;
 
     [SerializeField] private GameManager gameManager;
-
-    [Header("Editor Preview")]
-    [SerializeField] private EditorPreviewScreen editorPreviewScreen = EditorPreviewScreen.Title;
+    [SerializeField] private UiRootCoordinator rootCoordinator;
+    [SerializeField] private MenuUiReferences menuUiReferences;
 
     private GameModeData currentGameModeData;
+
+    private void Awake()
+    {
+        BindViewEvents();
+    }
 
     private void Start()
     {
         ShowTitleScreen();
     }
 
-#if UNITY_EDITOR
-    private void OnValidate()
-    {
-        if (Application.isPlaying || !gameObject.scene.IsValid())
-        {
-            return;
-        }
+    private void OnDestroy() => UnbindViewEvents();
 
-        UnityEditor.EditorApplication.delayCall -= ApplyEditorPreviewDelayed;
-        UnityEditor.EditorApplication.delayCall += ApplyEditorPreviewDelayed;
+    private void BindViewEvents()
+    {
+        UnbindViewEvents();
+        if (menuUiReferences == null) return;
+        if (menuUiReferences.Title != null) menuUiReferences.Title.ContinueRequested += ShowMainMenu;
+        if (menuUiReferences.ModeSelect != null)
+        {
+            menuUiReferences.ModeSelect.IkkiModeRequested += SelectIkkiMode;
+            menuUiReferences.ModeSelect.BattleGroundRequested += SelectBattleGroundMode;
+            menuUiReferences.ModeSelect.SettingsRequested += ShowSettings;
+        }
+        if (menuUiReferences.StageSelect != null)
+        {
+            menuUiReferences.StageSelect.StageRequested += SelectStage;
+            menuUiReferences.StageSelect.BackRequested += BackFromStageSelect;
+        }
+        if (menuUiReferences.SpecialCardSelect != null)
+        {
+            menuUiReferences.SpecialCardSelect.StartRequested += StartGame;
+            menuUiReferences.SpecialCardSelect.BackRequested += BackFromSpecialCardSelect;
+        }
+        if (menuUiReferences.Settings != null) menuUiReferences.Settings.BackRequested += BackToMainMenu;
     }
 
-    private void ApplyEditorPreviewDelayed()
+    private void UnbindViewEvents()
     {
-        UnityEditor.EditorApplication.delayCall -= ApplyEditorPreviewDelayed;
-        if (this == null || Application.isPlaying || !gameObject.scene.IsValid())
+        if (menuUiReferences == null) return;
+        if (menuUiReferences.Title != null) menuUiReferences.Title.ContinueRequested -= ShowMainMenu;
+        if (menuUiReferences.ModeSelect != null)
         {
-            return;
+            menuUiReferences.ModeSelect.IkkiModeRequested -= SelectIkkiMode;
+            menuUiReferences.ModeSelect.BattleGroundRequested -= SelectBattleGroundMode;
+            menuUiReferences.ModeSelect.SettingsRequested -= ShowSettings;
         }
-
-        ApplyEditorPreview();
-    }
-
-    [ContextMenu("Apply Editor Preview")]
-    private void ApplyEditorPreview()
-    {
-        HideAllPanels();
-        switch (editorPreviewScreen)
+        if (menuUiReferences.StageSelect != null)
         {
-            case EditorPreviewScreen.ModeSelect:
-                SetPanelActive(modeSelectPanel, true);
-                break;
-            case EditorPreviewScreen.StageSelect:
-                SetPanelActive(stageSelectPanel, true);
-                break;
-            case EditorPreviewScreen.SpecialCardSelect:
-                SetPanelActive(specialCardSelectPanel, true);
-                break;
-            case EditorPreviewScreen.Settings:
-                SetPanelActive(settingsPanel, true);
-                break;
-            default:
-                SetPanelActive(titleScreenPanel, true);
-                break;
+            menuUiReferences.StageSelect.StageRequested -= SelectStage;
+            menuUiReferences.StageSelect.BackRequested -= BackFromStageSelect;
         }
+        if (menuUiReferences.SpecialCardSelect != null)
+        {
+            menuUiReferences.SpecialCardSelect.StartRequested -= StartGame;
+            menuUiReferences.SpecialCardSelect.BackRequested -= BackFromSpecialCardSelect;
+        }
+        if (menuUiReferences.Settings != null) menuUiReferences.Settings.BackRequested -= BackToMainMenu;
     }
-#endif
 
     private void Update()
     {
@@ -95,6 +91,7 @@ public class TitleUIManager : MonoBehaviour
     private bool IsTitleScreenVisible()
     {
         return titleScreenPanel != null &&
+               titleScreenPanel.gameObject.activeInHierarchy &&
                titleScreenPanel.alpha > 0.99f &&
                titleScreenPanel.interactable;
     }
@@ -106,9 +103,23 @@ public class TitleUIManager : MonoBehaviour
             return;
         }
 
-        panel.alpha = isActive ? 1f : 0f;
-        panel.interactable = isActive;
-        panel.blocksRaycasts = isActive;
+        // Scene authors select the screen they want to edit with the normal
+        // Active checkbox on the screen wrapper (TitleScreen, ModeSelectScreen,
+        // and so on). Keep the prefab instance itself active so disabling a
+        // LayoutGroup never serializes driven child RectTransforms as overrides.
+        panel.alpha = 1f;
+        panel.interactable = true;
+        panel.blocksRaycasts = true;
+        panel.gameObject.SetActive(true);
+        GetPanelVisibilityRoot(panel).SetActive(isActive);
+    }
+
+    private static GameObject GetPanelVisibilityRoot(CanvasGroup panel)
+    {
+        Transform parent = panel.transform.parent;
+        return parent != null && parent.name.EndsWith("Screen")
+            ? parent.gameObject
+            : panel.gameObject;
     }
 
     private void HideAllPanels()
@@ -122,19 +133,26 @@ public class TitleUIManager : MonoBehaviour
 
     public void ShowTitleScreen()
     {
+        rootCoordinator?.ShowMenu();
         HideAllPanels();
         SetPanelActive(titleScreenPanel, true);
     }
 
     public void ShowMainMenu()
     {
+        rootCoordinator?.ShowMenu();
         HideAllPanels();
-        SetPanelActive(modeSelectPanel, true);
+        // Resolve unlock state and layout while the screen is still hidden.
+        // This prevents the authored default state from being rendered for one
+        // frame before the saved progression is applied.
         RefreshMainMenuState();
+        UnityEngine.EventSystems.EventSystem.current?.SetSelectedGameObject(null);
+        SetPanelActive(modeSelectPanel, true);
     }
 
     public void ShowStageSelect()
     {
+        rootCoordinator?.ShowMenu();
         HideAllPanels();
         SetPanelActive(stageSelectPanel, true);
 
@@ -146,6 +164,7 @@ public class TitleUIManager : MonoBehaviour
 
     public void ShowSpecialCardSelect()
     {
+        rootCoordinator?.ShowMenu();
         HideAllPanels();
         SetPanelActive(specialCardSelectPanel, true);
 
@@ -157,6 +176,7 @@ public class TitleUIManager : MonoBehaviour
 
     public void ShowSettings()
     {
+        rootCoordinator?.ShowMenu();
         HideAllPanels();
         SetPanelActive(settingsPanel, true);
     }
@@ -211,6 +231,7 @@ public class TitleUIManager : MonoBehaviour
         if (gameManager != null)
         {
             GameModeManager.SetGameModeData(currentGameModeData);
+            rootCoordinator?.ShowGameplay();
             gameManager.StartGameWithMode(currentGameModeData);
             HideAllPanels();
         }

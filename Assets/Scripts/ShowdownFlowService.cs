@@ -48,11 +48,16 @@ public sealed class ShowdownFlowService
 {
     private readonly GameState gameState;
     private readonly CPUController cpuController;
+    private readonly Cards playerSpecialCardsDeck;
 
-    public ShowdownFlowService(GameState gameState, CPUController cpuController)
+    public ShowdownFlowService(
+        GameState gameState,
+        CPUController cpuController,
+        Cards playerSpecialCardsDeck = null)
     {
         this.gameState = gameState;
         this.cpuController = cpuController;
+        this.playerSpecialCardsDeck = playerSpecialCardsDeck;
     }
 
     public PreparedShowdown PrepareShowdown()
@@ -152,21 +157,40 @@ public sealed class ShowdownFlowService
 
     private UnityEngine.Sprite GetSelectedSpecialSprite(int playerIndex, IReadOnlyList<Card> selectedCards)
     {
-        if (selectedCards == null || gameState?.PlayerStates == null ||
+        if (gameState?.PlayerStates == null ||
             playerIndex < 0 || playerIndex >= gameState.PlayerStates.Count)
         {
             return null;
         }
 
         List<Card> owned = gameState.PlayerStates[playerIndex]?.SpecialCards;
-        if (owned == null) return null;
-        foreach (Card card in selectedCards)
+        if (owned != null && selectedCards != null)
         {
-            if (card != null && owned.Contains(card) && card.CardData != null)
+            foreach (Card card in selectedCards)
+            {
+                if (card != null && owned.Contains(card) && card.CardData != null)
+                {
+                    return BattleGroundVisualTheme.ResolveFace(card.CardData);
+                }
+            }
+        }
+
+        // Keep both result rows explicit. When neither side activated an effect,
+        // show the authored "no special card" face instead of a transparent slot.
+        return GetNoUseSpecialSprite();
+    }
+
+    private UnityEngine.Sprite GetNoUseSpecialSprite()
+    {
+        if (playerSpecialCardsDeck?.cardList == null) return null;
+        foreach (Card card in playerSpecialCardsDeck.cardList)
+        {
+            if (card != null && SpecialCardResolver.IsNoUseSpecialCard(card.CardData))
             {
                 return BattleGroundVisualTheme.ResolveFace(card.CardData);
             }
         }
+
         return null;
     }
 

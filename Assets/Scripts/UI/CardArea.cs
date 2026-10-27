@@ -16,6 +16,12 @@ public class CardArea : MonoBehaviour
     // true: 後から配置したカードを背面側にする（重なり順を反転）
     public bool reverseOverlapOrder = false;
 
+    [Header("Editor-authored layout")]
+    [Tooltip("Optional fixed destinations. When assigned, these transforms own card position, size and draw order.")]
+    [SerializeField] private UiCardSlot[] layoutSlots = Array.Empty<UiCardSlot>();
+
+    public IReadOnlyList<UiCardSlot> LayoutSlots => layoutSlots;
+
     public void Initialize()
     {
         cardsInArea.Clear();
@@ -33,7 +39,8 @@ public class CardArea : MonoBehaviour
             var card = cardsInArea[i];
             if (card != null && card.gameObject != null)
             {
-                Destroy(card.gameObject);
+                card.IsSelected = false;
+                card.gameObject.SetActive(false);
             }
         }
 
@@ -160,6 +167,12 @@ public class CardArea : MonoBehaviour
             return;
         }
 
+        if (HasEnoughAuthoredSlots(visibleCount))
+        {
+            ApplyAuthoredSlotLayout(validCards, animate);
+            return;
+        }
+
         List<float> centersX = ComputeCenters(areaWidth, widths);
         List<float> centersY = ComputeCenters(areaHeight, heights, vertical: true);
 
@@ -192,6 +205,65 @@ public class CardArea : MonoBehaviour
 
             animate(card, idx, visibleCount);
         }
+    }
+
+    protected bool HasEnoughAuthoredSlots(int count)
+    {
+        if (layoutSlots == null || layoutSlots.Length < count) return false;
+        for (int i = 0; i < count; i++)
+        {
+            if (layoutSlots[i] == null || layoutSlots[i].RectTransform == null) return false;
+        }
+        return true;
+    }
+
+    protected Vector2 BindCardToAuthoredSlot(Card card, int index)
+    {
+        if (card == null || !HasEnoughAuthoredSlots(index + 1)) return Vector2.zero;
+        UiCardSlot slot = layoutSlots[index];
+        RectTransform slotRect = slot.RectTransform;
+        RectTransform cardRect = card.GetCardRect();
+        card.transform.SetParent(slotRect, true);
+        card.transform.SetSiblingIndex(0);
+
+        if (cardRect != null)
+        {
+            cardRect.anchorMin = new Vector2(0.5f, 0.5f);
+            cardRect.anchorMax = new Vector2(0.5f, 0.5f);
+            cardRect.pivot = new Vector2(0.5f, 0.5f);
+            if (slot.FitCardInside && cardRect.rect.width > 0f && cardRect.rect.height > 0f)
+            {
+                float scale = Mathf.Min(
+                    slotRect.rect.width / cardRect.rect.width,
+                    slotRect.rect.height / cardRect.rect.height);
+                cardRect.localScale = new Vector3(scale, scale, 1f);
+            }
+        }
+
+        card.TargetPosition = Vector2.zero;
+        return Vector2.zero;
+    }
+
+    private void ApplyAuthoredSlotLayout(List<Card> cards, Action<Card, int, int> animate)
+    {
+        for (int index = 0; index < cards.Count; index++)
+        {
+            Card card = cards[index];
+            card.UseSelectedYOffset = true;
+            BindCardToAuthoredSlot(card, index);
+            animate(card, index, cards.Count);
+        }
+    }
+
+    private void OnValidate()
+    {
+        if (layoutSlots == null) return;
+        Array.Sort(layoutSlots, (left, right) =>
+        {
+            if (left == null) return 1;
+            if (right == null) return -1;
+            return left.Index.CompareTo(right.Index);
+        });
     }
 
     private List<float> ComputeCenters(float areaSize, List<float> sizes, bool vertical = false)

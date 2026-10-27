@@ -6,11 +6,16 @@ public sealed class ShowdownCutInDataBuilder
 {
     private readonly GameState gameState;
     private readonly CharacterManager characterManager;
+    private readonly Cards playerSpecialCardsDeck;
 
-    public ShowdownCutInDataBuilder(GameState gameState, CharacterManager characterManager)
+    public ShowdownCutInDataBuilder(
+        GameState gameState,
+        CharacterManager characterManager,
+        Cards playerSpecialCardsDeck = null)
     {
         this.gameState = gameState;
         this.characterManager = characterManager;
+        this.playerSpecialCardsDeck = playerSpecialCardsDeck;
     }
 
     public ShowdownCutInPopup.Data Build(SpecialCardResolver.ShowdownResult showdownResult)
@@ -124,7 +129,26 @@ public sealed class ShowdownCutInDataBuilder
             playerState.SpecialCards,
             card => !playerState.IsSpecialCardUsed(card));
 
-        return selectedCard != null && selectedCard.CardData != null ? selectedCard.CardData.Image : null;
+        if (selectedCard != null && selectedCard.CardData != null)
+        {
+            return BattleGroundVisualTheme.ResolveFace(selectedCard.CardData);
+        }
+
+        return GetNoUseSpecialCardSprite();
+    }
+
+    private Sprite GetNoUseSpecialCardSprite()
+    {
+        if (playerSpecialCardsDeck?.cardList == null) return null;
+        foreach (Card card in playerSpecialCardsDeck.cardList)
+        {
+            if (card != null && SpecialCardResolver.IsNoUseSpecialCard(card.CardData))
+            {
+                return BattleGroundVisualTheme.ResolveFace(card.CardData);
+            }
+        }
+
+        return null;
     }
 
     private static void AddCardSprite(List<Sprite> sprites, Card card)

@@ -125,6 +125,81 @@ public sealed class FlowSafetyTests
     }
 
     [Test]
+    public void ShowdownResult_UsesNoSpecialCardSpriteWhenPlayerSelectedNothing()
+    {
+        GameState gameState = CreateGameState();
+        Card noUseCard = CreateCard(Number.Joker, Suit.Joker, "sp_no_use");
+        Texture2D texture = new Texture2D(2, 2);
+        Sprite noUseSprite = Sprite.Create(
+            texture,
+            new Rect(0f, 0f, texture.width, texture.height),
+            new Vector2(0.5f, 0.5f));
+        createdObjects.Add(texture);
+        createdObjects.Add(noUseSprite);
+        noUseCard.CardData.Image = noUseSprite;
+
+        Cards playerSpecialDeck = CreateComponent<Cards>("Player Special Deck");
+        typeof(Cards).GetField(
+                "sceneCards",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .SetValue(playerSpecialDeck, new List<Card> { noUseCard });
+
+        var showdown = new SpecialCardResolver.ShowdownResult(
+            new List<SpecialCardResolver.ResolvedHand>(),
+            0,
+            0,
+            new List<string>(),
+            new List<SpecialCardResolver.EffectStep>());
+        var prepared = new PreparedShowdown(
+            showdown,
+            new List<Card>(),
+            gameState.PlayerStates[0].LifePoints,
+            gameState.PlayerStates[1].LifePoints);
+        var service = new ShowdownFlowService(gameState, null, playerSpecialDeck);
+
+        ShowdownCommitResult result = service.Commit(prepared, 1);
+
+        Assert.That(result.RoundResult.PlayerSpecialCardSprite, Is.SameAs(noUseSprite));
+        Assert.That(result.RoundResult.CpuSpecialCardSprite, Is.SameAs(noUseSprite));
+    }
+
+    [Test]
+    public void ShowdownCutIn_UsesNoSpecialCardSpriteForBothSidesWhenNothingWasSelected()
+    {
+        GameState gameState = CreateGameState();
+        Card noUseCard = CreateCard(Number.Joker, Suit.Joker, "sp_no_use");
+        Texture2D texture = new Texture2D(2, 2);
+        Sprite noUseSprite = Sprite.Create(
+            texture,
+            new Rect(0f, 0f, texture.width, texture.height),
+            new Vector2(0.5f, 0.5f));
+        createdObjects.Add(texture);
+        createdObjects.Add(noUseSprite);
+        noUseCard.CardData.Image = noUseSprite;
+
+        Cards playerSpecialDeck = CreateComponent<Cards>("Player Special Deck");
+        typeof(Cards).GetField(
+                "sceneCards",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .SetValue(playerSpecialDeck, new List<Card> { noUseCard });
+
+        var showdown = new SpecialCardResolver.ShowdownResult(
+            new List<SpecialCardResolver.ResolvedHand>(),
+            -1,
+            0,
+            new List<string>(),
+            new List<SpecialCardResolver.EffectStep>());
+
+        ShowdownCutInPopup.Data data = new ShowdownCutInDataBuilder(
+            gameState,
+            null,
+            playerSpecialDeck).Build(showdown);
+
+        Assert.That(data.PlayerSpecialCardSprite, Is.SameAs(noUseSprite));
+        Assert.That(data.CpuSpecialCardSprite, Is.SameAs(noUseSprite));
+    }
+
+    [Test]
     public void DisabledPlayerController_CancelsRoundBeforeShowdownCanContinue()
     {
         GameState gameState = CreateGameState();

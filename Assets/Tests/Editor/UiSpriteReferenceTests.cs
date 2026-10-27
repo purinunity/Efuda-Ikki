@@ -24,7 +24,12 @@ public sealed class UiSpriteReferenceTests
             panelObject = new GameObject("MainMenuPanel Test");
             MainMenuPanel panel = panelObject.AddComponent<MainMenuPanel>();
 
-            GameObject buttonObject = new GameObject("BattleGround", typeof(RectTransform), typeof(Image), typeof(Button));
+            GameObject buttonObject = new GameObject(
+                "BattleGround",
+                typeof(RectTransform),
+                typeof(Image),
+                typeof(Button),
+                typeof(LocalizeSprite));
             buttonObject.transform.SetParent(panelObject.transform, false);
             Image image = buttonObject.GetComponent<Image>();
             Button button = buttonObject.GetComponent<Button>();
@@ -57,6 +62,14 @@ public sealed class UiSpriteReferenceTests
             Assert.That(button.transition, Is.EqualTo(Selectable.Transition.None));
             Assert.That(statusLabel.gameObject.activeSelf, Is.False);
 
+            // A normal sprite arriving before the localized locked sprite must
+            // not replace the immediate locked fallback.
+            LocalizeSprite localizeSprite = buttonObject.GetComponent<LocalizeSprite>();
+            typeof(LocalizeSprite)
+                .GetMethod("OnNormalChanged", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                ?.Invoke(localizeSprite, new object[] { normal });
+            Assert.That(image.sprite, Is.SameAs(locked));
+
             GameProgressStore.UnlockAllProgress();
             panel.RefreshModeAvailability();
 
@@ -64,7 +77,17 @@ public sealed class UiSpriteReferenceTests
             Assert.That(button.interactable, Is.True);
             Assert.That(button.transition, Is.EqualTo(Selectable.Transition.SpriteSwap));
             Assert.That(button.spriteState.highlightedSprite, Is.SameAs(hover));
+            Assert.That(button.spriteState.selectedSprite, Is.Null);
             Assert.That(statusLabel.gameObject.activeSelf, Is.True);
+
+            typeof(LocalizeSprite)
+                .GetMethod("OnNormalChanged", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                ?.Invoke(localizeSprite, new object[] { normal });
+            typeof(LocalizeSprite)
+                .GetMethod("OnHighlightedChanged", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                ?.Invoke(localizeSprite, new object[] { hover });
+            Assert.That(image.overrideSprite, Is.SameAs(normal),
+                "Loading the hover asset must not activate the hover artwork.");
         }
         finally
         {
@@ -82,19 +105,19 @@ public sealed class UiSpriteReferenceTests
         ShowdownCutInAssetSet cutIn = Resources.Load<ShowdownCutInAssetSet>("ShowdownCutInAssets");
         MatchResultVisualAssets result = Resources.Load<MatchResultVisualAssets>("MatchResultVisualAssets");
 
-        Assert.That(AssetDatabase.GetAssetPath(cutIn.cutInBackground), Does.EndWith("/ui/backgrounds/新/cut_in.png"));
-        Assert.That(AssetDatabase.GetAssetPath(cutIn.roleFrame), Does.EndWith("/ui/frames/汎用panel.png"));
-        Assert.That(AssetDatabase.GetAssetPath(cutIn.lifeDeductionFrame), Does.EndWith("/ui/frames/minus2.png"));
-        Assert.That(AssetDatabase.GetAssetPath(result.winBackground), Does.EndWith("/ui/backgrounds/results/新/win_background.png"));
-        Assert.That(AssetDatabase.GetAssetPath(result.loseBackground), Does.EndWith("/ui/backgrounds/results/新/lose_background.png"));
+        Assert.That(AssetDatabase.GetAssetPath(cutIn.cutInBackground), Does.EndWith("/ui/backgrounds/common/cut_in.png"));
+        Assert.That(AssetDatabase.GetAssetPath(cutIn.roleFrame), Does.EndWith("/ui/cut_in/汎用panel.png"));
+        Assert.That(AssetDatabase.GetAssetPath(cutIn.lifeDeductionFrame), Does.EndWith("/ui/parts/minus2.png"));
+        Assert.That(AssetDatabase.GetAssetPath(result.winBackground), Does.EndWith("/ui/backgrounds/ja/win_background.png"));
+        Assert.That(AssetDatabase.GetAssetPath(result.loseBackground), Does.EndWith("/ui/backgrounds/ja/lose_background.png"));
         Assert.That(cutIn.roleEffectPrefabs, Has.Length.EqualTo(11));
         Assert.That(cutIn.roleEffectPrefabs, Has.All.Not.Null);
     }
 
-    [TestCase("StageSelectPanel", "ui/backgrounds/新/character_select.png")]
-    [TestCase("SpecialCardSelectPanel", "ui/backgrounds/新/card_select.png")]
-    [TestCase("D_button", "ui/buttons/common/confirm_discard.png")]
-    [TestCase("StartButton", "ui/buttons/common/confirm_special.png")]
+    [TestCase("StageSelectPanel", "ui/backgrounds/common/character_select.png")]
+    [TestCase("SpecialCardSelectPanel", "ui/backgrounds/ja/card_select.png")]
+    [TestCase("D_button", "ui/button/common/ja/confirm_discard②.png")]
+    [TestCase("StartButton", "ui/button/common/ja/confirm_special.png")]
     public void LatestScene_RequiredImageResolvesToProductionSprite(string objectName, string spritePath)
     {
         var scene = SceneManager.GetSceneByPath("Assets/Scenes/latest.unity");
@@ -127,9 +150,9 @@ public sealed class UiSpriteReferenceTests
                 .SelectMany(root => root.GetComponentsInChildren<RoleListPanelController>(true))
                 .Single();
             var serialized = new SerializedObject(panel);
-            AssertSprite(serialized, "openButtonSprite", "ui/buttons/common/show_role_list2.png");
-            AssertSprite(serialized, "combinedRoleSprite", "ui/reference/roles/役一覧.png");
-            AssertSprite(serialized, "closeButtonSprite", "ui/buttons/common/close.png");
+            AssertSprite(serialized, "openButtonSprite", "ui/button/common/ja/show_role_list2.png");
+            AssertSprite(serialized, "combinedRoleSprite", "ui/backgrounds/ja/役一覧.png");
+            AssertSprite(serialized, "closeButtonSprite", "ui/button/common/close.png");
         }
         finally
         {

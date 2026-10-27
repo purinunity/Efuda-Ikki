@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -18,7 +19,9 @@ public class SpecialCardSelectPanel : MonoBehaviour
     [Header("Scene-authored slots")]
     [SerializeField] private RectTransform[] selectableCardSlots;
     [SerializeField] private List<Image> selectedDisplayImages = new List<Image>();
-    public TitleUIManager titleUIManager;
+    [SerializeField] private Sprite[] selectedCardSprites = new Sprite[12];
+    public event Action StartRequested;
+    public event Action BackRequested;
 
     private GameModeData currentGameModeData;
     private readonly Dictionary<Card, Button> subscribedCardButtons =
@@ -226,32 +229,17 @@ public class SpecialCardSelectPanel : MonoBehaviour
         }
     }
 
-    private static Sprite GetSelectedCardSprite(CardData cardData)
+    private Sprite GetSelectedCardSprite(CardData cardData)
     {
         if (!SpecialCardResolver.TryGetSpecialCardId(cardData, out SpecialCardResolver.SpecialCardId id))
         {
             return null;
         }
 
-        string fileName;
-        switch (id)
-        {
-            case SpecialCardResolver.SpecialCardId.Aiko: fileName = "aiko_s"; break;
-            case SpecialCardResolver.SpecialCardId.Seal: fileName = "seal_s"; break;
-            case SpecialCardResolver.SpecialCardId.Bonus5: fileName = "bonus_05_s"; break;
-            case SpecialCardResolver.SpecialCardId.Curse: fileName = "curse_s"; break;
-            case SpecialCardResolver.SpecialCardId.Bonus10: fileName = "bonus_10_s"; break;
-            case SpecialCardResolver.SpecialCardId.Bonus15: fileName = "bonus_15_s"; break;
-            case SpecialCardResolver.SpecialCardId.DoubleScore: fileName = "double_score_s"; break;
-            case SpecialCardResolver.SpecialCardId.Bet: fileName = "bet_s"; break;
-            case SpecialCardResolver.SpecialCardId.Rain: fileName = "rain_s"; break;
-            case SpecialCardResolver.SpecialCardId.Festival: fileName = "festival_s"; break;
-            case SpecialCardResolver.SpecialCardId.Sunny: fileName = "sunny_s"; break;
-            case SpecialCardResolver.SpecialCardId.Swap: fileName = "swap_s"; break;
-            default: return null;
-        }
-
-        return Resources.Load<Sprite>("SpecialCardSelection/" + fileName);
+        int index = (int)id;
+        return selectedCardSprites != null && index >= 0 && index < selectedCardSprites.Length
+            ? selectedCardSprites[index]
+            : null;
     }
 
     private void SubscribeDisplayedCards()
@@ -303,12 +291,12 @@ public class SpecialCardSelectPanel : MonoBehaviour
 
     private void HandleStartGameClicked()
     {
-        titleUIManager?.StartGame();
+        StartRequested?.Invoke();
     }
 
     private void HandleBackClicked()
     {
-        titleUIManager?.BackFromSpecialCardSelect();
+        BackRequested?.Invoke();
     }
 
     private void ConfigureSelectionLimiter()

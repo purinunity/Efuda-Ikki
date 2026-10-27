@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -8,7 +9,9 @@ public class MainMenuPanel : MonoBehaviour
     public Button kinouAriButton;
     public Button battleGroundButton;
     public Button settingsButton;
-    public TitleUIManager titleUIManager;
+    public event Action IkkiModeRequested;
+    public event Action BattleGroundRequested;
+    public event Action SettingsRequested;
 
     [Header("Mode Button Images")]
     [Tooltip("LocalizeSprite が付いたボタンでは、以下の画像は使われない(LocalizeSprite の画像が優先)")]
@@ -53,6 +56,9 @@ public class MainMenuPanel : MonoBehaviour
             bestStreakText.Arguments = new object[] { GameProgressStore.BestBattleGroundStreak };
             bestStreakText.StringChanged += OnBestStreakTextChanged;
         }
+
+        // Resolve progression before this screen's first rendered frame.
+        RefreshModeAvailability();
     }
 
     private void OnDisable()
@@ -124,21 +130,25 @@ public class MainMenuPanel : MonoBehaviour
 
     private void HandleIkkiModeClicked()
     {
-        titleUIManager?.SelectIkkiMode();
+        IkkiModeRequested?.Invoke();
     }
 
     private void HandleBattleGroundClicked()
     {
-        titleUIManager?.SelectBattleGroundMode();
+        BattleGroundRequested?.Invoke();
     }
 
     private void HandleSettingsClicked()
     {
-        titleUIManager?.ShowSettings();
+        SettingsRequested?.Invoke();
     }
 
     public void RefreshModeAvailability()
     {
+        // Restore the authored normal artwork whenever the screen opens. This
+        // also clears a SpriteSwap override left by the previous selection.
+        ApplyModeButtonImages();
+
         if (battleGroundButton == null)
         {
             return;
@@ -158,17 +168,15 @@ public class MainMenuPanel : MonoBehaviour
 
         if (image != null)
         {
-            if (localizeSprite == null)
+            Sprite desiredSprite = unlocked
+                ? kachinukiModeButtonSprite
+                : lockedBattleGroundButtonSprite;
+            if (desiredSprite != null)
             {
-                Sprite desiredSprite = unlocked
-                    ? kachinukiModeButtonSprite
-                    : lockedBattleGroundButtonSprite;
-                if (desiredSprite != null)
-                {
-                    image.sprite = desiredSprite;
-                }
+                image.sprite = desiredSprite;
             }
 
+            image.overrideSprite = null;
             image.color = Color.white;
             image.preserveAspect = true;
         }
@@ -176,6 +184,23 @@ public class MainMenuPanel : MonoBehaviour
         ColorBlock colors = battleGroundButton.colors;
         colors.disabledColor = Color.white;
         battleGroundButton.colors = colors;
+
+        // Configure the interaction artwork synchronously as well. The
+        // LocalizeSprite component will replace these fallbacks when its assets
+        // are ready, without changing the already resolved lock state.
+        if (unlocked)
+        {
+            SpriteState immediateState = battleGroundButton.spriteState;
+            immediateState.highlightedSprite = kachinukiModeButtonHoverSprite;
+            immediateState.pressedSprite = kachinukiModeButtonHoverSprite;
+            immediateState.selectedSprite = null;
+            battleGroundButton.spriteState = immediateState;
+            battleGroundButton.transition = Selectable.Transition.SpriteSwap;
+        }
+        else
+        {
+            battleGroundButton.transition = Selectable.Transition.None;
+        }
 
         // 解放後だけ「最高記録：〇連勝」を表示する
         if (battleGroundStatusLabel != null)
@@ -202,7 +227,7 @@ public class MainMenuPanel : MonoBehaviour
             SpriteState state = battleGroundButton.spriteState;
             state.highlightedSprite = kachinukiModeButtonHoverSprite;
             state.pressedSprite = kachinukiModeButtonHoverSprite;
-            state.selectedSprite = kachinukiModeButtonHoverSprite;
+            state.selectedSprite = null;
             battleGroundButton.spriteState = state;
             battleGroundButton.transition = Selectable.Transition.SpriteSwap;
         }
@@ -211,6 +236,11 @@ public class MainMenuPanel : MonoBehaviour
             // The locked artwork already contains the unlock condition.  Keep
             // the image unchanged when the pointer moves over the disabled button.
             battleGroundButton.transition = Selectable.Transition.None;
+        }
+
+        if (transform is RectTransform rectTransform)
+        {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(rectTransform);
         }
     }
 
@@ -243,6 +273,7 @@ public class MainMenuPanel : MonoBehaviour
             {
                 image.sprite = sprite;
             }
+            image.overrideSprite = null;
             image.type = Image.Type.Simple;
             image.preserveAspect = true;
             image.color = Color.white;
@@ -254,7 +285,7 @@ public class MainMenuPanel : MonoBehaviour
             SpriteState state = button.spriteState;
             state.highlightedSprite = hoverSprite;
             state.pressedSprite = hoverSprite;
-            state.selectedSprite = hoverSprite;
+            state.selectedSprite = null;
             button.spriteState = state;
             button.transition = Selectable.Transition.SpriteSwap;
         }

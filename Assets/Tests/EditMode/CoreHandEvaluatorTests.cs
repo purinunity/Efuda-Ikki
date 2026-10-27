@@ -144,13 +144,13 @@ namespace EfudaIkki.Core.Tests
         [TestCase(HandRole.Niso, 2, "二双", 10)]
         [TestCase(HandRole.Sanju, 3, "三珠", 20)]
         [TestCase(HandRole.Hikari, 4, "光", 30)]
-        [TestCase(HandRole.Suzi, 5, "筋", 35)]
+        [TestCase(HandRole.Suzi, 5, "筋", 30)]
         [TestCase(HandRole.Yonju, 6, "四珠", 45)]
-        [TestCase(HandRole.Tenshu, 7, "天守", 45)]
-        [TestCase(HandRole.Nanahikari, 8, "七光", 60)]
+        [TestCase(HandRole.Tenshu, 7, "天守", 35)]
+        [TestCase(HandRole.Nanahikari, 8, "七光", 70)]
         [TestCase(HandRole.Nanasuzi, 9, "七筋", 70)]
-        [TestCase(HandRole.Tenshukaku, 10, "天守閣", 90)]
-        public void LegacyCompatibleRoleContract_IsStable(
+        [TestCase(HandRole.Tenshukaku, 10, "天守閣", 70)]
+        public void RoleContract_MatchesRoleList(
             HandRole role,
             int expectedValue,
             string expectedName,
@@ -159,6 +159,17 @@ namespace EfudaIkki.Core.Tests
             Assert.That((int)role, Is.EqualTo(expectedValue));
             Assert.That(HandRoleRules.GetDisplayName(role), Is.EqualTo(expectedName));
             Assert.That(HandRoleRules.GetScore(role), Is.EqualTo(expectedScore));
+        }
+
+        [Test]
+        public void StrengthOrder_KeepsTenshuBelowYonjuWithoutChangingEnumValues()
+        {
+            Assert.That(HandRoleRules.TryStep(HandRole.Tenshu, 1, out HandRole raised), Is.True);
+            Assert.That(raised, Is.EqualTo(HandRole.Yonju));
+            Assert.That(HandRoleRules.GetScore(raised), Is.GreaterThan(HandRoleRules.GetScore(HandRole.Tenshu)));
+
+            Assert.That(HandRoleRules.TryStep(HandRole.Yonju, -1, out HandRole lowered), Is.True);
+            Assert.That(lowered, Is.EqualTo(HandRole.Tenshu));
         }
 
         private static TestCaseData RoleCase(

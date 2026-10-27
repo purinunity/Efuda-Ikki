@@ -1,3 +1,4 @@
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -5,7 +6,7 @@ using UnityEngine.UI;
 public class SettingsPanel : MonoBehaviour
 {
     public Button backButton;
-    public TitleUIManager titleUIManager;
+    public event Action BackRequested;
 
     [Header("Scene References")]
     [SerializeField] private Button resetButton;
@@ -51,7 +52,7 @@ public class SettingsPanel : MonoBehaviour
         subscribedBackButton = null;
     }
 
-    private void HandleBackClicked() => titleUIManager?.BackToMainMenu();
+    private void HandleBackClicked() => BackRequested?.Invoke();
 
     private void ShowConfirmation()
     {

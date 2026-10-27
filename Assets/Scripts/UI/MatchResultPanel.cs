@@ -77,6 +77,7 @@ public sealed class MatchResultPanel : MonoBehaviour
     [SerializeField] private TextMeshProUGUI continueButtonText;
     [SerializeField] private Image resultBackground;
     [SerializeField] private MatchResultVisualAssets visualAssets;
+    [SerializeField] private ShowdownCutInAssetSet sharedUiAssets;
     [SerializeField] private TextMeshProUGUI playerNameText;
     [SerializeField] private TextMeshProUGUI playerRoleText;
     [SerializeField] private TextMeshProUGUI playerScoreText;
@@ -151,11 +152,6 @@ public sealed class MatchResultPanel : MonoBehaviour
     private void Initialize()
     {
         if (initialized) return;
-        if (visualAssets == null)
-        {
-            visualAssets = Resources.Load<MatchResultVisualAssets>("MatchResultVisualAssets");
-        }
-
         if (!HasRequiredSceneReferences())
         {
             Debug.LogError("MatchResultPanel: scene references are incomplete.", this);
@@ -166,38 +162,10 @@ public sealed class MatchResultPanel : MonoBehaviour
         WireContinueButton();
     }
 
-#if UNITY_EDITOR
-    public void ApplyEditorPreview()
-    {
-        if (visualAssets == null)
-        {
-            visualAssets = Resources.Load<MatchResultVisualAssets>("MatchResultVisualAssets");
-        }
-
-        if (resultBackground != null)
-        {
-            resultBackground.sprite = visualAssets != null ? visualAssets.winBackground : null;
-            resultBackground.color = resultBackground.sprite != null ? Color.white : BackdropColor;
-        }
-        if (titleText != null) titleText.text = "勝利";
-        if (summaryText != null) summaryText.text = "対戦結果";
-        if (playerNameText != null) playerNameText.text = "プレイヤー";
-        if (cpuNameText != null) cpuNameText.text = "CPU";
-        if (playerRoleText != null) playerRoleText.text = "最高得点役";
-        if (cpuRoleText != null) cpuRoleText.text = "最高得点役";
-        if (playerScoreText != null) playerScoreText.text = "0点";
-        if (cpuScoreText != null) cpuScoreText.text = "0点";
-        if (continueButtonText != null)
-        {
-            continueButtonText.text = "キャラクター選択へ";
-            continueButtonText.gameObject.SetActive(true);
-        }
-    }
-#endif
-
     private bool HasRequiredSceneReferences()
     {
         return panel != null && resultBackground != null && summaryText != null &&
+               visualAssets != null && sharedUiAssets != null &&
                continueButton != null && continueButtonText != null &&
                playerCharacterImage != null && cpuCharacterImage != null &&
                playerHandImages != null && playerHandImages.Count == 5 &&
@@ -242,9 +210,8 @@ public sealed class MatchResultPanel : MonoBehaviour
     {
         Image image = continueButton.GetComponent<Image>();
         bool characterSelect = !string.IsNullOrEmpty(buttonLabel) && buttonLabel.Contains("キャラクター選択");
-        ShowdownCutInAssetSet assets = Resources.Load<ShowdownCutInAssetSet>("ShowdownCutInAssets");
-        Sprite normal = characterSelect && assets != null ? assets.characterSelectButton : null;
-        Sprite pressed = characterSelect && assets != null ? assets.characterSelectButtonPressed : null;
+        Sprite normal = characterSelect && sharedUiAssets != null ? sharedUiAssets.characterSelectButton : null;
+        Sprite pressed = characterSelect && sharedUiAssets != null ? sharedUiAssets.characterSelectButtonPressed : null;
 
         if (image != null)
         {

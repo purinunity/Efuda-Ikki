@@ -1,5 +1,4 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -52,6 +51,8 @@ public partial class ShowdownCutInPopup : MonoBehaviour
     [SerializeField] private Image playerSpecialCardImage;
     [SerializeField] private Image cpuSpecialCardImage;
     [SerializeField] private RectTransform roleEffectRoot;
+    [SerializeField] private GameObject[] playerRoleEffects = new GameObject[11];
+    [SerializeField] private GameObject[] cpuRoleEffects = new GameObject[11];
     [SerializeField] private Button closeButton;
     private Button subscribedCloseButton;
     private bool closeRequested;
@@ -66,7 +67,6 @@ public partial class ShowdownCutInPopup : MonoBehaviour
     private ColorBlock closeButtonDefaultColors;
     private Vector3 playerSpecialCardInitialScale = Vector3.one;
     private Vector3 cpuSpecialCardInitialScale = Vector3.one;
-    private readonly List<GameObject> activeRoleEffects = new List<GameObject>();
 
     private void Awake()
     {
@@ -104,11 +104,6 @@ public partial class ShowdownCutInPopup : MonoBehaviour
         if (initialized)
         {
             return;
-        }
-
-        if (assetSet == null)
-        {
-            assetSet = Resources.Load<ShowdownCutInAssetSet>("ShowdownCutInAssets");
         }
 
         CacheRootComponents();
@@ -158,7 +153,7 @@ public partial class ShowdownCutInPopup : MonoBehaviour
 
     private bool HasRequiredUiReferences()
     {
-        return stage != null &&
+        return assetSet != null && stage != null &&
                screenFillImage != null &&
                backgroundImage != null &&
                playerCharacterBaseImage != null &&
@@ -186,6 +181,8 @@ public partial class ShowdownCutInPopup : MonoBehaviour
                playerSpecialCardImage != null &&
                cpuSpecialCardImage != null &&
                roleEffectRoot != null &&
+               HasEffectSlots(playerRoleEffects) &&
+               HasEffectSlots(cpuRoleEffects) &&
                closeButton != null;
     }
 
@@ -291,47 +288,37 @@ public partial class ShowdownCutInPopup : MonoBehaviour
     private void PlayRoleEffects(HandRank playerRank, HandRank cpuRank)
     {
         ClearRoleEffects();
-        SpawnRoleEffect(playerRank, playerRoleImage != null ? playerRoleImage.rectTransform : null);
-        SpawnRoleEffect(cpuRank, cpuRoleImage != null ? cpuRoleImage.rectTransform : null);
+        SetRoleEffectActive(playerRoleEffects, playerRank);
+        SetRoleEffectActive(cpuRoleEffects, cpuRank);
     }
 
-    private void SpawnRoleEffect(HandRank rank, RectTransform target)
+    private static bool HasEffectSlots(GameObject[] effects)
     {
-        if (assetSet == null || stage == null || roleEffectRoot == null || target == null)
-        {
-            return;
-        }
+        if (effects == null || effects.Length != 11) return false;
+        foreach (GameObject effect in effects) if (effect == null) return false;
+        return true;
+    }
 
-        GameObject prefab = assetSet.GetRoleEffectPrefab(rank);
-        if (prefab == null)
-        {
-            return;
-        }
-
-        GameObject effect = Instantiate(prefab, roleEffectRoot, false);
-        effect.name = $"{rank}CutInEffect";
-        effect.transform.localPosition = roleEffectRoot.InverseTransformPoint(target.position);
-        effect.transform.localScale = prefab.transform.localScale * 0.18f;
-
-        // The effect root is deliberately behind cards and text.  A modest
-        // scale keeps the world-space particle prefab inside its role frame.
-        foreach (ParticleSystemRenderer renderer in effect.GetComponentsInChildren<ParticleSystemRenderer>(true))
-        {
-            renderer.sortingOrder = 1;
-        }
-        activeRoleEffects.Add(effect);
+    private static void SetRoleEffectActive(GameObject[] effects, HandRank rank)
+    {
+        int index = (int)rank;
+        if (effects == null || index < 0 || index >= effects.Length) return;
+        if (effects[index] != null) effects[index].SetActive(true);
     }
 
     private void ClearRoleEffects()
     {
-        foreach (GameObject effect in activeRoleEffects)
+        SetAllEffectsInactive(playerRoleEffects);
+        SetAllEffectsInactive(cpuRoleEffects);
+    }
+
+    private static void SetAllEffectsInactive(GameObject[] effects)
+    {
+        if (effects == null) return;
+        foreach (GameObject effect in effects)
         {
-            if (effect != null)
-            {
-                Destroy(effect);
-            }
+            if (effect != null) effect.SetActive(false);
         }
-        activeRoleEffects.Clear();
     }
 
 }
