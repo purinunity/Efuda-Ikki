@@ -55,6 +55,14 @@ MonoBehaviour:
     m_Key: menu3_hover
     m_Metadata:
       m_Items: []
+  - m_Id: 5956174280806400
+    m_Key: card_select
+    m_Metadata:
+      m_Items: []
+  - m_Id: 5958482330800128
+    m_Key: role
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items:
     - rid: 1992129651983777820
@@ -126,6 +134,18 @@ MonoBehaviour:
           - ja
           - ko
         - m_KeyId: 1053822163767296
+          m_TableCodes:
+          - zh-Hans
+          - en
+          - ja
+          - ko
+        - m_KeyId: 5956174280806400
+          m_TableCodes:
+          - ja
+          - en
+          - ko
+          - zh-Hans
+        - m_KeyId: 5958482330800128
           m_TableCodes:
           - zh-Hans
           - en

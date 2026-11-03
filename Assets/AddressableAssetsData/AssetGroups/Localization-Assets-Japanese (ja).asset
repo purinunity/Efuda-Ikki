@@ -29,6 +29,12 @@ MonoBehaviour:
     m_SerializedLabels:
     - Locale-ja
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1840a0a9234f484428ce4adcdada12ef
+    m_Address: "\u5F79\u4E00\u89A7"
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-ja
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 2a7b3e5085dcef945861217a568646fa
     m_Address: YujiSyuku-Regular SDF
     m_ReadOnly: 1
@@ -79,6 +85,12 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: dba7324777de43546aab530d55bee0f6
     m_Address: menu3_hover
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-ja
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f69530244cd4b044d8de93353aa37814
+    m_Address: card_select
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale-ja

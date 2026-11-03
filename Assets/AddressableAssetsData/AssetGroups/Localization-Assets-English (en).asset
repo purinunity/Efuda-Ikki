@@ -29,6 +29,12 @@ MonoBehaviour:
     m_SerializedLabels:
     - Locale-en
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1511130f9400747429fcb97c7ad48c0e
+    m_Address: card_select
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-en
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 27479f2fbf18a6d4e85d5c48a35f3d8a
     m_Address: menu1_hover
     m_ReadOnly: 1
@@ -43,6 +49,12 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 5e90dc7e31a4baa47b2d7b57db6e4a69
     m_Address: IMFellEnglish-Regular SDF
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-en
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6bb63562df1bb6a41acbc4f6b23df306
+    m_Address: role
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale-en

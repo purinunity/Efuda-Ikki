@@ -17,6 +17,12 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: 569f2d94c57f7ee438c239908580e455
   m_SerializeEntries:
+  - m_GUID: 0a8ab619281d1e545b0bbd080c721b26
+    m_Address: role
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-zh-Hans
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 1d901ef747133cb45a3d5cda9eaa6fec
     m_Address: zh-Han-background
     m_ReadOnly: 1
@@ -49,6 +55,12 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 990afecdab85293498ec052c934d955f
     m_Address: menu2
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-zh-Hans
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b4aec92fb964a884bac5fb8aa443a98e
+    m_Address: card_select
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale-zh-Hans

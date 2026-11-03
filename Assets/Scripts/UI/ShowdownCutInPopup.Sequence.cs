@@ -328,7 +328,8 @@ public partial class ShowdownCutInPopup
     {
         if (text != null)
         {
-            text.text = $"{score}点";
+            //text.text = $"{score}点";
+            text.text = $"{score}";
         }
     }
 
@@ -346,7 +347,7 @@ public partial class ShowdownCutInPopup
             yield break;
         }
 
-        deductionText.text = $"-{data.Damage}点";
+        deductionText.text = $"-{data.Damage}";
         SetLifeDeductionActive(deductionText, true);
 
         RectTransform deductionRect = deductionText.rectTransform;

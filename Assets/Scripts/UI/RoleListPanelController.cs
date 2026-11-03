@@ -2,16 +2,14 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Builds and controls the in-game role reference popup.
+/// Controls the in-game role reference popup (open / close).
+/// The page image itself is handled by RoleListPage.
 /// </summary>
 public sealed class RoleListPanelController : MonoBehaviour
 {
-    [Header("Assets")]
+    [Header("Button Sprites")]
     [SerializeField] private Sprite openButtonSprite;
     [SerializeField] private Sprite openButtonHighlightedSprite;
-    [SerializeField] private Sprite firstPageSprite;
-    [SerializeField] private Sprite secondPageSprite;
-    [SerializeField] private Sprite combinedRoleSprite;
     [SerializeField] private Sprite closeButtonSprite;
     [SerializeField] private Sprite closeButtonHighlightedSprite;
 
@@ -19,7 +17,6 @@ public sealed class RoleListPanelController : MonoBehaviour
     [SerializeField] private Button openButton;
     [SerializeField] private Button closeButton;
     [SerializeField] private GameObject panelRoot;
-    [SerializeField] private Image roleListPage;
 
     private void Awake()
     {
@@ -35,10 +32,7 @@ public sealed class RoleListPanelController : MonoBehaviour
 
     public void Open()
     {
-        if (panelRoot != null)
-        {
-            panelRoot.SetActive(true);
-        }
+        if (panelRoot != null) panelRoot.SetActive(true);
     }
 
     public void Close()
@@ -48,22 +42,26 @@ public sealed class RoleListPanelController : MonoBehaviour
 
     private void ConfigureSceneUi()
     {
-        if (openButton == null || closeButton == null || panelRoot == null || roleListPage == null)
+        if (!HasAllReferences())
         {
             Debug.LogError("RoleListPanelController: scene references are incomplete.", this);
             return;
         }
 
-        Image openImage = openButton.targetGraphic as Image ?? openButton.GetComponent<Image>();
+        Image openImage = openButton.targetGraphic as Image;
+        if (openImage == null) openImage = openButton.GetComponent<Image>();
         ConfigureButtonSprites(openButton, openImage, openButtonSprite, openButtonHighlightedSprite);
-        roleListPage.sprite = combinedRoleSprite != null ? combinedRoleSprite : firstPageSprite;
-        roleListPage.preserveAspect = true;
         CloseButtonStyle.Apply(closeButton, closeButtonSprite, closeButtonHighlightedSprite);
 
         openButton.onClick.RemoveListener(Open);
         closeButton.onClick.RemoveListener(Close);
         openButton.onClick.AddListener(Open);
         closeButton.onClick.AddListener(Close);
+    }
+
+    private bool HasAllReferences()
+    {
+        return openButton != null && closeButton != null && panelRoot != null;
     }
 
     private static void ConfigureButtonSprites(
@@ -73,10 +71,12 @@ public sealed class RoleListPanelController : MonoBehaviour
         Sprite highlighted)
     {
         if (button == null || image == null) return;
-        image.sprite = normal;
+
+        if (normal != null) image.sprite = normal;
         image.color = Color.white;
         image.preserveAspect = true;
         button.targetGraphic = image;
+
         if (highlighted != null)
         {
             SpriteState state = button.spriteState;
@@ -90,8 +90,7 @@ public sealed class RoleListPanelController : MonoBehaviour
 
     private void OnValidate()
     {
-        if (!Application.isPlaying && !string.IsNullOrEmpty(gameObject.scene.path) &&
-            (openButton == null || closeButton == null || panelRoot == null || roleListPage == null))
+        if (!Application.isPlaying && !string.IsNullOrEmpty(gameObject.scene.path) && !HasAllReferences())
         {
             Debug.LogWarning("RoleListPanelController: assign all scene-authored references.", this);
         }

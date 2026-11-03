@@ -59,6 +59,12 @@ MonoBehaviour:
     m_SerializedLabels:
     - Locale-ko
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 87a1988c2f86f1744b07112b92e7a2e0
+    m_Address: role
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-ko
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 8fcbf5dfb11825040b5a0cb789510f81
     m_Address: menu1_hover
     m_ReadOnly: 1
@@ -67,6 +73,12 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: a7bd242ec7e29fb4ba33af619c8c3661
     m_Address: menu2_locked
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-ko
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ad58f2a1262b8264098ccc5df485096e
+    m_Address: card_select
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale-ko
