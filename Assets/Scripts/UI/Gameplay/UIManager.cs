@@ -1,0 +1,412 @@
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+// UI全体の管理・演出調整を行うクラス
+// デッキ・共通札・手札・捨て札などの表示を制御
+public class UIManager : MonoBehaviour
+{
+    [SerializeField] public CardArea deck;
+    [SerializeField] public CardArea common;
+    [SerializeField] public LimitedSelectableCardArea player1;
+    [SerializeField] public CardArea player2;
+    [SerializeField] public CardArea player1Special;
+    [SerializeField] public CardArea player2Special;
+    [SerializeField] public CardArea trash;
+    [SerializeField] public Cards allCards;
+    [SerializeField] public Cards specialCards1;
+    [SerializeField] public Cards specialCards2;
+    [SerializeField] private TextMeshProUGUI r;
+    [SerializeField] private PlayerRole H;
+    [SerializeField] private TextMeshProUGUI L1;
+    [SerializeField] private TextMeshProUGUI L2;
+    [SerializeField] private PlayerRemainTrashCount playerRemainTrashCount;
+    [Header("Scene-authored mode visuals")]
+    [SerializeField] private Image battleBackgroundImage;
+    [SerializeField] private Image roundFrameImage;
+    [SerializeField] private GameObject ikkiRoundView;
+    [SerializeField] private GameObject battleGroundStreakView;
+    [SerializeField] private TextMeshProUGUI battleGroundStreakText;
+    public float cardMoveSpeed = 800f;
+    public float cardTurnSpeed = 720f;
+    [SerializeField, Min(0.1f)] private float uiUpdateRecoveryTimeout = 10f;
+
+    public bool UIUpdateInProgress { get; private set; } = false;
+    public Image BattleBackgroundImage => battleBackgroundImage;
+    public Image RoundFrameImage => roundFrameImage;
+    private Coroutine uiUpdateCoroutine;
+    private readonly HashSet<Card> recoveryCards = new HashSet<Card>();
+    private readonly GameUiPresenter presenter = new GameUiPresenter();
+    private GameplayHudView hudView;
+    private GameplayHudView Hud => hudView ?? (hudView = new GameplayHudView(this, r, H, L1, L2,
+        playerRemainTrashCount, playerParentMarker, cpuParentMarker, ikkiRoundView,
+        battleGroundStreakView, battleGroundStreakText));
+    [Header("Scene-authored markers")]
+    [SerializeField] private Image playerParentMarker;
+    [SerializeField] private Image cpuParentMarker;
+    private bool parentMarkerVisible = true;
+    private int lastRenderedParentIndex = -1;
+
+    private void Awake()
+    {
+    }
+
+    private void OnDestroy()
+    {
+        CancelPendingUiUpdate(true);
+    }
+
+    private void OnDisable()
+    {
+        CancelPendingUiUpdate(true);
+    }
+
+    public void UIUpdate(GameState state, float duration)
+    {
+        Render(presenter.CreateSnapshot(state, GameModeManager.GetGameModeData()), duration);
+    }
+
+    public void Render(GameUiSnapshot snapshot, float duration)
+    {
+        // A newer snapshot supersedes the previous animation. Finish its current
+        // targets first so no coroutine can later overwrite the new layout.
+        CancelPendingUiUpdate(true);
+        if (snapshot == null)
+        {
+            Debug.LogWarning("Cannot render a null game UI snapshot.", this);
+            return;
+        }
+
+        UIUpdateInProgress = true;
+
+        Hud.Render(snapshot, snapshot.Mode == GameModeData.GameMode.BattleGroundMode, snapshot.WinStreak, duration);
+        lastRenderedParentIndex = snapshot.CurrentParentIndex;
+        UpdateParentMarkers(parentMarkerVisible ? lastRenderedParentIndex : -1);
+
+        // 特殊札表示（プレイヤー状態が空なら GameModeData + sps から復元）
+        UpdateSpecialCardArea(snapshot, 0, player1Special, specialCards1);
+        UpdateSpecialCardArea(snapshot, 1, player2Special, specialCards2);
+
+        deck.SetCardsBySpeed(snapshot.DeckCards, cardMoveSpeed, cardTurnSpeed);
+        common.SetCardsBySpeed(snapshot.CommonCards, cardMoveSpeed, cardTurnSpeed);
+        trash.SetCardsBySpeed(snapshot.TrashCards, cardMoveSpeed, cardTurnSpeed);
+
+        if (snapshot.PlayerHandCards.Count == 0 || snapshot.PlayerHandCards.Count == 5)
+        {
+            player1.SetCardsBySpeed(snapshot.PlayerHandCards, cardMoveSpeed, cardTurnSpeed);
+        }
+        if (snapshot.CpuHandCards.Count == 0 || snapshot.CpuHandCards.Count == 5)
+        {
+            player2.SetCardsBySpeed(snapshot.CpuHandCards, cardMoveSpeed, cardTurnSpeed);
+        }
+
+        foreach (var card in allCards.cardList)
+        {
+            card.IsSelectable = false;
+        }
+        if (specialCards1 != null && specialCards1.cardList != null)
+        {
+            foreach (var card in specialCards1.cardList)
+            {
+                if (card != null) card.IsSelectable = false;
+            }
+        }
+        bool canSelectHandCards = snapshot.RemainingTrashTurns > 0 &&
+                                  !snapshot.IsWaitingForHandReveal;
+        if (player1 != null)
+        {
+            player1.SetMaxSelectableCount(snapshot.MaxHandTrashCount);
+            player1.SetInputEnabled(canSelectHandCards);
+        }
+
+        uiUpdateCoroutine = StartCoroutine(CheckUIUpdateComplete());
+    }
+
+    public void SetPlayerSpecialCardInputEnabled(bool enabled)
+    {
+        if (player1Special is SpecialCardArea specialCardArea)
+        {
+            specialCardArea.SetInputEnabled(enabled);
+        }
+    }
+
+    public void ResetSpecialCardAreasForNewMatch()
+    {
+        if (player1Special is SpecialCardArea playerArea)
+        {
+            playerArea.ResetForNewMatch(enableInput: true);
+        }
+
+        if (player2Special is SpecialCardArea cpuArea)
+        {
+            cpuArea.ResetForNewMatch(enableInput: false);
+        }
+    }
+
+    public void ResetSpecialCardSelectionToNoUse()
+    {
+        SpecialCardArea playerArea = player1Special as SpecialCardArea;
+        if (playerArea == null)
+        {
+            return;
+        }
+
+        Card noUseCard = FindNoUseSpecialCard(specialCards1);
+        if (noUseCard == null)
+        {
+            Debug.LogError(
+                "UIManager: the player special-card deck has no 'no use' card.",
+                this);
+        }
+
+        playerArea.ResetSelectionTo(noUseCard);
+    }
+
+    public void SetBattleGroundWinCount(int defeatedOpponents) => Hud.SetStreak(defeatedOpponents);
+
+    public void SetParentMarkerVisible(bool visible)
+    {
+        parentMarkerVisible = visible;
+        UpdateParentMarkers(visible ? lastRenderedParentIndex : -1);
+    }
+
+    private void UpdateParentMarkers(int parentIndex) => Hud.SetParent(parentIndex);
+
+    private void UpdateSpecialCardArea(GameUiSnapshot snapshot, int playerId, CardArea targetArea, Cards sourceDeck)
+    {
+        if (targetArea == null) return;
+
+        List<Card> specialCards = playerId == 0
+            ? snapshot.PlayerSpecialCards
+            : snapshot.CpuSpecialCards;
+        List<Card> usedSpecialCards = playerId == 0
+            ? snapshot.PlayerUsedSpecialCards
+            : snapshot.CpuUsedSpecialCards;
+
+        if (targetArea is SpecialCardArea specialCardArea)
+        {
+            bool canSelectSpecialCard = playerId == 0 && snapshot.PlayerCanSelectSpecialCard;
+            specialCardArea.SetInputEnabled(canSelectSpecialCard);
+            specialCardArea.SetTooltipsEnabled(playerId == 0);
+            // CPU cards always show their opaque back at the original brightness.
+            // The used-card tint is useful only for the player's selectable stack.
+            specialCardArea.SetUsedCardDimmingEnabled(playerId == 0);
+            specialCardArea.SetUsedCards(usedSpecialCards);
+        }
+
+        var cards = specialCards;
+        if (cards != null)
+        {
+            bool showCardFaces = playerId == 0;
+            foreach (var card in cards)
+            {
+                if (card != null && card.IsFaceUp != showCardFaces)
+                {
+                    card.ForceSetFaceUp(showCardFaces);
+                }
+            }
+        }
+
+        List<Card> displayCards = BuildSpecialCardDisplayCards(
+            cards,
+            sourceDeck,
+            includeNoUseCard: playerId == 0);
+        if (!(targetArea is SpecialCardArea))
+        {
+            SetSpecialCardTooltipsEnabled(displayCards, playerId == 0);
+        }
+        targetArea.SetCardsBySpeed(displayCards, cardMoveSpeed, cardTurnSpeed);
+    }
+
+    private static void SetSpecialCardTooltipsEnabled(
+        IEnumerable<Card> cards,
+        bool enabled)
+    {
+        if (cards == null)
+        {
+            return;
+        }
+
+        foreach (Card card in cards)
+        {
+            if (card == null)
+            {
+                continue;
+            }
+
+            SpecialCardTooltipTarget tooltipTarget =
+                card.GetComponent<SpecialCardTooltipTarget>();
+            if (tooltipTarget != null)
+            {
+                tooltipTarget.SetTooltipEnabled(enabled);
+            }
+        }
+    }
+
+    private List<Card> BuildSpecialCardDisplayCards(
+        List<Card> specialCards,
+        Cards sourceDeck,
+        bool includeNoUseCard)
+    {
+        List<Card> displayCards = new List<Card>();
+        if (specialCards != null)
+        {
+            foreach (Card card in specialCards)
+            {
+                if (card == null || SpecialCardResolver.IsNoUseSpecialCard(card.CardData))
+                {
+                    continue;
+                }
+
+                displayCards.Add(card);
+            }
+        }
+
+        if (!includeNoUseCard)
+        {
+            return displayCards;
+        }
+
+        Card noUseCard = FindNoUseSpecialCard(sourceDeck);
+        if (noUseCard == null)
+        {
+            return displayCards;
+        }
+
+        noUseCard.IsSelectable = false;
+        noUseCard.ForceSetFaceUp(true);
+        displayCards.Add(noUseCard);
+        return displayCards;
+    }
+
+    private Card FindNoUseSpecialCard(Cards sourceDeck)
+    {
+        if (sourceDeck == null || sourceDeck.cardList == null)
+        {
+            return null;
+        }
+
+        foreach (var card in sourceDeck.cardList)
+        {
+            if (card == null) continue;
+            if (SpecialCardResolver.IsNoUseSpecialCard(card.CardData)) return card;
+        }
+
+        return null;
+    }
+
+    IEnumerator CheckUIUpdateComplete()
+    {
+        float startedAt = Time.realtimeSinceStartup;
+        yield return null;
+        while (true)
+        {
+            bool allComplete = true;
+
+            foreach (var card in allCards.cardList)
+            {
+                if (!card.MoveComplete)
+                {
+                    allComplete = false;
+                    break;
+                }
+            }
+
+            if (allComplete && specialCards1 != null && specialCards1.cardList != null)
+            {
+                allComplete = AreCardsMoveComplete(specialCards1.cardList);
+            }
+
+            if (allComplete && specialCards2 != null && specialCards2.cardList != null)
+            {
+                allComplete = AreCardsMoveComplete(specialCards2.cardList);
+            }
+
+            if (H != null && H.IsAnimating) allComplete = false;
+            if (allComplete) break;
+
+            if (Time.realtimeSinceStartup - startedAt >= Mathf.Max(0.1f, uiUpdateRecoveryTimeout))
+            {
+                Debug.LogWarning($"UI update exceeded {uiUpdateRecoveryTimeout:0.##} seconds. Snapping cards to their targets.", this);
+                SnapAllKnownCardsToTargets();
+                break;
+            }
+
+            yield return null;
+        }
+
+        UIUpdateInProgress = false;
+        uiUpdateCoroutine = null;
+    }
+
+    public void RecoverFromStalledUpdate()
+    {
+        CancelPendingUiUpdate(true);
+    }
+
+    private void CancelPendingUiUpdate(bool snapCards)
+    {
+        if (uiUpdateCoroutine != null)
+        {
+            StopCoroutine(uiUpdateCoroutine);
+            uiUpdateCoroutine = null;
+        }
+
+        if (snapCards && UIUpdateInProgress)
+        {
+            SnapAllKnownCardsToTargets();
+        }
+
+        UIUpdateInProgress = false;
+    }
+
+    private void SnapAllKnownCardsToTargets()
+    {
+        recoveryCards.Clear();
+        AddCardsForRecovery(allCards != null ? allCards.cardList : null);
+        AddCardsForRecovery(specialCards1 != null ? specialCards1.cardList : null);
+        AddCardsForRecovery(specialCards2 != null ? specialCards2.cardList : null);
+        AddCardsForRecovery(deck != null ? deck.cardsInArea : null);
+        AddCardsForRecovery(common != null ? common.cardsInArea : null);
+        AddCardsForRecovery(player1 != null ? player1.cardsInArea : null);
+        AddCardsForRecovery(player2 != null ? player2.cardsInArea : null);
+        AddCardsForRecovery(player1Special != null ? player1Special.cardsInArea : null);
+        AddCardsForRecovery(player2Special != null ? player2Special.cardsInArea : null);
+        AddCardsForRecovery(trash != null ? trash.cardsInArea : null);
+
+        foreach (Card card in recoveryCards)
+        {
+            if (card != null)
+            {
+                card.SnapToTargetPosition();
+            }
+        }
+    }
+
+    private void AddCardsForRecovery(IEnumerable<Card> cards)
+    {
+        if (cards == null) return;
+        foreach (Card card in cards)
+        {
+            if (card != null)
+            {
+                recoveryCards.Add(card);
+            }
+        }
+    }
+
+    private bool AreCardsMoveComplete(List<Card> cards)
+    {
+        foreach (var card in cards)
+        {
+            if (card != null && !card.MoveComplete)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}

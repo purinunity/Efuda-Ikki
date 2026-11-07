@@ -123,12 +123,12 @@ public sealed class UiPrefabAuthoringTests
     {
         string[] files =
         {
-            "Assets/Scripts/UI/GameplayUiReferences.cs",
-            "Assets/Scripts/UI/DiscardPreviewPanel.cs",
-            "Assets/Scripts/UI/PopupPreviewCardArea.cs",
-            "Assets/Scripts/UI/ShowdownCutInPopup.cs",
-            "Assets/Scripts/UI/MatchResultPanel.cs",
-            "Assets/Scripts/UI/CoinTossPanel.cs"
+            "Assets/Scripts/UI/Gameplay/GameplayUiReferences.cs",
+            "Assets/Scripts/UI/Overlays/DiscardPreviewPanel.cs",
+            "Assets/Scripts/UI/Cards/PopupPreviewCardArea.cs",
+            "Assets/Scripts/UI/Showdown/ShowdownCutInPopup.cs",
+            "Assets/Scripts/UI/Overlays/MatchResultPanel.cs",
+            "Assets/Scripts/UI/Overlays/CoinTossPanel.cs"
         };
         foreach (string file in files)
         {

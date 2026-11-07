@@ -99,11 +99,6 @@ public class MainMenuPanel : MonoBehaviour
         UnwireButtonListeners();
     }
 
-    private void OnValidate()
-    {
-        ApplyModeButtonImages();
-    }
-
     private void WireButtonListeners()
     {
         UnwireButtonListeners();

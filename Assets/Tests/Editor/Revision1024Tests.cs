@@ -27,32 +27,40 @@ public sealed class Revision1024Tests
     }
 
     [Test]
-    public void DiscardPreview_MapsEverySuitAndNumberToItsAuthoredGridCell()
+    public void DiscardPreview_NonAdjacentRanksFillOneCenteredGroup()
     {
-        MethodInfo map = typeof(DiscardPreviewPanel).GetMethod(
-            "TryGetSuitSlotIndex",
-            BindingFlags.Static | BindingFlags.NonPublic);
-        Assert.That(map, Is.Not.Null);
-
-        Suit[] suits = { Suit.Birds, Suit.Flowers, Suit.Wind, Suit.Moon };
-        for (int row = 0; row < suits.Length; row++)
+        GameObject root = PrefabUtility.LoadPrefabContents("Assets/Prefabs/UI/Game/DiscardPreview.prefab");
+        var objects = new List<Object>();
+        try
         {
-            for (int number = 1; number <= 13; number++)
+            var panel = root.GetComponent<DiscardPreviewPanel>();
+            var array = new SerializedObject(panel).FindProperty("previewSlots");
+            Image[] slots = Enumerable.Range(0, 52).Select(i => (Image)array.GetArrayElementAtIndex(i).objectReferenceValue).ToArray();
+            float center = (slots[0].rectTransform.anchorMin.x + slots[0].rectTransform.anchorMax.x +
+                slots[12].rectTransform.anchorMin.x + slots[12].rectTransform.anchorMax.x) * 0.25f;
+            var cards = new List<Card>();
+            foreach (Number number in new[] { Number.King, Number.One })
             {
-                CardData data = ScriptableObject.CreateInstance<CardData>();
-                try
-                {
-                    data.suit = suits[row];
-                    data.number = (Number)number;
-                    object[] arguments = { data, -1 };
-                    Assert.That((bool)map.Invoke(null, arguments), Is.True);
-                    Assert.That((int)arguments[1], Is.EqualTo(row * 13 + number - 1));
-                }
-                finally
-                {
-                    Object.DestroyImmediate(data);
-                }
+                var data = ScriptableObject.CreateInstance<CardData>();
+                objects.Add(data);
+                data.suit = Suit.Birds;
+                data.number = number;
+                var go = new GameObject("Discard", typeof(RectTransform), typeof(Image), typeof(Card));
+                objects.Add(go);
+                Card card = go.GetComponent<Card>();
+                card.SetCardData(data);
+                cards.Add(card);
             }
+            panel.Show(cards);
+            Assert.That(slots.Take(2).All(image => image.gameObject.activeSelf), Is.True);
+            Assert.That(slots.Skip(2).All(image => !image.gameObject.activeSelf), Is.True);
+            float groupCenter = slots.Take(2).Average(image => (image.rectTransform.anchorMin.x + image.rectTransform.anchorMax.x) * 0.5f);
+            Assert.That(groupCenter, Is.EqualTo(center).Within(0.000001f));
+        }
+        finally
+        {
+            foreach (Object item in objects) Object.DestroyImmediate(item);
+            PrefabUtility.UnloadPrefabContents(root);
         }
     }
 
@@ -60,7 +68,7 @@ public sealed class Revision1024Tests
     public void OniSprites_AreSeparatedByGameMode()
     {
         CardData oni = AssetDatabase.LoadAssetAtPath<CardData>(
-            "Assets/ScriptableObject/SpecialCard/sp_oni.asset");
+            "Assets/Data/Cards/Special/sp_oni.asset");
         Sprite normalOni = AssetDatabase.LoadAssetAtPath<Sprite>(
             "Assets/Sprite/production/cards/special/oni.png");
         Sprite battleGroundOni = AssetDatabase.LoadAssetAtPath<Sprite>(
@@ -86,10 +94,10 @@ public sealed class Revision1024Tests
         GameObject deckObject = new GameObject("SpecialDeck_Test", typeof(Cards));
         GameObject noUseObject = CreateCardObject(
             "NoUse",
-            "Assets/ScriptableObject/SpecialCard/sp_no_use.asset");
+            "Assets/Data/Cards/Special/sp_no_use.asset");
         GameObject selectedObject = CreateCardObject(
             "Selected",
-            "Assets/ScriptableObject/SpecialCard/sp 1.asset");
+            "Assets/Data/Cards/Special/sp 1.asset");
 
         try
         {
@@ -132,27 +140,84 @@ public sealed class Revision1024Tests
     }
 
     [Test]
-    public void LatestScene_EditorPreviewUsesActiveStateToShowOnlySettingsScreen()
+    public void LatestScene_MenuScreensKeepActivePrefabRootsAndAuthoredReferences()
     {
-        Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive);
+        Scene scene = SceneManager.GetSceneByPath(ScenePath);
+        bool openedForTest = !scene.IsValid() || !scene.isLoaded;
+        if (openedForTest) scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive);
         try
         {
             GameObject menu = FindRoot(scene, "MenuCanvas");
             AssertCanvasGroup(menu, 1f, true, true);
-            AssertAuthoringScreen(Find(menu.transform, "Screens/TitleScreen/TitleScreenPanel"), false);
-            AssertAuthoringScreen(Find(menu.transform, "Screens/ModeSelectScreen/ModeSelectPanel"), false);
-            AssertAuthoringScreen(Find(menu.transform, "Screens/StageSelectScreen/StageSelectPanel"), false);
-            AssertAuthoringScreen(Find(menu.transform, "Screens/SpecialCardSelectScreen/SpecialCardSelectPanel"), false);
-            AssertAuthoringScreen(Find(menu.transform, "Screens/SettingsScreen/SettingsPanel"), true);
+            TitleUIManager manager = menu.GetComponent<TitleUIManager>();
+            Assert.That(manager, Is.Not.Null);
+            AssertAuthoringScreen(Find(menu.transform, "Screens/TitleScreen/TitleScreenPanel"), manager.titleScreenPanel);
+            AssertAuthoringScreen(Find(menu.transform, "Screens/ModeSelectScreen/ModeSelectPanel"), manager.modeSelectPanel);
+            AssertAuthoringScreen(Find(menu.transform, "Screens/StageSelectScreen/StageSelectPanel"), manager.stageSelectPanel);
+            AssertAuthoringScreen(Find(menu.transform, "Screens/SpecialCardSelectScreen/SpecialCardSelectPanel"), manager.specialCardSelectPanel);
+            AssertAuthoringScreen(Find(menu.transform, "Screens/SettingsScreen/SettingsPanel"), manager.settingsPanel);
         }
         finally
         {
-            EditorSceneManager.CloseScene(scene, true);
+            if (openedForTest) EditorSceneManager.CloseScene(scene, true);
+        }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void MenuScreenSwitch_ChangesOnlyWrapperVisibility(bool initiallyVisible)
+    {
+        Scene scene = EditorSceneManager.NewPreviewScene();
+        GameObject root = null;
+        try
+        {
+            root = new GameObject("Menu Fixture");
+            SceneManager.MoveGameObjectToScene(root, scene);
+            root.SetActive(false); // Exercise public switching without lifecycle or save side effects.
+            TitleUIManager manager = root.AddComponent<TitleUIManager>();
+            var panels = new List<CanvasGroup>();
+            foreach (string name in new[] { "Title", "ModeSelect", "StageSelect", "SpecialCardSelect", "Settings" })
+            {
+                var wrapper = new GameObject(name + "Screen");
+                wrapper.transform.SetParent(root.transform, false);
+                var panel = new GameObject(name + "Panel", typeof(RectTransform), typeof(CanvasGroup));
+                panel.transform.SetParent(wrapper.transform, false);
+                panels.Add(panel.GetComponent<CanvasGroup>());
+                wrapper.SetActive(initiallyVisible);
+            }
+            manager.titleScreenPanel = panels[0];
+            manager.modeSelectPanel = panels[1];
+            manager.stageSelectPanel = panels[2];
+            manager.specialCardSelectPanel = panels[3];
+            manager.settingsPanel = panels[4];
+            manager.ShowSettings();
+            AssertVisibleScreen(panels, panels[4]);
+            manager.ShowSettings();
+            AssertVisibleScreen(panels, panels[4]);
+            manager.ShowTitleScreen();
+            AssertVisibleScreen(panels, panels[0]);
+            manager.ShowTitleScreen();
+            AssertVisibleScreen(panels, panels[0]);
+        }
+        finally
+        {
+            if (root != null) Object.DestroyImmediate(root);
+            EditorSceneManager.ClosePreviewScene(scene);
+        }
+    }
+
+    private static void AssertVisibleScreen(IEnumerable<CanvasGroup> panels, CanvasGroup visible)
+    {
+        foreach (CanvasGroup panel in panels)
+        {
+            Assert.That(panel.gameObject.activeSelf, Is.True, panel.name + " prefab root");
+            Assert.That(panel.transform.parent.gameObject.activeSelf, Is.EqualTo(panel == visible), panel.name + " wrapper");
+            AssertCanvasGroup(panel.gameObject, 1f, true, true);
         }
     }
 
     [Test]
-    public void RoleListAndDeductionFrames_MatchAuthoredLayout()
+    public void RoleListAndFramelessDeductions_MatchAuthoredLayout()
     {
         GameObject roleList = PrefabUtility.LoadPrefabContents(
             "Assets/Prefabs/UI/Game/RoleList.prefab");
@@ -170,26 +235,27 @@ public sealed class Revision1024Tests
             RectTransform playerTextRect = FindRecursive(stage, "PlayerLifeDeduction") as RectTransform;
             RectTransform cpuFrame = FindRecursive(stage, "CpuLifeDeductionFrame") as RectTransform;
             RectTransform cpuTextRect = FindRecursive(stage, "CpuLifeDeduction") as RectTransform;
-            Assert.That(playerFrame.anchoredPosition.y, Is.EqualTo(12f));
+            Assert.That(playerFrame, Is.Null);
             Assert.That(playerTextRect.anchoredPosition.y, Is.EqualTo(12f));
-            Assert.That(cpuFrame.anchoredPosition.y, Is.EqualTo(-12f));
+            Assert.That(cpuFrame, Is.Null);
             Assert.That(cpuTextRect.anchoredPosition.y, Is.EqualTo(-12f));
-            Assert.That(playerFrame.sizeDelta, Is.EqualTo(cpuFrame.sizeDelta));
-            Assert.That(playerFrame.GetSiblingIndex(), Is.LessThan(playerTextRect.GetSiblingIndex()));
-            Assert.That(cpuFrame.GetSiblingIndex(), Is.LessThan(cpuTextRect.GetSiblingIndex()));
 
-            MethodInfo configure = typeof(ShowdownCutInPopup).GetMethod(
-                "ConfigureLifeDeductionText",
-                BindingFlags.Static | BindingFlags.NonPublic);
             TextMeshProUGUI playerText = playerTextRect.GetComponent<TextMeshProUGUI>();
             TextMeshProUGUI cpuText = cpuTextRect.GetComponent<TextMeshProUGUI>();
-            configure.Invoke(null, new object[] { playerText });
-            configure.Invoke(null, new object[] { cpuText });
-            Assert.That(playerText.enableAutoSizing, Is.True);
-            Assert.That(playerText.fontSizeMin, Is.EqualTo(18f));
-            Assert.That(playerText.fontSizeMax, Is.EqualTo(32f));
-            Assert.That(cpuText.fontSizeMin, Is.EqualTo(18f));
-            Assert.That(cpuText.fontSizeMax, Is.EqualTo(32f));
+            float playerMin = playerText.fontSizeMin;
+            float playerMax = playerText.fontSizeMax;
+            float cpuMin = cpuText.fontSizeMin;
+            float cpuMax = cpuText.fontSizeMax;
+            showdown.GetComponent<ShowdownCutInPopup>().Initialize();
+            Assert.That(playerText.enableAutoSizing, Is.False);
+            Assert.That(cpuText.enableAutoSizing, Is.False);
+            Assert.That(playerText.fontSize, Is.EqualTo(36f));
+            Assert.That(cpuText.fontSize, Is.EqualTo(36f));
+            Assert.That(playerText.font, Is.EqualTo(AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(NovemberUiAuthoring.FontPath)));
+            Assert.That(playerText.fontSizeMin, Is.EqualTo(playerMin));
+            Assert.That(playerText.fontSizeMax, Is.EqualTo(playerMax));
+            Assert.That(cpuText.fontSizeMin, Is.EqualTo(cpuMin));
+            Assert.That(cpuText.fontSizeMax, Is.EqualTo(cpuMax));
         }
         finally
         {
@@ -234,12 +300,13 @@ public sealed class Revision1024Tests
         Assert.That(group.blocksRaycasts, Is.EqualTo(blocksRaycasts), target.name);
     }
 
-    private static void AssertAuthoringScreen(GameObject target, bool active)
+    private static void AssertAuthoringScreen(GameObject target, CanvasGroup reference)
     {
         Assert.That(target, Is.Not.Null);
         Assert.That(target.activeSelf, Is.True, target.name + " prefab root");
         Assert.That(target.transform.parent, Is.Not.Null, target.name);
-        Assert.That(target.transform.parent.gameObject.activeSelf, Is.EqualTo(active), target.name + " wrapper");
+        Assert.That(target.transform.parent.name, Does.EndWith("Screen"), target.name + " wrapper");
+        Assert.That(reference, Is.SameAs(target.GetComponent<CanvasGroup>()), target.name + " manager reference");
         AssertCanvasGroup(target, 1f, true, true);
     }
 

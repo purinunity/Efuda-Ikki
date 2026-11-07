@@ -102,20 +102,20 @@ public sealed class UiSpriteReferenceTests
     [Test]
     public void UpdatedCutInAndResultAssetsResolveToRequestedProductionFiles()
     {
-        ShowdownCutInAssetSet cutIn = Resources.Load<ShowdownCutInAssetSet>("ShowdownCutInAssets");
-        MatchResultVisualAssets result = Resources.Load<MatchResultVisualAssets>("MatchResultVisualAssets");
+        ShowdownCutInAssetSet cutIn = AssetDatabase.LoadAssetAtPath<ShowdownCutInAssetSet>("Assets/Data/UI/ShowdownCutInAssets.asset");
+        MatchResultVisualAssets result = AssetDatabase.LoadAssetAtPath<MatchResultVisualAssets>("Assets/Data/UI/MatchResultVisualAssets.asset");
 
         Assert.That(AssetDatabase.GetAssetPath(cutIn.cutInBackground), Does.EndWith("/ui/backgrounds/common/cut_in.png"));
         Assert.That(AssetDatabase.GetAssetPath(cutIn.roleFrame), Does.EndWith("/ui/cut_in/汎用panel.png"));
         Assert.That(AssetDatabase.GetAssetPath(cutIn.lifeDeductionFrame), Does.EndWith("/ui/parts/minus2.png"));
-        Assert.That(AssetDatabase.GetAssetPath(result.winBackground), Does.EndWith("/ui/backgrounds/ja/win_background.png"));
-        Assert.That(AssetDatabase.GetAssetPath(result.loseBackground), Does.EndWith("/ui/backgrounds/ja/lose_background.png"));
+        Assert.That(AssetDatabase.GetAssetPath(result.winBackground), Does.EndWith("/ui/backgrounds/common/ja/win_background.png"));
+        Assert.That(AssetDatabase.GetAssetPath(result.loseBackground), Does.EndWith("/ui/backgrounds/common/ja/lose_background.png"));
         Assert.That(cutIn.roleEffectPrefabs, Has.Length.EqualTo(11));
         Assert.That(cutIn.roleEffectPrefabs, Has.All.Not.Null);
     }
 
     [TestCase("StageSelectPanel", "ui/backgrounds/common/character_select.png")]
-    [TestCase("SpecialCardSelectPanel", "ui/backgrounds/ja/card_select.png")]
+    [TestCase("SpecialCardSelectPanel", "ui/backgrounds/common/ja/card_select.png")]
     [TestCase("D_button", "ui/button/common/ja/confirm_discard②.png")]
     [TestCase("StartButton", "ui/button/common/ja/confirm_special.png")]
     public void LatestScene_RequiredImageResolvesToProductionSprite(string objectName, string spritePath)
@@ -151,8 +151,31 @@ public sealed class UiSpriteReferenceTests
                 .Single();
             var serialized = new SerializedObject(panel);
             AssertSprite(serialized, "openButtonSprite", "ui/button/common/ja/show_role_list2.png");
-            AssertSprite(serialized, "combinedRoleSprite", "ui/backgrounds/ja/役一覧.png");
             AssertSprite(serialized, "closeButtonSprite", "ui/button/common/close.png");
+
+            GameObject panelRoot = ReadReference<GameObject>(serialized, "panelRoot");
+            Image page = panelRoot.GetComponentsInChildren<Image>(true)
+                .Single(value => value.name == "RoleListPage");
+            const string pagePath = "Assets/Sprite/production/ui/backgrounds/common/ja/役一覧.png";
+            Assert.That(page.sprite, Is.Not.Null, "RoleListPage Image.sprite");
+            Assert.That(AssetDatabase.GetAssetPath(page.sprite), Is.EqualTo(pagePath));
+
+            LocalizeSprite localize = page.GetComponent<LocalizeSprite>();
+            Assert.That(localize, Is.Not.Null, "RoleListPage LocalizeSprite");
+            var field = typeof(LocalizeSprite).GetField("normal",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            Assert.That(field, Is.Not.Null, "LocalizeSprite.normal");
+            var normal = (UnityEngine.Localization.LocalizedSprite)field.GetValue(localize);
+            Assert.That(normal, Is.Not.Null);
+            Assert.That(normal.IsEmpty, Is.False);
+            Assert.That(normal.TableReference.TableCollectionName, Is.EqualTo("UIImages"));
+            var table = AssetDatabase.LoadAssetAtPath<UnityEngine.Localization.Tables.AssetTable>(
+                "Assets/Localization/UIImages_ja.asset");
+            Assert.That(table, Is.Not.Null);
+            Assert.That(normal.TableEntryReference.ResolveKeyName(table.SharedData), Is.EqualTo("role"));
+            var entry = table.GetEntry("role");
+            Assert.That(entry, Is.Not.Null, "UIImages/ja/role");
+            Assert.That(AssetDatabase.GUIDToAssetPath(entry.Guid), Is.EqualTo(pagePath));
         }
         finally
         {
@@ -162,10 +185,18 @@ public sealed class UiSpriteReferenceTests
 
     private static void AssertSprite(SerializedObject serialized, string propertyName, string relativePath)
     {
-        var sprite = serialized.FindProperty(propertyName).objectReferenceValue;
-        Assert.That(sprite, Is.Not.Null, propertyName);
+        Sprite sprite = ReadReference<Sprite>(serialized, propertyName);
         Assert.That(AssetDatabase.GetAssetPath(sprite),
             Is.EqualTo("Assets/Sprite/production/" + relativePath));
+    }
+
+    private static T ReadReference<T>(SerializedObject serialized, string propertyName) where T : Object
+    {
+        SerializedProperty property = serialized.FindProperty(propertyName);
+        Assert.That(property, Is.Not.Null, serialized.targetObject.GetType().Name + "." + propertyName);
+        Assert.That(property.propertyType, Is.EqualTo(SerializedPropertyType.ObjectReference), propertyName);
+        Assert.That(property.objectReferenceValue, Is.InstanceOf<T>(), propertyName);
+        return (T)property.objectReferenceValue;
     }
 
     private sealed class MemoryProgressRepository : IProgressRepository

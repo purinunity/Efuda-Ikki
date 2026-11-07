@@ -236,13 +236,6 @@ public class StageSelectPanel : MonoBehaviour
         }
     }
 
-    private void OnValidate()
-    {
-        CacheUnlockedCharacterSprites();
-        BuildActiveCharacterBindings();
-        HideLegacyTextLabels();
-    }
-
     private void ConfigureHoverSprite(Button button, int index, bool cleared)
     {
         if (button == null)

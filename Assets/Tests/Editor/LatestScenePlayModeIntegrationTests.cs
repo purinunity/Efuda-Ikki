@@ -41,16 +41,20 @@ public sealed class LatestScenePlayModeIntegrationTests
 
     private static IEnumerator VerifyInactiveShowdownPopup()
     {
-        var assets = Resources.Load<ShowdownCutInAssetSet>("ShowdownCutInAssets");
+        var assets = AssetDatabase.LoadAssetAtPath<ShowdownCutInAssetSet>("Assets/Data/UI/ShowdownCutInAssets.asset");
         Assert.That(assets, Is.Not.Null);
         Assert.That(assets.textFont, Is.Not.Null, "Cut-in font asset");
         Assert.That(assets.textFont.material, Is.Not.Null, "Cut-in font material");
         float originalOutline = assets.textFont.material.GetFloat(TMPro.ShaderUtilities.ID_OutlineWidth);
         var popup = UnityEngine.Object.FindObjectOfType<ShowdownCutInPopup>(true);
+        UnityEngine.Object.FindObjectOfType<UiRootCoordinator>(true).ShowGameplay();
         Assert.That(popup, Is.Not.Null);
         popup.gameObject.SetActive(false);
+        var authoredDeductionOutlines = popup.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true)
+            .Where(value => value.name == "CpuLifeDeduction" || value.name == "PlayerLifeDeduction")
+            .ToDictionary(value => value.name, value => value.outlineWidth);
         Assert.DoesNotThrow(() => popup.Initialize());
-        VerifyLifeDeductionText(popup);
+        VerifyLifeDeductionText(popup, authoredDeductionOutlines);
 
         Assert.That(assets.textFont.material.GetFloat(TMPro.ShaderUtilities.ID_OutlineWidth), Is.EqualTo(originalOutline),
             "Styling a popup must not modify the shared font asset material.");
@@ -61,11 +65,16 @@ public sealed class LatestScenePlayModeIntegrationTests
         Assert.That(card, Is.Not.Null);
         Assert.That(player, Is.Not.Null);
         Assert.That(cpu, Is.Not.Null);
+        CardData[] specials = UnityEngine.Object.FindObjectOfType<UIManager>(true).specialCards1.cardList
+            .Where(value => value != null && SpecialCardResolver.TryGetSpecialCardId(value.CardData, out _))
+            .Take(2).Select(value => value.CardData).ToArray();
+        Assert.That(specials.Length, Is.EqualTo(2));
         var data = new ShowdownCutInPopup.Data(player, cpu, "見えず", "見えず",
             HandEvaluator.HandRank.Miezu, HandEvaluator.HandRank.Miezu, 0, 0,
             "見えず", "見えず", HandEvaluator.HandRank.Miezu, HandEvaluator.HandRank.Miezu, 0, 0,
             Enumerable.Repeat(card, 7).ToArray(), Enumerable.Repeat(card, 7).ToArray(),
-            new bool[7], new bool[7], null, null, null, -1, 0, 100, 100, 100, 100);
+            new bool[7], new bool[7], specials[0].Image, specials[1].Image, null, -1, 0, 100, 100, 100, 100,
+            specials[0], specials[1]);
         IEnumerator presentation = popup.Play(data);
         Assert.That(presentation.MoveNext(), Is.True);
         yield return null;
@@ -77,19 +86,76 @@ public sealed class LatestScenePlayModeIntegrationTests
             Assert.That(image.gameObject.activeInHierarchy, Is.True, name);
             Assert.That(image.color.a, Is.GreaterThan(0f), name);
         }
+        VerifyCutInTooltips(popup, specials, assets);
         popup.CancelDisplay();
         yield return null;
+        yield return VerifyMenuTooltip(assets);
         LogAssert.NoUnexpectedReceived();
     }
 
-    private static void VerifyLifeDeductionText(ShowdownCutInPopup popup)
+    private static void VerifyCutInTooltips(ShowdownCutInPopup popup, CardData[] specials, ShowdownCutInAssetSet assets)
+    {
+        var serialized = new SerializedObject(popup);
+        var tooltip = UnityEngine.Object.FindObjectOfType<SpecialCardTooltip>(true);
+        CanvasGroup group = tooltip.GetComponent<CanvasGroup>();
+        var pointer = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current)
+            { position = new Vector2(Screen.width - 2f, 2f) };
+        string[] sides = { "player", "cpu" };
+        for (int i = 0; i < sides.Length; i++)
+        {
+            var target = (SpecialCardTooltipImageTarget)serialized.FindProperty(sides[i] + "SpecialCardTooltip").objectReferenceValue;
+            Assert.That(target.GetComponent<Image>().raycastTarget, Is.True);
+            target.OnPointerEnter(pointer);
+            Assert.That(group.alpha, Is.EqualTo(1f));
+            Assert.That(tooltip.GetComponent<Image>().sprite, Is.SameAs(assets.GetSpecialCardTooltipSprite(specials[i])));
+            Assert.That(group.blocksRaycasts, Is.False);
+            target.OnPointerExit(pointer);
+            Assert.That(group.alpha, Is.Zero);
+            target.OnPointerEnter(pointer);
+            target.gameObject.SetActive(false);
+            Assert.That(group.alpha, Is.Zero, "Disabling a hovered cut-in card must hide its tooltip.");
+            target.gameObject.SetActive(true);
+        }
+        var blank = (SpecialCardTooltipImageTarget)serialized.FindProperty("playerSpecialCardTooltip").objectReferenceValue;
+        blank.Clear();
+        blank.OnPointerEnter(pointer);
+        Assert.That(group.alpha, Is.Zero);
+    }
+
+    private static IEnumerator VerifyMenuTooltip(ShowdownCutInAssetSet assets)
+    {
+        var title = UnityEngine.Object.FindObjectOfType<TitleUIManager>(true);
+        title.ShowSpecialCardSelect();
+        yield return null;
+        var panel = UnityEngine.Object.FindObjectOfType<SpecialCardSelectPanel>(true);
+        var pool = (Cards)new SerializedObject(panel).FindProperty("specialCardsDeck").objectReferenceValue;
+        Card card = pool.cardList.First(value => value != null && !SpecialCardResolver.IsNoUseSpecialCard(value.CardData) &&
+            !SpecialCardResolver.IsCpuOnlySpecialCard(value.CardData) && GameProgressStore.IsSpecialCardUnlocked(value.CardData));
+        var tooltip = UnityEngine.Object.FindObjectOfType<SpecialCardTooltip>(true);
+        var pointer = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current)
+            { position = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f) };
+        var target = card.GetComponent<SpecialCardTooltipTarget>();
+        target.OnPointerEnter(pointer);
+        Assert.That(tooltip.GetComponent<CanvasGroup>().alpha, Is.EqualTo(1f));
+        Assert.That(tooltip.GetComponent<Image>().sprite, Is.SameAs(assets.GetSpecialCardTooltipSprite(card.CardData)));
+        Assert.That(tooltip.GetComponentInParent<Canvas>().renderMode, Is.EqualTo(RenderMode.ScreenSpaceOverlay));
+        Assert.That(tooltip.GetComponentsInParent<CanvasGroup>().All(group => group.alpha > 0f), Is.True,
+            "The menu tooltip must not inherit the hidden gameplay CanvasGroup.");
+        Assert.That(panel.gameObject.scene.GetRootGameObjects().Single(root => root.name == "GameCanvas")
+            .GetComponent<CanvasGroup>().alpha, Is.Zero);
+        title.ShowTitleScreen();
+        yield return null;
+        Assert.That(tooltip.GetComponent<CanvasGroup>().alpha, Is.Zero);
+    }
+
+    private static void VerifyLifeDeductionText(ShowdownCutInPopup popup, System.Collections.Generic.Dictionary<string, float> outlines)
     {
         foreach (string name in new[] { "CpuLifeDeduction", "PlayerLifeDeduction" })
         {
             var text = popup.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true).Single(value => value.name == name);
             Assert.That(text.canvasRenderer, Is.Not.Null, name);
             Assert.That(text.fontSharedMaterial, Is.Not.Null, name);
-            Assert.That(text.outlineWidth, Is.EqualTo(0.24f).Within(0.001f), name);
+            Assert.That(text.outlineWidth, Is.EqualTo(outlines[name]).Within(0.001f), name);
         }
         Assert.DoesNotThrow(() => popup.Initialize());
     }
@@ -114,6 +180,7 @@ public sealed class LatestScenePlayModeIntegrationTests
         Assert.That(uiManager, Is.Not.Null);
 
         VerifyDuplicateUiUpdatesRecover(uiManager);
+        VerifyExplicitSnapshotMode(uiManager);
         yield return VerifyCardListenerAndMotionRecovery();
         VerifyPlayerInputCancellation();
     }
@@ -129,6 +196,36 @@ public sealed class LatestScenePlayModeIntegrationTests
         Assert.That(uiManager.UIUpdateInProgress, Is.True);
         uiManager.RecoverFromStalledUpdate();
         Assert.That(uiManager.UIUpdateInProgress, Is.False);
+    }
+
+    private static void VerifyExplicitSnapshotMode(UIManager ui)
+    {
+        GameModeData original = GameModeManager.GetGameModeData();
+        try
+        {
+            var state = new GameState();
+            state.InitializePlayerStates();
+            var battle = new GameModeData(GameModeData.GameMode.BattleGroundMode);
+            battle.IncrementWinStreak();
+            battle.IncrementWinStreak();
+            GameUiSnapshot snapshot = new GameUiPresenter().CreateSnapshot(state, battle);
+            GameModeManager.SetGameModeData(new GameModeData());
+            ui.Render(snapshot, 0f);
+            ui.RecoverFromStalledUpdate();
+            var serialized = new SerializedObject(ui);
+            var streak = (GameObject)serialized.FindProperty("battleGroundStreakView").objectReferenceValue;
+            var round = (GameObject)serialized.FindProperty("ikkiRoundView").objectReferenceValue;
+            var text = (TMPro.TextMeshProUGUI)serialized.FindProperty("battleGroundStreakText").objectReferenceValue;
+            Assert.That(streak.activeSelf, Is.True);
+            Assert.That(round.activeSelf, Is.False);
+            Assert.That(text.text, Is.EqualTo("2人抜き"));
+            GameModeManager.SetGameModeData(battle);
+            ui.Render(new GameUiPresenter().CreateSnapshot(state, new GameModeData()), 0f);
+            ui.RecoverFromStalledUpdate();
+            Assert.That(streak.activeSelf, Is.False);
+            Assert.That(round.activeSelf, Is.True);
+        }
+        finally { GameModeManager.SetGameModeData(original); }
     }
 
     private static IEnumerator VerifyCardListenerAndMotionRecovery()

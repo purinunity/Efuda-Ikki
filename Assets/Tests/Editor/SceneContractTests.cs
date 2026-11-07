@@ -19,16 +19,97 @@ public sealed class SceneContractTests
     private const string ShowdownCutInPopupGuid = "8c3dfba0c3a34d1289a9f3e42f8f3d12";
 
     [Test]
+    public void LatestScene_DiscardInputUsesAuthoredButtonAndImageReferences()
+    {
+        Scene scene = SceneManager.GetSceneByPath(LatestScenePath);
+        bool openedForTest = !scene.IsValid() || !scene.isLoaded;
+        if (openedForTest) scene = EditorSceneManager.OpenScene(LatestScenePath, OpenSceneMode.Additive);
+        try
+        {
+            PlayerController controller = scene.GetRootGameObjects()
+                .SelectMany(root => root.GetComponentsInChildren<PlayerController>(true)).Single();
+            GameObject canvas = scene.GetRootGameObjects().Single(root => root.name == "GameCanvas");
+            var button = canvas.transform.Find("GameplayScreen/Actions/D_button")
+                .GetComponent<UnityEngine.UI.Button>();
+            var serializedController = new SerializedObject(controller);
+            Assert.That(serializedController.FindProperty("decisionButton").objectReferenceValue,
+                Is.SameAs(button));
+            Assert.That(serializedController.FindProperty("decisionButtonImage").objectReferenceValue,
+                Is.SameAs(button.targetGraphic));
+            Assert.That(button.onClick.GetPersistentEventCount(), Is.EqualTo(1));
+            Assert.That(button.onClick.GetPersistentTarget(0), Is.SameAs(controller));
+            Assert.That(button.onClick.GetPersistentMethodName(0), Is.EqualTo(nameof(PlayerController.ReceiveInput)));
+        }
+        finally
+        {
+            if (openedForTest) EditorSceneManager.CloseScene(scene, true);
+        }
+    }
+
+    [Test]
+    public void DiscardInput_ExplicitReferencesWorkWithRenamedButton()
+    {
+        Scene previewScene = EditorSceneManager.NewPreviewScene();
+        GameObject root = new GameObject("Explicit discard input test");
+        root.SetActive(false);
+        SceneManager.MoveGameObjectToScene(root, previewScene);
+        try
+        {
+            PlayerController controller = root.AddComponent<PlayerController>();
+            var buttonObject = new GameObject("D_button", typeof(RectTransform),
+                typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Button));
+            buttonObject.transform.SetParent(root.transform, false);
+            var button = buttonObject.GetComponent<UnityEngine.UI.Button>();
+            var handObject = new GameObject("Hand", typeof(RectTransform));
+            handObject.transform.SetParent(root.transform, false);
+            controller.playerHands = handObject.AddComponent<CardArea>();
+            var serializedController = new SerializedObject(controller);
+            serializedController.FindProperty("decisionButton").objectReferenceValue = button;
+            serializedController.FindProperty("decisionButtonImage").objectReferenceValue = button.image;
+            serializedController.ApplyModifiedPropertiesWithoutUndo();
+            buttonObject.name = "Renamed authored discard button";
+            typeof(PlayerController).GetMethod("Awake", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(controller, null);
+
+            var state = new GameState();
+            state.InitializePlayerStates();
+            int callbackCount = 0;
+            ControllerResponse response = null;
+            System.Collections.IEnumerator action = controller.Act(state, result =>
+            {
+                callbackCount++;
+                response = result;
+            });
+            // Enable only this isolated hierarchy so Act waits for input instead of cancelling.
+            root.SetActive(true);
+            Assert.That(action.MoveNext(), Is.True);
+            button.onClick.AddListener(controller.ReceiveInput);
+            button.onClick.Invoke();
+            Assert.That(action.MoveNext(), Is.False);
+            Assert.That(callbackCount, Is.EqualTo(1));
+            Assert.That(response.actionCompleted, Is.True);
+            Assert.That(response.cardsTrash, Is.Empty);
+            Assert.That(serializedController.FindProperty("decisionButton").objectReferenceValue,
+                Is.SameAs(button));
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(root);
+            EditorSceneManager.ClosePreviewScene(previewScene);
+        }
+    }
+
+    [Test]
     public void RuntimeScriptGuids_AreStable()
     {
         Assert.That(
-            AssetDatabase.AssetPathToGUID("Assets/Scripts/Controller/PlayerController.cs"),
+            AssetDatabase.AssetPathToGUID("Assets/Scripts/Gameplay/Controllers/PlayerController.cs"),
             Is.EqualTo(PlayerControllerGuid));
         Assert.That(
-            AssetDatabase.AssetPathToGUID("Assets/Scripts/GameManager.cs"),
+            AssetDatabase.AssetPathToGUID("Assets/Scripts/Gameplay/Session/GameManager.cs"),
             Is.EqualTo(GameManagerGuid));
         Assert.That(
-            AssetDatabase.AssetPathToGUID("Assets/Scripts/UI/ShowdownCutInPopup.cs"),
+            AssetDatabase.AssetPathToGUID("Assets/Scripts/UI/Showdown/ShowdownCutInPopup.cs"),
             Is.EqualTo(ShowdownCutInPopupGuid));
     }
 
@@ -40,7 +121,9 @@ public sealed class SceneContractTests
         string runtimeContractYaml = yaml;
         if (scenePath == LatestScenePath)
         {
-            runtimeContractYaml += string.Join("\n", UiPrefabMigration.ScreenPrefabs.Values.Select(ReadProjectText));
+            string[] prefabs = AssetDatabase.GetDependencies(UiPrefabMigration.ScreenPrefabs.Values.ToArray())
+                .Where(path => path.EndsWith(".prefab", StringComparison.Ordinal)).ToArray();
+            runtimeContractYaml += string.Join("\n", prefabs.Select(ReadProjectText));
         }
 
         StringAssert.Contains($"guid: {PlayerControllerGuid}", runtimeContractYaml);

@@ -120,7 +120,7 @@ public sealed class CatalogCharacterizationTests
     public void SpecialCardResource_MapsEveryCardDataAndTooltipByStableId()
     {
         ShowdownCutInAssetSet assetSet = AssetDatabase.LoadAssetAtPath<ShowdownCutInAssetSet>(
-            "Assets/Resources/ShowdownCutInAssets.asset");
+            "Assets/Data/UI/ShowdownCutInAssets.asset");
         Assert.That(assetSet, Is.Not.Null);
 
         FieldInfo bindingsField = typeof(ShowdownCutInAssetSet).GetField(

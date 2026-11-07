@@ -211,13 +211,13 @@ public class SpecialCardSelectPanel : MonoBehaviour
                         : null;
                     cardImage.sprite = selectedSprite != null
                         ? selectedSprite
-                        : BattleGroundVisualTheme.ResolveFace(card.CardData);
+                        : card.DisplayFaceSprite;
                     cardImage.color = Color.white;
                 }
 
                 if (!card.IsSelected || displayIndex >= selectedDisplayImages.Count) continue;
                 Image displayImage = selectedDisplayImages[displayIndex++];
-                displayImage.sprite = BattleGroundVisualTheme.ResolveFace(card.CardData);
+                displayImage.sprite = card.DisplayFaceSprite;
                 displayImage.color = Color.white;
             }
         }

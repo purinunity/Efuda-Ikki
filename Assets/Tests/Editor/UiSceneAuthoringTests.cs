@@ -35,7 +35,10 @@ public sealed class UiSceneAuthoringTests
             Assert.That(gameCanvas.transform.Find("OverlayLayer/CoinTossPanel"), Is.Not.Null);
             Assert.That(gameCanvas.transform.Find("OverlayLayer/MatchResultPanel"), Is.Not.Null);
             Assert.That(gameCanvas.transform.Find("OverlayLayer/BattleGroundRewardPanel"), Is.Not.Null);
-            Assert.That(gameCanvas.transform.Find("OverlayLayer/SpecialCardTooltip"), Is.Not.Null);
+            GameObject tooltipCanvas = scene.GetRootGameObjects().Single(root => root.name == "TooltipCanvas");
+            Assert.That(tooltipCanvas.transform.Find("SpecialCardTooltip"), Is.Not.Null);
+            Assert.That(tooltipCanvas.GetComponent<Canvas>().renderMode, Is.EqualTo(RenderMode.ScreenSpaceOverlay));
+            Assert.That(tooltipCanvas.GetComponent<Canvas>().sortingOrder, Is.EqualTo(100));
 
             GameplayUiReferences references = gameCanvas.GetComponent<GameplayUiReferences>();
             Assert.That(references, Is.Not.Null);
@@ -128,7 +131,7 @@ public sealed class UiSceneAuthoringTests
                 "Initializing a card pool must never generate runtime Card objects.");
 
             Card cardPrefab = AssetDatabase.LoadAssetAtPath<Card>(
-                "Assets/Resources/Prefabs/Card.prefab");
+                "Assets/Prefabs/Cards/Card.prefab");
             Assert.That(cardPrefab, Is.Not.Null);
             Assert.That(
                 cardPrefab.GetComponent<SpecialCardTooltipTarget>(),

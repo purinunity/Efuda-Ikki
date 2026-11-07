@@ -11,6 +11,7 @@ public sealed class ProgressAutoSaveIntegrationTests
 {
     private IProgressRepository originalRepository;
     private string prefix;
+    private CompletedMatch completedMatch;
     private static readonly string[] Keys =
     {
         "EfudaIkki.Progress", "EfudaIkki.Progress.Backup",
@@ -125,15 +126,27 @@ public sealed class ProgressAutoSaveIntegrationTests
         flow.Cancel();
     }
 
-    private static GameSessionFlow CreateFlow()
+    private GameSessionFlow CreateFlow()
     {
+        completedMatch = new CompletedMatch();
         return new GameSessionFlow(null, new GameState(), null, null, null, null,
-            null, null, null, 0, null, null, null, null, randomRange: (min, max) => min);
+            null, null, null, 0, null, null, null, null, randomRange: (min, max) => min,
+            matchFlow: completedMatch);
     }
 
-    private static void SetMatchWinner(GameSessionFlow flow, int index)
+    private void SetMatchWinner(GameSessionFlow flow, int index)
     {
-        typeof(GameSessionFlow).GetField("currentMatchWinnerIndex", BindingFlags.Instance | BindingFlags.NonPublic)
-            .SetValue(flow, index);
+        completedMatch.WinnerIndex = index;
+    }
+
+    private sealed class CompletedMatch : IMatchFlow
+    {
+        public int WinnerIndex { get; set; }
+        public bool WasCancelled { get; private set; }
+        public System.Collections.Generic.IReadOnlyList<MatchRoundResult> Results { get; } =
+            new MatchRoundResult[0];
+        public IEnumerator Run(GameModeData mode, BattleGroundRunState run) { yield break; }
+        public void Cancel() => WasCancelled = true;
+        public void Surrender() => WinnerIndex = 1;
     }
 }
